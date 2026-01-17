@@ -78,3 +78,35 @@ def test_upload_invalid_extension(client):
     # 4. Asserção
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "Apenas arquivos PDF são permitidos."
+    
+def test_list_documents(client):
+    """
+    Cenário: Listar documentos da empresa logada.
+    """
+    # 1. Setup Auth
+    client.post("/auth/register", json={"email": "ceo@teste.com", "password": "senha_forte_123", "is_active": True})
+    login_res = client.post("/auth/login", data={"username": "ceo@teste.com", "password": "senha_forte_123"})
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 2. Upload de um doc de teste (para ter o que listar)
+    file_content = b"%PDF-1.4 conteudo"
+    file_obj = io.BytesIO(file_content)
+    
+    with patch("app.routers.document_router.save_file_locally") as mock_save:
+        mock_save.return_value = "storage/dummy.pdf"
+        client.post(
+            "/documents/upload",
+            files={"file": ("relatorio.pdf", file_obj, "application/pdf")},
+            headers=headers
+        )
+
+    # 3. Ação: Listar
+    response = client.get("/documents/", headers=headers)
+
+    # 4. Asserção
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert data[0]["filename"] == "relatorio.pdf"

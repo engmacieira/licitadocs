@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 
 from app.core.database import get_db
@@ -46,3 +46,18 @@ def upload_document(
     )
     
     return document
+
+@router.get("/", response_model=List[DocumentResponse])
+def read_documents(
+    current_user = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista todos os documentos da empresa do usuário logado.
+    """
+    # Segurança: O usuário precisa ter empresa
+    if not current_user.company:
+        return [] # Ou raise erro, mas retornar lista vazia é mais elegante aqui
+
+    documents = DocumentRepository.get_by_company(db, company_id=current_user.company.id)
+    return documents
