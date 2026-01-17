@@ -1,47 +1,56 @@
-# 🧭 Sprint 03: Alinhamento e Arquitetura (Pivô)
+# 🧭 Sprint 03: Hierarquia e Permissões (Admin Mode)
 
-**Objetivo:** Ajustar a rota tecnológica para o modelo de negócio "Concierge" (Onde a equipe interna gere os documentos pelo Cliente).
+**Objetivo:** Adaptar o sistema para que o **Administrador** possa gerenciar documentos em nome dos Clientes (Modelo Concierge), sem depender de integrações externas de assinatura ou governo neste MVP.
 **Período:** 17/01/2026
-**Status:** Em Andamento
+**Status:** Planejamento
 
 ---
 
-## 📊 Relatório de Aderência (Gap Analysis)
-
-Análise do que foi construído nas Sprints 1 e 2 versus a nova visão do produto.
-
-### 1. Autenticação e Onboarding
-* **O que temos:** Cadastro simples (`/auth/register`) que cria Usuário e Empresa automaticamente e já libera o acesso.
-* **O que precisamos (Gap):** O cliente não pode operar assim que cadastra. Ele precisa assinar a **Procuração Digital**.
-* **Ação Técnica:** Planejar campo de `status` na Empresa (`PENDING_SIGNATURE` -> `ACTIVE`).
-
-### 2. Permissões (RBAC - Role Based Access Control)
-* **O que temos:** Todo usuário é tratado igual (como dono da empresa).
-* **O que precisamos (Gap):** Diferenciar dois atores:
-    * **ADMIN (Operador):** Pode ver e editar documentos de *todas* as empresas.
-    * **CLIENT (Cliente):** Só vê os documentos da *própria* empresa (Read-Only).
-* **Ação Técnica:** Adicionar coluna `role` na tabela `users` e refatorar `dependencies.py`.
-
-### 3. Upload de Documentos
-* **O que temos:** O endpoint `/documents/upload` assume que o arquivo pertence a quem está enviando.
-* **O que precisamos (Gap):** O Admin precisa enviar um arquivo e dizer: *"Este PDF pertence à Empresa X"*.
-* **Ação Técnica:** Refatorar o Router de Upload para aceitar um `target_company_id` (apenas se for Admin).
+## 📊 Decisões Estratégicas (MVP)
+1.  **Assinatura Off-Platform:** A coleta da procuração será feita via e-mail/manual. O sistema apenas receberá o status "Ativo" quando o Admin confirmar.
+2.  **Busca Manual:** A consulta de certidões será feita manualmente pela equipe interna. O sistema serve como repositório centralizado e inteligência (IA).
+3.  **Foco Técnico:** A prioridade total é permitir que um usuário `ADMIN` manipule dados de uma `COMPANY` que não é dele.
 
 ---
 
-## 📅 Backlog da Sprint 03 (Tarefas de Organização)
+## 🗺️ Gap Analysis (O que falta para o Admin trabalhar?)
 
-Nesta sprint, **não escreveremos código de produção** cegamente. Vamos preparar o terreno.
+### 1. Sistema de Roles (Cargos)
+* **Atual:** Todo usuário é igual.
+* **Necessário:** Criar campo `role` na tabela `users`.
+    * `admin`: Acesso total (pode postar em qualquer empresa).
+    * `client`: Acesso restrito (só vê sua própria empresa).
 
-1.  **[Doc]** Oficializar a Visão do Produto em `docs/USER_STORIES.md` (Concluído).
-2.  **[Arquitetura]** Desenhar o novo fluxo de permissões (Roles: `ADMIN` vs `CLIENT`).
-3.  **[Planejamento]** Mapear exatamente quais arquivos `.py` precisarão de refatoração na Sprint 4.
-4.  **[POC - Prova de Conceito]** Escolher e testar a API de Assinatura (ZapSign/ClickSign) apenas via Postman/Curl (sem codar no sistema ainda), para garantir viabilidade técnica.
+### 2. Refatoração do Upload (O "Upload por Terceiros")
+* **Atual:** O endpoint pega a empresa do usuário logado (`current_user.company_id`).
+* **Necessário:** O endpoint deve aceitar um campo opcional `target_company_id`.
+    * Se for `client`: Ignora o campo e usa a própria empresa.
+    * Se for `admin`: Usa o `target_company_id` informado.
+
+### 3. Listagem Administrativa
+* **Atual:** Só lista meus documentos.
+* **Necessário:** Endpoint `GET /admin/companies` para listar todos os clientes e poder entrar no "perfil" deles.
+
+---
+
+## 📅 Backlog da Sprint 03 (Tarefas Técnicas)
+
+### 1. Banco de Dados e Models
+* [ ] Adicionar coluna `role` (Enum) na tabela `users` (Default: 'client').
+* [ ] Criar Migration (ou recriar banco) para aplicar mudança.
+
+### 2. Lógica de Acesso (Dependencies)
+* [ ] Criar verificador `get_current_active_admin` em `dependencies.py` para proteger rotas administrativas.
+
+### 3. Funcionalidades do Admin
+* [ ] Refatorar `POST /documents/upload` para suportar upload em nome de terceiros.
+* [ ] Criar `GET /admin/companies` (Listar clientes para o Admin selecionar).
 
 ---
 
 ## 📝 Definição de Pronto (Definition of Done)
-* [ ] Arquivo `USER_STORIES.md` atualizado e comitado.
-* [ ] Documento de Alinhamento (`SPRINT_03_ALIGNMENT.md`) criado.
-* [ ] POC de assinatura realizada e validada.
-* [ ] Backlog da Sprint 4 (Execução) montado.
+* [ ] Admin consegue logar.
+* [ ] Admin consegue listar todas as empresas cadastradas.
+* [ ] Admin consegue fazer upload de um PDF vinculando-o à Empresa do Cliente X.
+* [ ] Cliente X loga e vê o arquivo que o Admin subiu.
+* [ ] Cliente Y loga e **não** vê o arquivo do Cliente X.
