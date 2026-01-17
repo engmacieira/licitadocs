@@ -1,0 +1,55 @@
+import uuid
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import UUID # Preparando para Postgres futuro
+from app.core.database import Base
+
+# Hack para funcionar UUID no SQLite e no Postgres sem dor de cabeça
+def generate_uuid():
+    return str(uuid.uuid4())
+
+class User(Base):
+    """
+    Tabela de Usuários.
+    Gerencia o acesso ao sistema (Login).
+    """
+    __tablename__ = "users"
+
+    # Identificação única universal
+    id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    
+    # Dados de Acesso
+    email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=False) # NUNCA salvar senha pura
+    
+    # Controle
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relacionamentos (Um usuário pode gerenciar UMA empresa neste modelo inicial)
+    # lazy='joined' significa que ao buscar o user, já traz a empresa junto (otimização)
+    company = relationship("Company", back_populates="owner", uselist=False, lazy='joined')
+
+class Company(Base):
+    """
+    Tabela de Empresas.
+    Os documentos serão vinculados a esta entidade.
+    """
+    __tablename__ = "companies"
+
+    id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    
+    # Dados cadastrais
+    cnpj = Column(String, unique=True, index=True, nullable=False)
+    razao_social = Column(String, nullable=False)
+    nome_fantasia = Column(String, nullable=True)
+    
+    # Chave Estrangeira (Quem é o dono desta empresa?)
+    owner_id = Column(String, ForeignKey("users.id"))
+    
+    # Relacionamento reverso
+    owner = relationship("User", back_populates="company")
+    
+    # Auditoria
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
