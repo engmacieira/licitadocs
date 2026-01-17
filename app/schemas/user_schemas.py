@@ -18,6 +18,11 @@ class UserCreate(UserBase):
     # max_length=70: Garante que não estoure o limite de 72 bytes do Bcrypt.
     password: str = Field(..., min_length=8, max_length=70, description="Senha do usuário (min 8, max 70 caracteres)")
 
+# Schema para RESPOSTA DO LOGIN
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
 # Schema para LEITURA (O que a API devolve para o frontend)
 class UserResponse(UserBase):
     id: str
