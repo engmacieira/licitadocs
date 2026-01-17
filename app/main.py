@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from app.core.database import engine, Base
-from app.models import user_model # Importar para registrar as tabelas na Base
+from app.models import user_model 
+from app.models import document_model 
 from app.routers import auth_router
+from app.routers import document_router
 
 # Cria as tabelas ao iniciar (dev only)
 Base.metadata.create_all(bind=engine)
@@ -13,6 +15,7 @@ app = FastAPI(
 )
 # Registrando as rotas
 app.include_router(auth_router.router) # <--- Conecta o router de Auth
+app.include_router(document_router.router) # <--- Conecta o router de Documentos
 
 @app.get("/")
 def read_root():

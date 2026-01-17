@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import create_access_token, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.models.user_model import Company
 from app.schemas.user_schemas import UserCreate, UserResponse, Token
 from app.repositories.user_repository import UserRepository
 
@@ -37,6 +38,17 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     # 2. Criação
     try:
         new_user = UserRepository.create_user(db=db, user_in=user)
+        
+        # Como é B2B, o usuário JÁ nasce com uma empresa vinculada.
+        new_company = Company(
+            cnpj="00000000000000", # Placeholder (depois pedimos o real)
+            razao_social=f"Empresa de {new_user.email}",
+            owner_id=new_user.id
+        )
+        db.add(new_company)
+        db.commit()
+        # -------------------------------------------
+        
         return new_user
     except ValueError as e:
         # Captura erros de validação do Repository (ex: falha na integridade)
