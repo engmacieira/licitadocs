@@ -3,7 +3,7 @@ Schemas de Usuário (Pydantic).
 Define os contratos de dados para entrada (Requests) e saída (Responses) da API.
 Data: Sprint 01
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -24,6 +24,4 @@ class UserResponse(UserBase):
     created_at: datetime
     # Note que NÃO retornamos a senha aqui! Segurança básica.
 
-    class Config:
-        # Permite que o Pydantic leia dados direto do objeto SQLAlchemy (ORM)
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
