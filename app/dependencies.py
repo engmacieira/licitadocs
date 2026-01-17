@@ -8,6 +8,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import SECRET_KEY, ALGORITHM
+from app.models.user_model import UserRole, User
 from app.repositories.user_repository import UserRepository
 
 # Define de onde o token vem (Url de login para o Swagger saber)
@@ -39,3 +40,14 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
         
     return user
+
+def get_current_active_admin(current_user: User = Depends(get_current_user)):
+    """
+    Dependência que só deixa passar se o usuário for ADMIN.
+    """
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Privilégios de Administrador necessários"
+        )
+    return current_user

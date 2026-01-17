@@ -6,6 +6,11 @@ Data: Sprint 01
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from datetime import datetime
+from enum import Enum
+
+class UserRoleEnum(str, Enum):
+    ADMIN = "admin"
+    CLIENT = "client"
 
 # Schema Base (campos comuns)
 class UserBase(BaseModel):
@@ -26,7 +31,7 @@ class Token(BaseModel):
 # Schema para LEITURA (O que a API devolve para o frontend)
 class UserResponse(UserBase):
     id: str
+    role: UserRoleEnum = UserRoleEnum.CLIENT
     created_at: datetime
-    # Note que NÃO retornamos a senha aqui! Segurança básica.
 
     model_config = ConfigDict(from_attributes=True)

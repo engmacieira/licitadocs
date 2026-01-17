@@ -4,6 +4,7 @@ Controla as rotas relacionadas a cadastro e login de usuários.
 Data: Sprint 01
 """
 from datetime import timedelta
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -40,8 +41,9 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         new_user = UserRepository.create_user(db=db, user_in=user)
         
         # Como é B2B, o usuário JÁ nasce com uma empresa vinculada.
+        random_cnpj = str(uuid.uuid4())[:14]
         new_company = Company(
-            cnpj="00000000000000", # Placeholder (depois pedimos o real)
+            cnpj=random_cnpj, # Placeholder (depois pedimos o real)
             razao_social=f"Empresa de {new_user.email}",
             owner_id=new_user.id
         )

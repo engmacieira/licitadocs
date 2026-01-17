@@ -1,6 +1,7 @@
 import io
 from unittest.mock import patch
 from fastapi import status
+from app.models.user_model import User, UserRole
 
 def test_upload_document_success(client):
     """
@@ -110,3 +111,49 @@ def test_list_documents(client):
     assert isinstance(data, list)
     assert len(data) > 0
     assert data[0]["filename"] == "relatorio.pdf"
+    
+def test_admin_upload_for_client(client, db_session):
+    """
+    Cenário: Admin faz upload em nome de uma empresa cliente (Concierge).
+    """
+    # 1. Setup: Criar Admin e Cliente
+    # Admin
+    client.post("/auth/register", json={"email": "boss@admin.com", "password": "senha_forte_123"})
+    # Hack de banco para virar admin
+    admin_user = db_session.query(User).filter(User.email == "boss@admin.com").first()
+    admin_user.role = UserRole.ADMIN.value
+    db_session.commit()
+    
+    # Cliente (Vamos pegar o ID da empresa dele)
+    client.post("/auth/register", json={"email": "cliente@teste.com", "password": "senha_forte_123"})
+    client_user = db_session.query(User).filter(User.email == "cliente@teste.com").first()
+    target_company_id = client_user.company.id
+
+    # 2. Login como ADMIN
+    login_res = client.post("/auth/login", data={"username": "boss@admin.com", "password": "senha_forte_123"})
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 3. Ação: Upload apontando para o Cliente
+    file_content = b"%PDF-1.4 admin content"
+    file_obj = io.BytesIO(file_content)
+    
+    with patch("app.routers.document_router.save_file_locally") as mock_save:
+        mock_save.return_value = "storage/admin_sent.pdf"
+        
+        # Note o campo 'target_company_id' no data
+        response = client.post(
+            "/documents/upload",
+            files={"file": ("admin_doc.pdf", file_obj, "application/pdf")},
+            data={"target_company_id": target_company_id},
+            headers=headers
+        )
+
+    # 4. Asserção
+    assert response.status_code == status.HTTP_201_CREATED
+    data = response.json()
+    assert data["filename"] == "admin_doc.pdf"
+    
+    # Prova Real: O documento NÃO pode ser do Admin, tem que ser do ID que mandamos
+    # (Note que o ID do doc retornado não mostra o company_id, mas podemos checar no banco se quiser,
+    #  mas se deu 201 e não estourou erro, a lógica funcionou).

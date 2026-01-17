@@ -7,6 +7,7 @@ from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.schemas.document_schemas import DocumentResponse
 from app.core.storage import save_file_locally
+from app.models.user_model import UserRole
 from app.repositories.document_repository import DocumentRepository
 
 router = APIRouter(prefix="/documents", tags=["Documentos"])
@@ -14,21 +15,36 @@ router = APIRouter(prefix="/documents", tags=["Documentos"])
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 def upload_document(
     file: UploadFile = File(...),
-    expiration_date: Optional[date] = Form(None), # Recebemos via Form-Data (não JSON)
+    expiration_date: Optional[date] = Form(None), 
+    target_company_id: Optional[str] = Form(None),
     current_user = Depends(get_current_user), # <--- Proteção + Dados do Usuário
     db: Session = Depends(get_db)
 ):
     """
     Faz o upload de um arquivo PDF e registra no sistema.
+    - Clientes: Salvam na própria empresa.
+    - Admins: Podem salvar na empresa de terceiros usando 'target_company_id'.
     """
-    # 1. Validação de Formato (Regra de Negócio: Apenas PDF)
+    # 1. Validação de Formato
     if file.content_type != "application/pdf":
         raise HTTPException(400, "Apenas arquivos PDF são permitidos.")
     
-    # 2. Validação de Empresa
-    # Graças ao Fix do passo 2, o usuário sempre terá empresa.
-    if not current_user.company:
-        raise HTTPException(400, "Usuário não possui empresa vinculada para salvar documentos.")
+    # 2. Definição da Empresa Alvo (Lógica de Permissão)
+    final_company_id = None
+
+    if target_company_id:
+        # Se tentou definir outra empresa, TEM que ser Admin
+        if current_user.role != UserRole.ADMIN.value:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Apenas administradores podem enviar documentos para outras empresas."
+            )
+        final_company_id = target_company_id
+    else:
+        # Se não definiu, usa a própria (Comportamento Padrão)
+        if not current_user.company:
+             raise HTTPException(400, "Usuário não possui empresa vinculada.")
+        final_company_id = current_user.company.id
 
     # 3. Salvar Físico (Storage)
     try:
@@ -41,7 +57,7 @@ def upload_document(
         db=db,
         filename=file.filename,
         file_path=file_path,
-        company_id=current_user.company.id, # <--- O pulo do gato
+        company_id=final_company_id, # <--- Usa a variável decidida acima
         expiration_date=expiration_date
     )
     

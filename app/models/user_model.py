@@ -1,4 +1,5 @@
 import uuid
+import enum
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -8,6 +9,11 @@ from app.core.database import Base
 # Hack para funcionar UUID no SQLite e no Postgres sem dor de cabeça
 def generate_uuid():
     return str(uuid.uuid4())
+
+# 1. Definição dos Cargos Disponíveis
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    CLIENT = "client"
 
 class User(Base):
     """
@@ -26,6 +32,10 @@ class User(Base):
     # Controle
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Coluna de Role (Cargo)
+    # Default = CLIENT (Segurança: ninguém nasce admin por acidente)
+    role = Column(String, default=UserRole.CLIENT.value, nullable=False)
     
     # Relacionamentos (Um usuário pode gerenciar UMA empresa neste modelo inicial)
     # lazy='joined' significa que ao buscar o user, já traz a empresa junto (otimização)
