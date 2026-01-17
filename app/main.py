@@ -1,11 +1,18 @@
 from fastapi import FastAPI
 from app.core.database import engine, Base
 from app.models import user_model # Importar para registrar as tabelas na Base
+from app.routers import auth_router
 
-# Cria as tabelas no banco de dados (equivalente a uma migration simples)
+# Cria as tabelas ao iniciar (dev only)
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="LicitaDoc API", version="0.1.0")
+app = FastAPI(
+    title="LicitaDoc API", 
+    version="0.1.0",
+    description="API para gestão de documentos de licitação com inteligência artificial."
+)
+# Registrando as rotas
+app.include_router(auth_router.router) # <--- Conecta o router de Auth
 
 @app.get("/")
 def read_root():
