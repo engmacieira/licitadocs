@@ -1,0 +1,13 @@
+[run]
+# Onde ele deve medir? Apenas dentro da pasta app
+source = app
+
+# O que ele deve ignorar?
+omit =
+    app/tests/* # Não quero medir cobertura de arquivos de teste
+    app/core/* # Configurações costumam ser boilerplate
+    */__init__.py  # Arquivos vazios
+
+[report]
+# Mostra linhas que não foram testadas no terminal
+show_missing = True
