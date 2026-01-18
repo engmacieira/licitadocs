@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.core.database import get_db
 from app.dependencies import get_current_active_admin # <--- Só Admin entra aqui!
@@ -15,8 +15,7 @@ class CompanyListResponse(BaseModel):
     razao_social: str
     cnpj: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 @router.get("/companies", response_model=List[CompanyListResponse])
 def list_all_companies(
