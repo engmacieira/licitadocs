@@ -8,3 +8,5 @@ venv/
 txt/
 .idea/
 .vscode/
+debug_models.py
+test_ai.py
