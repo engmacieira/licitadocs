@@ -3,25 +3,23 @@ import api from './api';
 export interface DocumentDTO {
     id: string;
     filename: string;
-    created_at?: string; // O backend pode ou não retornar isso agora
+    created_at?: string;
     owner_id: string;
 }
 
 export const documentService = {
-    // Busca todos os documentos do usuário logado
     getAll: async () => {
-        const response = await api.get<DocumentDTO[]>('/documents');
+        // Tem que ser HTTP://127.0.0.1:8000... e ter a BARRA / no final
+        const response = await api.get<DocumentDTO[]>('http://127.0.0.1:8000/documents/');
+        console.log("🔥 BUSCA NO BACKEND:", response.status, response.data);
         return response.data;
     },
 
-    // (Preparo para o futuro) Upload
     upload: async (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
-        const response = await api.post('/documents/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+        const response = await api.post('http://127.0.0.1:8000/documents/upload/', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
         return response.data;
     }

@@ -2,13 +2,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/Login';
-import { DocumentsPage } from './pages/Documents';
+import { DocumentsPage } from './pages/Documents'; // A página REAL
 import { MainLayout } from './components/layout/MainLayout';
 import { Dashboard } from './pages/Dashboard';
 
-// Páginas Temporárias (Placeholder)
-const Documents = () => <h1 className="text-2xl font-bold">Meus Documentos 📂</h1>;
-const AIChat = () => <h1 className="text-2xl font-bold">Consultor IA 🤖</h1>;
+// O AIChat ainda não tem página real, então deixamos o placeholder
+const AIChat = () => <h1 className="text-2xl font-bold">Consultor IA 🤖 (Em Breve)</h1>;
 
 function App() {
   return (
@@ -18,7 +17,7 @@ function App() {
           {/* Rota Pública */}
           <Route path="/" element={<LoginPage />} />
 
-          {/* Rotas Privadas (Envelopadas pelo Layout) */}
+          {/* Rotas Privadas */}
           <Route
             element={
               <ProtectedRoute>
@@ -26,14 +25,12 @@ function App() {
               </ProtectedRoute>
             }
           >
-            {/* O Outlet vai renderizar um desses dependendo da URL */}
+            {/* 🎯 ROTAS CORRIGIDAS (Sem duplicatas) */}
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/documents" element={<Documents />} />
+            <Route path="/documents" element={<DocumentsPage />} /> {/* Agora aponta para a CERTA! */}
             <Route path="/ai-chat" element={<AIChat />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/documents" element={<DocumentsPage />} />
 
-            {/* Redireciona qualquer rota perdida dentro do painel para o dashboard */}
+            {/* Redireciona rotas perdidas para o dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

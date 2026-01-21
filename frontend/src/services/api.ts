@@ -1,11 +1,11 @@
 import axios from 'axios';
 
-// O Vite vai pegar isso e jogar no túnel que configuramos acima.
+// 🎯 Padrão Correto: Usa o Proxy do Vite (/api -> :8000)
 const api = axios.create({
     baseURL: '/api',
 });
 
-// Interceptor de Requisição 
+// Interceptor: Garante que o token vai em TODAS as requisições
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('@LicitaDoc:token');
     if (token) {
@@ -14,12 +14,12 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Interceptor de Resposta
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Se der erro 401 (Sessão Inválida), podemos deslogar futuramente
         if (error.response && error.response.status === 401) {
-            // Opcional: localStorage.removeItem('@LicitaDoc:token');
+            console.warn("⚠️ Sessão expirada ou token inválido.");
         }
         return Promise.reject(error);
     }

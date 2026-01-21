@@ -6,14 +6,14 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // Garante que o Tailwind v4 funcione bem
+    tailwindcss(),
   ],
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000', // O endereço do Python
+        target: 'http://127.0.0.1:8000', // Aponta para o Python
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''), // Remove o '/api' antes de mandar pro Python
+        rewrite: (path) => path.replace(/^\/api/, ''), // Remove '/api' antes de enviar
       },
     },
   },
