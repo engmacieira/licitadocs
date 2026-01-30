@@ -29,3 +29,23 @@ class DocumentRepository:
     def get_by_company(db: Session, company_id: str):
         """Lista todos os documentos de uma empresa."""
         return db.query(Document).filter(Document.company_id == company_id).all()
+    
+    @staticmethod
+    def get_all(db: Session, company_id: str, skip: int = 0, limit: int = 100):
+        """
+        Lista apenas os documentos pertencentes à empresa do usuário logado.
+        """
+        return db.query(Document)\
+            .filter(Document.company_id == company_id)\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+            
+    @staticmethod
+    def get_by_id(db: Session, document_id: str, company_id: str):
+        """
+        Busca um documento específico, garantindo que ele pertença à empresa.
+        """
+        return db.query(Document)\
+            .filter(Document.id == document_id, Document.company_id == company_id)\
+            .first()
