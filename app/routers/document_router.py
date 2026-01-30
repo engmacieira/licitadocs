@@ -77,3 +77,25 @@ def read_documents(
 
     documents = DocumentRepository.get_by_company(db, company_id=current_user.company.id)
     return documents
+
+@router.get("/", response_model=List[DocumentResponse])
+def list_documents(
+    skip: int = 0, 
+    limit: int = 100, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user) # Pega o usuário do Token
+):
+    """
+    Lista documentos com isolamento total.
+    O usuário só recebe o que pertence à empresa dele.
+    """
+    # Se o usuário não tiver empresa vinculada, retornamos lista vazia por segurança
+    if not current_user.company_id:
+        return []
+        
+    return DocumentRepository.get_all(
+        db=db, 
+        company_id=current_user.company_id, 
+        skip=skip, 
+        limit=limit
+    )
