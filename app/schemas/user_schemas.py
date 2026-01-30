@@ -16,6 +16,7 @@ class UserRoleEnum(str, Enum):
 class UserBase(BaseModel):
     email: EmailStr
     is_active: Optional[bool] = True
+    company_id: Optional[str] = None
 
 class UserCreate(UserBase):
     # Adicionamos validação explicita:

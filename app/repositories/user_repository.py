@@ -35,7 +35,8 @@ class UserRepository:
         db_user = User(
             email=user_in.email,
             password_hash=hashed_password,
-            is_active=user_in.is_active
+            is_active=user_in.is_active,    
+            company_id=user_in.company_id
         )
         
         # 3. Persistência com Tratamento de Erro
