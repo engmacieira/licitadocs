@@ -1,38 +1,33 @@
-# 🚀 Por Onde Começar (Guia de Transição)
+# 🚀 Guia de Início Rápido (Contexto do Projeto)
 
 **Projeto:** LicitaDoc (SaaS de Gestão de Documentos para Licitações)
-**Versão Atual:** Sprint 05 (Frontend Foundation)
-**Data:** 18/01/2026
+**Versão Atual:** v0.6.0 (Admin Module Stable)
+**Data:** 30/01/2026
+
+## 🏗️ Status Atual
+O sistema é um Monorepo (Frontend React + Backend FastAPI).
+* **Frontend:** Rodando na porta 5173. Usa Tailwind v4, React Hook Form, Zod e Axios.
+* **Backend:** Rodando na porta 8000. Usa SQLAlchemy (SQLite), Pydantic v2 e Pytest.
+
+## 🏆 Últimas Conquistas (Sprint 06)
+1.  **CRUD de Empresas:** Completo (Create, Read, Update, Delete) em `/admin/companies`.
+2.  **Testes Automatizados:** Backend coberto por testes em `app/tests/test_companies.py`.
+3.  **Correções:** Ajuste de CORS e mapeamento de campos (`name` -> `razao_social`).
+
+## 📍 Onde Paramos?
+Acabamos de finalizar a **Gestão de Empresas**. O Admin consegue criar empresas, mas elas ainda estão "soltas". Os usuários não estão vinculados a elas, e os documentos também não.
+
+## 🎯 Objetivo Imediato (Sprint 07)
+**Implementar Multi-Tenancy Lógico.**
+1.  Precisamos alterar o modelo de `User` para ter um `company_id`.
+2.  Precisamos alterar a listagem de documentos para filtrar pelo `company_id` do usuário logado.
+3.  Precisamos remover as URLs hardcoded (`127.0.0.1`) do frontend.
+
+## 📂 Arquivos Chave para Leitura
+* `frontend/src/services/companyService.ts` (Exemplo de serviço atual)
+* `app/models/user_model.py` (Estrutura do banco que precisará mudar)
+* `app/routers/documents.py` (Onde aplicaremos o filtro de empresa)
+* `app/tests/test_companies.py` (Exemplo de teste funcional)
 
 ---
-
-## 🏗️ Estado do Projeto
-
-O sistema opera em arquitetura **Monorepo** (Backend Python + Frontend React na mesma raiz).
-
-### 🖥️ Frontend (Pasta `/frontend`)
-* **Stack:** React, TypeScript, Vite, Tailwind CSS v4, Axios.
-* **Status:**
-    * Login funcionando e integrado.
-    * Dashboard e Sidebar criados.
-    * **Ponto de Atenção:** A tela de `Meus Documentos` estava apresentando erro de comunicação (Tela Branca/304). Foi configurado um **Proxy** no `vite.config.ts` para mitigar isso.
-* **Comando de Start:** `npm run dev` (Roda na porta 5173, com proxy para 8000).
-
-### ⚙️ Backend (Pasta `/app`)
-* **Stack:** Python 3.12, FastAPI, SQLite, SQLAlchemy.
-* **Status:** API funcional. Autenticação JWT, CRUD de Documentos e Integração IA (Gemini) prontos.
-* **Comando de Start:** `uvicorn app.main:app --reload` (Porta 8000).
-* **Swagger:** `http://localhost:8000/docs`
-
----
-
-## 🎯 Objetivo Imediato (Sprint 05)
-
-1.  **Verificar Fix do Proxy:** Ao iniciar o ambiente, testar se a listagem de documentos carrega. Se não, debugar o `vite.config.ts`.
-2.  **Upload de Arquivos:** Implementar a funcionalidade do botão "Novo Documento" no Frontend.
-3.  **Chatbot UI:** Construir a interface do chat com a IA.
-
----
-
-## 🔑 Credenciais de Teste
-* **Admin:** `admin@licitadoc.com` / `senha_super_secreta`
+*Este documento serve para orientar a próxima sessão de desenvolvimento.*
