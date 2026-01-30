@@ -32,6 +32,7 @@ class User(Base):
     # Controle
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    role = Column(String, default=UserRole.CLIENT.value, nullable=False)
     
     # --- COLUNA PARA MULTI-TENANCY ---
     # Vincula o usuário a uma empresa específica

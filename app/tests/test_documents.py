@@ -127,7 +127,7 @@ def test_admin_upload_for_client(client, db_session):
     # Cliente (Vamos pegar o ID da empresa dele)
     client.post("/auth/register", json={"email": "cliente@teste.com", "password": "senha_forte_123"})
     client_user = db_session.query(User).filter(User.email == "cliente@teste.com").first()
-    target_company_id = client_user.company.id
+    target_company_id = client_user.company_id
 
     # 2. Login como ADMIN
     login_res = client.post("/auth/login", data={"username": "boss@admin.com", "password": "senha_forte_123"})

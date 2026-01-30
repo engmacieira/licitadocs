@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.dependencies import get_current_user
 from app.schemas.document_schemas import DocumentResponse
 from app.core.storage import save_file_locally
-from app.models.user_model import UserRole
+from app.models.user_model import User, UserRole
 from app.repositories.document_repository import DocumentRepository
 
 router = APIRouter(prefix="/documents", tags=["Documentos"])
@@ -42,9 +42,12 @@ def upload_document(
         final_company_id = target_company_id
     else:
         # Se não definiu, usa a própria (Comportamento Padrão)
-        if not current_user.company:
-             raise HTTPException(400, "Usuário não possui empresa vinculada.")
-        final_company_id = current_user.company.id
+        if not current_user.company_id:
+             raise HTTPException(
+                 status_code=status.HTTP_400_BAD_REQUEST, 
+                 detail="Usuário não vinculado a nenhuma empresa."
+                )
+        final_company_id = current_user.company_id
 
     # 3. Salvar Físico (Storage)
     try:
@@ -72,10 +75,10 @@ def read_documents(
     Lista todos os documentos da empresa do usuário logado.
     """
     # Segurança: O usuário precisa ter empresa
-    if not current_user.company:
+    if not current_user.company_id:
         return [] # Ou raise erro, mas retornar lista vazia é mais elegante aqui
 
-    documents = DocumentRepository.get_by_company(db, company_id=current_user.company.id)
+    documents = DocumentRepository.get_by_company(db, company_id=current_user.company_id)
     return documents
 
 @router.get("/", response_model=List[DocumentResponse])

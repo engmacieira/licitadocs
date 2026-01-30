@@ -1,7 +1,7 @@
 """
 Router de Autenticação.
 Controla as rotas relacionadas a cadastro e login de usuários.
-Data: Sprint 01
+Data: Sprint 01 -> Atualizado Sprint 07
 """
 from datetime import timedelta
 import uuid
@@ -49,6 +49,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         )
         db.add(new_company)
         db.commit()
+        db.refresh(new_company)
+        new_user.company_id = new_company.id
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
         # -------------------------------------------
         
         return new_user
