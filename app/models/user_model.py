@@ -33,13 +33,15 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Coluna de Role (Cargo)
-    # Default = CLIENT (Segurança: ninguém nasce admin por acidente)
-    role = Column(String, default=UserRole.CLIENT.value, nullable=False)
+    # --- COLUNA PARA MULTI-TENANCY ---
+    # Vincula o usuário a uma empresa específica
+    company_id = Column(String, ForeignKey("companies.id"), nullable=True) 
     
-    # Relacionamentos (Um usuário pode gerenciar UMA empresa neste modelo inicial)
-    # lazy='joined' significa que ao buscar o user, já traz a empresa junto (otimização)
-    company = relationship("Company", back_populates="owner", uselist=False, lazy='joined')
+    # Relacionamentos
+    user_company = relationship("Company", back_populates="employees", foreign_keys=[company_id])
+    
+    # Para saber quem criou a empresa originalmente
+    owned_company = relationship("Company", back_populates="owner", uselist=False, foreign_keys="[Company.owner_id]")
 
 class Company(Base):
     """
@@ -59,7 +61,8 @@ class Company(Base):
     owner_id = Column(String, ForeignKey("users.id"))
     
     # Relacionamento reverso
-    owner = relationship("User", back_populates="company")
+    owner = relationship("User", back_populates="owned_company", foreign_keys=[owner_id])
+    employees = relationship("User", back_populates="user_company", foreign_keys=[User.company_id])
     
     # Auditoria
     created_at = Column(DateTime(timezone=True), server_default=func.now())
