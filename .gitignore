@@ -10,3 +10,4 @@ txt/
 .vscode/
 debug_models.py
 test_ai.py
+storage/
