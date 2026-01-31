@@ -1,30 +1,29 @@
-# 🚀 Guia de Início Rápido (Contexto do Projeto)
+# 🚀 Guia do Projeto LicitaDoc
 
-**Projeto:** LicitaDoc (SaaS de Gestão de Documentos para Licitações)
-**Versão Atual:** v0.7.0 (Multi-Tenancy Core Stable)
-**Data:** 30/01/2026
+**Visão do Produto:** Plataforma "Concierge" de Gestão de Documentos para Licitações.
+**Status Atual:** v0.7.0 (Multi-Tenancy Stable).
 
-## 🏗️ Status Atual
-O sistema é um Monorepo seguro e preparado para múltiplos clientes.
-* **Frontend:** React + Tailwind + Axios Centralizado (Porta 5173).
-* **Backend:** FastAPI + SQLite + Multi-Tenancy Lógico (Porta 8000).
+## 🎯 O Modelo de Negócio (Concierge)
+Diferente de um Google Drive, aqui **o Cliente não trabalha**.
+1.  **Cliente:** Entra para consultar se a empresa está apta (Dashboard) e baixar certidões.
+2.  **Operação (Nós):** Buscamos, validamos e subimos os documentos para o cliente.
+3.  **IA:** Atua como "Tradutor Jurídico", explicando o conteúdo das certidões para o cliente.
 
-## 🏆 Últimas Conquistas (Sprint 07)
-1.  **Multi-Tenancy:** Usuários e Documentos agora são isolados por Empresa.
-2.  **Segurança:** Correção crítica no script de Admin e nas rotas de Upload.
-3.  **Arquitetura:** Frontend refatorado para não depender de URLs fixas (`localhost`).
+## 🏗️ Estado Técnico (v0.7.0)
+* **Backend:** Pronto para isolar dados. Um cliente só vê o que é dele.
+* **Frontend:**
+    * Login: ✅ Funcionando.
+    * Upload: ✅ Funcionando (Tecnicamente), mas precisará ser movido para a área Admin.
+    * IA Chat: 🚧 Existente, mas genérico (precisa virar Contextual/RAG).
 
-## 📍 Onde Paramos?
-O sistema funciona \"end-to-end\": Login -> Upload -> Listagem Segura.
-Porém, a interface ainda é \"crua\" (sem feedback visual de erros/sucesso) e a IA ainda é um endpoint isolado sem chat na interface.
+## 📍 Próximos Passos (Sprint 08)
+O foco agora é **Separar as Visões**:
+1.  **Criar Dashboard do Cliente:** Uma tela "Vitrine" onde ele vê os documentos (mas não edita).
+2.  **Refinar Upload (Admin):** Permitir que o Admin selecione *para qual empresa* está enviando o documento.
+3.  **IA Contextual:** Fazer o chat responder perguntas sobre um documento específico da lista.
 
-## 🎯 Objetivo Imediato (Sprint 08)
-**Foco: UX e Inteligência.**
-1.  **Interface de Chat com IA:** Criar a tela onde o usuário conversa com os documentos.
-2.  **Feedback Visual:** Implementar Toasts (Notificações) para substituir os `alert()` e erros no console.
-3.  **Migração da Lib de IA:** Atualizar o `google.generativeai` para evitar quebra futura.
-
-## 📂 Arquivos Chave para Leitura
-* `frontend/src/contexts/AuthContext.tsx` (Lógica de Login ajustada).
-* `app/models/user_model.py` (Estrutura de vínculo Usuário-Empresa).
-* `app/routers/document_router.py` (Lógica de isolamento).
+## 🛠️ Comandos Úteis
+* **Backend:** `uvicorn app.main:app --reload`
+* **Frontend:** `npm run dev`
+* **Criar Admin:** `python -m app.scripts.create_first_admin`
+* **Testes:** `python -m pytest`

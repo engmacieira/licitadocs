@@ -1,89 +1,71 @@
 # 🗺️ Mapeamento de User Stories - LicitaDoc (Modelo Concierge)
 
-**Visão do Produto:** Uma plataforma de gestão ativa de documentação licitatória. A empresa assina, nos dá poderes legais (procuração), e nossa equipe/robôs garantem que todas as certidões estejam válidas e disponíveis na nuvem, explicadas por IA.
+**Visão do Produto:** Uma plataforma de "Compliance as a Service" para licitantes. A empresa paga para não ter dor de cabeça. Nós (LicitaDoc) buscamos, validamos e disponibilizamos as certidões. O cliente apenas baixa.
+
+**Diferencial:** O cliente **NÃO** faz gestão de documentos. O cliente **CONSOME** documentos válidos.
 
 ---
 
-## 🎭 Personas (Quem usa?)
-* **Cliente (Empresa Licitante):** Contrata o serviço para não ter dor de cabeça. Acessa a plataforma apenas para: Assinar a procuração, Consultar documentos e Ler os resumos da IA.
-* **Operador (Admin/Time Interno):** Responsável por buscar as certidões (manualmente ou via robôs), fazer o upload e garantir a validade.
-* **Agente IA (Gemini):** O "Consultor Jurídico Virtual" que traduz o conteúdo técnico para o Cliente.
+## 🎭 Personas
+1.  **O Cliente (Empresa Licitante):**
+    * Contrata o plano anual.
+    * Assina a procuração (Onboarding).
+    * Acessa para baixar o "Kit Licitação" atualizado.
+    * Usa a IA apenas para tirar dúvidas sobre o teor de uma certidão específica.
+2.  **A Operação (Admin / Robôs):**
+    * O "trabalhador" do sistema.
+    * Monitora prazos de vencimento.
+    * Renova certidões (manualmente ou via API e-CAC/Gov).
+    * Faz o upload para a área do cliente.
 
 ---
 
-## 📍 Backlog de Funcionalidades
+## 📍 Backlog Funcional (Refinado)
 
-### 🔐 Módulo 1: Onboarding Legal (A Entrada)
-*Onde o cliente entra e nos autoriza a trabalhar.*
+### 🔐 Módulo 1: Onboarding & Contrato (A Entrada)
+*O único momento onde o cliente trabalha ativamente.*
 
-#### [US-01] Assinatura Digital de Procuração
-* **Como:** Cliente (Empresa)
-* **Eu quero:** Assinar o contrato e a procuração digitalmente dentro da plataforma (sem imprimir papel).
-* **Para que:** Eu autorize a LicitaDoc a buscar documentos em meu nome junto aos órgãos públicos.
-* **Critérios de Aceite:**
-    * [ ] Integração com API de Assinatura (ex: ZapSign, ClickSign ou DocuSign).
-    * [ ] Geração automática do PDF da procuração com os dados da empresa.
-    * [ ] Status do usuário muda de "Pendente" para "Ativo" após a assinatura.
+#### [US-01] Adesão e Procuração Digital
+* **Como:** Novo Cliente.
+* **Eu quero:** Criar minha conta, selecionar meu plano e assinar digitalmente a procuração para a LicitaDoc.
+* **Para que:** A LicitaDoc tenha poderes legais para buscar minhas certidões no e-CAC e órgãos públicos.
+* **Fluxo:** Cadastro -> Pagamento -> Geração automática de Procuração (PDF) -> Assinatura Digital (Integração).
 
 ---
 
-### 🏭 Módulo 2: Fábrica de Certidões (Backoffice)
-*Onde a mágica acontece (nossa responsabilidade).*
+### 📂 Módulo 2: O Cofre Digital (Visão do Cliente)
+*A experiência diária: "Está tudo verde e pronto".*
 
-#### [US-02] Coleta e Upload Centralizado
-* **Como:** Operador (Admin) ou Robô
-* **Eu quero:** Enviar as certidões coletadas para a pasta do cliente específico.
-* **Para que:** O cliente tenha o documento oficial disponível para download imediato.
-* **Critérios de Aceite:**
-    * [ ] Upload de PDF vinculado obrigatoriamente a uma Empresa.
-    * [ ] Sistema deve impedir upload se a empresa não tiver contrato ativo.
-    * [ ] (Futuro) Integração com APIs do Governo para busca automática (Busca de CND Federal, FGTS, etc.).
+#### [US-02] Dashboard de Conformidade
+* **Como:** Cliente.
+* **Eu quero:** Entrar no sistema e ver imediatamente se minha empresa está "Apta" (todas certidões válidas).
+* **Para que:** Eu tenha paz de espírito antes de entrar em uma licitação.
+* **Critério:**
+    * Semáforo visual (Verde = Tudo OK, Amarelo = Renovação em andamento pela LicitaDoc).
 
-#### [US-03] Controle de Validade e Renovação
-* **Como:** Operador (Admin)
-* **Eu quero:** Um painel que mostre quais clientes estão com documentos prestes a vencer.
-* **Para que:** Eu possa agir proativamente e renovar a certidão antes que ela expire.
-* **Critérios de Aceite:**
-    * [ ] Dashboard "Semáforo": Verde (Em dia), Amarelo (Vence em 10 dias), Vermelho (Vencido).
-    * [ ] Disparo de alerta para o Operador renovar a certidão.
+#### [US-03] Download do Kit Licitação
+* **Como:** Cliente.
+* **Eu quero:** Apertar um botão "Baixar Kit Completo".
+* **Para que:** O sistema gere um ZIP com todas as certidões válidas atuais organizadas por pastas (Federal, Estadual, Trabalhista).
+* **Regra:** O cliente não pode fazer upload. Ele só baixa o que a LicitaDoc garantiu que está certo.
 
----
-
-### 🤖 Módulo 3: Inteligência e Consumo (O Valor para o Cliente)
-
-#### [US-04] Tradutor de "Juridiquês" (Gemini AI)
-* **Como:** Cliente (Empresa)
-* **Eu quero:** Ler um resumo simples e direto sobre o status da minha certidão.
-* **Para que:** Eu saiba se tenho alguma pendência ("Positiva") sem precisar entender termos jurídicos complexos.
-* **Critérios de Aceite:**
-    * [ ] Ao detectar novo upload, o sistema envia o texto para a API do Google Gemini.
-    * [ ] O Prompt deve pedir: Resumo, Status (Positiva/Negativa) e Ações Recomendadas.
-    * [ ] Exibir o resumo em um card amigável ao lado do botão de download.
-
-#### [US-05] Visualização da Carteira
-* **Como:** Cliente (Empresa)
-* **Eu quero:** Ver todos os meus documentos organizados por categorias (Federal, Estadual, Trabalhista).
-* **Para que:** Eu encontre rapidamente o que o edital da licitação está pedindo.
-* **Critérios de Aceite:**
-    * [ ] Filtros por tipo de certidão.
-    * [ ] Indicador visual claro de validade (Badge Verde/Vermelho).
-    * [ ] Botão de "Baixar Tudo" (ZIP) para facilitar o envio em licitações.
+#### [US-04] O "Tira-Dúvidas" (Agente IA)
+* **Como:** Cliente.
+* **Eu quero:** Clicar em uma certidão (ex: "Certidão de Falência") e perguntar "O que isso significa?" ou "Até quando vale?".
+* **Para que:** Eu entenda documentos jurídicos complexos sem precisar ligar para o suporte.
+* **Restrição:** A IA **NÃO** lê editais de fora. Ela apenas explica os documentos que já estão na plataforma.
 
 ---
 
-### 💰 Módulo 4: Comercial (SaaS)
+### ⚙️ Módulo 3: A Fábrica de Certidões (Visão Admin/Robô)
+*Onde o trabalho pesado acontece.*
 
-#### [US-06] Gestão de Assinatura
-* **Como:** Admin
-* **Eu quero:** Que o sistema bloqueie o acesso a novos downloads se o pagamento mensal não for identificado.
-* **Para que:** Garantir a sustentabilidade do negócio de R$ 14,99.
-* **Critérios de Aceite:**
-    * [ ] Integração com Gateway de Pagamento (Cobrança Recorrente).
-    * [ ] Bloqueio automático de visualização em caso de inadimplência.
+#### [US-05] Gestão de Vencimentos (Radar)
+* **Como:** Admin (Operação).
+* **Eu quero:** Um painel que mostre quais clientes têm certidões vencendo nos próximos 10 dias.
+* **Para que:** Eu possa renová-las antes que o cliente perceba ou precise.
 
----
-
-## 🛠️ Tecnologias e Integrações Mapeadas
-* **IA/LLM:** Google Gemini API (Análise de texto).
-* **Assinatura Digital:** ClickSign ou ZapSign (APIs brasileiras com custo-benefício bom para startups).
-* **Gov Data:** BrasilAPI (Open Source) ou Serpro (Pago/Oficial) para automações futuras.
+#### [US-06] Renovação Automática (Integrações)
+* **Como:** Sistema (Robô).
+* **Eu quero:** Conectar nas APIs públicas (e-CAC, CNDT, FGTS) usando os dados do cliente.
+* **Para que:** O sistema baixe o novo PDF e atualize a data de validade automaticamente na plataforma, sem intervenção humana.

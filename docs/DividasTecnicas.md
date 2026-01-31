@@ -40,3 +40,19 @@ Este documento lista pontos de melhoria identificados durante o desenvolvimento 
 * **[Backend] Mapeamento Manual de Colunas:**
     * No `company_repository.py`, ainda mapeamos manualmente `name` -> `razao_social`. Padronizar usando Pydantic Aliases.
 * **Soft Delete:** Implementar coluna `deleted_at` em vez de apagar registros fisicamente.
+
+
+## 🚨 Prioridade Alta (Sprint 08)
+1.  **[Lib IA] Depreciação Google GenAI:**
+    * **Problema:** A lib atual `google.generativeai` exibe warnings de fim de suporte.
+    * **Ação:** Migrar para `google.genai` ou atualizar a integração no `ai_client.py`.
+2.  **[Banco] Migrations:**
+    * **Problema:** Ainda deletamos o banco físico a cada mudança de schema.
+    * **Ação:** Configurar **Alembic**.
+
+## 🎨 Frontend & UX
+1.  **Feedback Visual:** Implementar Toasts (Sonner) para substituir `alert()` e erros silenciosos.
+2.  **Dashboard Cliente:** Criar a tela "Read-Only" onde o cliente vê o status das certidões (Verde/Vermelho).
+
+## ⚙️ Backend
+1.  **Refatoração de Upload:** O endpoint de upload atual funciona, mas precisa ser restrito para que *apenas Admins* possam enviar arquivos para *outras empresas* (Base do modelo Concierge).
