@@ -1,33 +1,30 @@
 # 🚀 Guia de Início Rápido (Contexto do Projeto)
 
 **Projeto:** LicitaDoc (SaaS de Gestão de Documentos para Licitações)
-**Versão Atual:** v0.6.0 (Admin Module Stable)
+**Versão Atual:** v0.7.0 (Multi-Tenancy Core Stable)
 **Data:** 30/01/2026
 
 ## 🏗️ Status Atual
-O sistema é um Monorepo (Frontend React + Backend FastAPI).
-* **Frontend:** Rodando na porta 5173. Usa Tailwind v4, React Hook Form, Zod e Axios.
-* **Backend:** Rodando na porta 8000. Usa SQLAlchemy (SQLite), Pydantic v2 e Pytest.
+O sistema é um Monorepo seguro e preparado para múltiplos clientes.
+* **Frontend:** React + Tailwind + Axios Centralizado (Porta 5173).
+* **Backend:** FastAPI + SQLite + Multi-Tenancy Lógico (Porta 8000).
 
-## 🏆 Últimas Conquistas (Sprint 06)
-1.  **CRUD de Empresas:** Completo (Create, Read, Update, Delete) em `/admin/companies`.
-2.  **Testes Automatizados:** Backend coberto por testes em `app/tests/test_companies.py`.
-3.  **Correções:** Ajuste de CORS e mapeamento de campos (`name` -> `razao_social`).
+## 🏆 Últimas Conquistas (Sprint 07)
+1.  **Multi-Tenancy:** Usuários e Documentos agora são isolados por Empresa.
+2.  **Segurança:** Correção crítica no script de Admin e nas rotas de Upload.
+3.  **Arquitetura:** Frontend refatorado para não depender de URLs fixas (`localhost`).
 
 ## 📍 Onde Paramos?
-Acabamos de finalizar a **Gestão de Empresas**. O Admin consegue criar empresas, mas elas ainda estão "soltas". Os usuários não estão vinculados a elas, e os documentos também não.
+O sistema funciona \"end-to-end\": Login -> Upload -> Listagem Segura.
+Porém, a interface ainda é \"crua\" (sem feedback visual de erros/sucesso) e a IA ainda é um endpoint isolado sem chat na interface.
 
-## 🎯 Objetivo Imediato (Sprint 07)
-**Implementar Multi-Tenancy Lógico.**
-1.  Precisamos alterar o modelo de `User` para ter um `company_id`.
-2.  Precisamos alterar a listagem de documentos para filtrar pelo `company_id` do usuário logado.
-3.  Precisamos remover as URLs hardcoded (`127.0.0.1`) do frontend.
+## 🎯 Objetivo Imediato (Sprint 08)
+**Foco: UX e Inteligência.**
+1.  **Interface de Chat com IA:** Criar a tela onde o usuário conversa com os documentos.
+2.  **Feedback Visual:** Implementar Toasts (Notificações) para substituir os `alert()` e erros no console.
+3.  **Migração da Lib de IA:** Atualizar o `google.generativeai` para evitar quebra futura.
 
 ## 📂 Arquivos Chave para Leitura
-* `frontend/src/services/companyService.ts` (Exemplo de serviço atual)
-* `app/models/user_model.py` (Estrutura do banco que precisará mudar)
-* `app/routers/documents.py` (Onde aplicaremos o filtro de empresa)
-* `app/tests/test_companies.py` (Exemplo de teste funcional)
-
----
-*Este documento serve para orientar a próxima sessão de desenvolvimento.*
+* `frontend/src/contexts/AuthContext.tsx` (Lógica de Login ajustada).
+* `app/models/user_model.py` (Estrutura de vínculo Usuário-Empresa).
+* `app/routers/document_router.py` (Lógica de isolamento).

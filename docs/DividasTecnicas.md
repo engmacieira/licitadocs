@@ -23,3 +23,20 @@ Este documento lista pontos de melhoria identificados durante o desenvolvimento 
 ## 🔒 Segurança
 * **Rate Limiting:** Proteger rotas de login contra força bruta.
 * **Refresh Token:** Implementar fluxo de renovação de sessão sem deslogar o usuário.
+
+## 🚨 Prioridade Alta (Sprint 08)
+* **[Testes] Warning Google GenAI:**
+    * A lib `google.generativeai` foi descontinuada. Os testes estão gerando `FutureWarning`.
+    * **Ação:** Migrar para a nova lib `google.genai` ou atualizar a integração no `ai_client.py`.
+* **[Banco] Sistema de Migração:**
+    * Atualmente precisamos deletar o `licita_doc.db` a cada mudança de tabela.
+    * **Ação:** Configurar **Alembic** para gerenciar migrações de esquema sem perder dados.
+
+## 🎨 Frontend & UX
+* **Feedback de Usuário:** Ainda usamos `alert()` e `console.log`. Substituir por componentes de **Toast** (Sonner) e **Dialogs** para mensagens de erro/sucesso.
+* **Validação Visual:** Mostrar mensagens de erro do Zod diretamente abaixo dos inputs no Login e Upload.
+
+## ⚙️ Backend & Dados
+* **[Backend] Mapeamento Manual de Colunas:**
+    * No `company_repository.py`, ainda mapeamos manualmente `name` -> `razao_social`. Padronizar usando Pydantic Aliases.
+* **Soft Delete:** Implementar coluna `deleted_at` em vez de apagar registros fisicamente.
