@@ -1,6 +1,6 @@
 """
 Script para criar o primeiro usuário ADMIN do sistema.
-Execute com: python create_first_admin.py
+Execute com: python -m app.scripts.create_first_admin
 """
 import sys
 import os
@@ -21,8 +21,9 @@ def create_super_admin():
     # 1. Verifica se já existe
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
-        print(f"⚠️  O usuário {email} já existe!")
-        return
+        print(f"⚠️  O usuário {email} já existe! Excluindo para recriar corrigido...")
+        db.delete(existing_user)
+        db.commit()
 
     # 2. Cria o Usuário Admin
     print(f"Criando super admin: {email}...")
@@ -30,15 +31,15 @@ def create_super_admin():
         email=email,
         password_hash=get_password_hash(password),
         is_active=True,
-        role=UserRole.ADMIN.value # <--- A Mágica acontece aqui
+        role=UserRole.ADMIN.value 
     )
     
     db.add(admin_user)
     db.commit()
     db.refresh(admin_user)
     
-    # 3. Cria a Empresa do Admin (Opcional, mas bom para testes)
-    # O Admin também pode ter documentos próprios
+    # 3. Cria a Empresa do Admin 
+    print("Criando empresa matriz...")
     admin_company = Company(
         cnpj="00.000.000/0001-91",
         razao_social="LicitaDoc HQ",
@@ -46,8 +47,15 @@ def create_super_admin():
     )
     db.add(admin_company)
     db.commit()
+    db.refresh(admin_company)
 
-    print("✅ Admin criado com sucesso!")
+    #4. Vincula o Admin à Empresa (Multi-tenancy)
+    print("Vinculando admin à empresa...")
+    admin_user.company_id = admin_company.id
+    db.add(admin_user)
+    db.commit()
+    
+    print("✅ Admin criado e vinculado com sucesso!")
     print(f"Login: {email}")
     print(f"Senha: {password}")
 
