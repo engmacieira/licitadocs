@@ -1,10 +1,18 @@
 from sqlalchemy.orm import Session
 from app.models.document_model import Document, DocumentStatus
 from datetime import date
+from typing import Optional
 
 class DocumentRepository:
     @staticmethod
-    def create(db: Session, filename: str, file_path: str, company_id: str, expiration_date: date = None):
+    def create(
+        db: Session, 
+        filename: str, 
+        file_path: str, 
+        company_id: str, 
+        expiration_date: Optional[date] = None,
+        upload_by_id: Optional[str] = None
+    ):
         """
         Cria o registro do documento no banco.
         Nota: O arquivo físico JÁ DEVE ter sido salvo pelo Storage antes de chamar aqui.
@@ -17,7 +25,8 @@ class DocumentRepository:
             file_path=file_path,
             company_id=company_id,
             expiration_date=expiration_date,
-            status=status.value
+            status=status.value,
+            uploaded_by_id=upload_by_id
         )
         
         db.add(db_doc)

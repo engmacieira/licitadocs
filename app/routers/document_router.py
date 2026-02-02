@@ -60,26 +60,12 @@ def upload_document(
         db=db,
         filename=file.filename,
         file_path=file_path,
-        company_id=final_company_id, # <--- Usa a variável decidida acima
-        expiration_date=expiration_date
+        company_id=final_company_id, 
+        expiration_date=expiration_date,
+        uploaded_by_id=current_user.id,
     )
     
     return document
-
-@router.get("/", response_model=List[DocumentResponse])
-def read_documents(
-    current_user = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Lista todos os documentos da empresa do usuário logado.
-    """
-    # Segurança: O usuário precisa ter empresa
-    if not current_user.company_id:
-        return [] # Ou raise erro, mas retornar lista vazia é mais elegante aqui
-
-    documents = DocumentRepository.get_by_company(db, company_id=current_user.company_id)
-    return documents
 
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(

@@ -3,6 +3,8 @@ import api from './api';
 export interface Company {
     id: string;
     name: string;
+    razao_social: string;
+    nome_fantasia: string;
     cnpj: string;
     is_active: boolean;
     created_at: string;

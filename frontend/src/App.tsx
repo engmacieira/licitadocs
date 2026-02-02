@@ -7,6 +7,9 @@ import { MainLayout } from './components/layout/MainLayout';
 import { Dashboard } from './pages/Dashboard';
 import { AIChatPage } from './pages/AIChat';
 import { CompaniesPage } from './pages/Admin/Companies';
+import { AdminDashboard } from './pages/Admin/Dashboard';
+import { AdminUpload } from './pages/Admin/Upload';
+
 
 function App() {
   return (
@@ -29,6 +32,8 @@ function App() {
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/ai-chat" element={<AIChatPage />} />
             <Route path="/admin/companies" element={<CompaniesPage />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/upload" element={<AdminUpload />} />
 
             {/* Redireciona rotas perdidas para o dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

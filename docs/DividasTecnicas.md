@@ -1,58 +1,52 @@
 # 💸 Dívidas Técnicas e Melhorias Futuras
 
-Este documento lista pontos de melhoria identificados durante o desenvolvimento que foram postergados para manter a agilidade da entrega.
+Este documento lista pontos de melhoria técnica que foram postergados conscientemente para manter a agilidade da entrega do MVP.
 
-## 🚨 Prioridade Alta (Resolver na Sprint 07 ou 08)
-* **[Frontend] URL Hardcoded (CRÍTICO):** * Os arquivos `companyService.ts`, `documentService.ts` e `aiService.ts` estão usando `http://127.0.0.1:8000` fixo.
-    * **Impacto:** O sistema não funcionará em Docker, Celular ou Produção.
-    * **Ação:** Centralizar a `baseURL` no arquivo `api.ts` usando variáveis de ambiente (`import.meta.env.VITE_API_URL`).
-* **[Backend] Mapeamento Manual de Colunas:**
-    * No `company_repository.py`, estamos mapeando manualmente `name` (JSON) para `razao_social` (Banco).
-    * **Ação:** Padronizar os nomes ou usar `aliases` do Pydantic/SQLAlchemy de forma mais automática para evitar erros futuros.
+---
+
+## 🚨 Prioridade Crítica (Sprint 09 - Necessário para Produção)
+
+### 1. [Banco] Migrations com Alembic
+* **Problema:** Atualmente, qualquer mudança na estrutura do banco exige deletar o arquivo `licita_doc.db` e perder todos os dados.
+* **Impacto:** Impossível ir para produção assim. Se precisarmos adicionar uma coluna "Telefone" no futuro, perderíamos todos os clientes.
+* **Ação:** Configurar **Alembic** para versionar o schema do banco de dados.
+
+### 2. [Segurança] Route Guards (Frontend)
+* **Problema:** Fizemos o redirecionamento no Login, mas se um Cliente digitar `http://.../admin/dashboard` na barra de endereços, ele pode acabar acessando a tela (mesmo que a API bloqueie os dados, a tela carrega).
+* **Ação:** Criar componente `<PrivateRoute role="admin" />` no React para bloquear totalmente o acesso às rotas.
+
+---
+
+## 🤖 Inteligência Artificial & Scalabilidade
+
+### 3. [IA] Limite de Contexto (Token Limit)
+* **Problema:** O "Bibliotecário" atual injeta a lista de *todos* os documentos no prompt do sistema. Se o cliente tiver 200 documentos, o prompt vai estourar o limite de tokens ou ficar caro.
+* **Ação (Futuro):** Implementar **RAG Real** (Vector Database) ou filtrar apenas os documentos mais recentes/relevantes antes de mandar para o Gemini.
+
+### 4. [IA] Histórico de Chat
+* **Problema:** O chat é volátil. Se o cliente der F5, perde a conversa.
+* **Ação:** Salvar o histórico de mensagens no banco de dados (`chat_messages` table).
+
+---
 
 ## 🎨 Frontend & UX
-* **Feedback de Usuário:** Ainda usamos `alert()` e `window.confirm()`. Substituir por componentes de **Toast** (Sonner/React Hot Toast) e **Dialogs** (Radix UI/Shadcn) para uma experiência profissional.
-* **Validação Visual:** Mostrar mensagens de erro de campo (Zod) diretamente abaixo do input (já feito parcialmente no Modal de Empresas, mas falta expandir para Login e Upload).
+
+### 5. [UX] Feedback Visual (Toasts)
+* **Problema:** Ainda usamos `alert()` no Upload do Admin e no Chat. É funcional, mas feio.
+* **Ação:** Implementar biblioteca de Toasts (ex: **Sonner** ou **React Hot Toast**) para avisos bonitos ("Documento enviado com sucesso!" em verde no canto da tela).
+
+### 6. [UX] Loading States
+* **Problema:** Em conexões lentas, o Dashboard pode parecer travado enquanto carrega a lista.
+* **Ação:** Adicionar "Skeletons" (esqueletos de carregamento) na tabela de documentos.
+
+---
 
 ## ⚙️ Backend & Dados
-* **Modelagem de Usuários x Empresas:**
-    * Atualmente o modelo sugere que um Usuário é "Dono" de uma Empresa (`owner_id` na tabela `companies`).
-    * **Necessidade:** Precisamos permitir que *vários* usuários pertençam a uma mesma empresa (coluna `company_id` na tabela `users`).
-* **Soft Delete:** A exclusão de empresas é definitiva (Hard Delete). Implementar coluna `deleted_at` para segurança jurídica.
 
-## 🔒 Segurança
-* **Rate Limiting:** Proteger rotas de login contra força bruta.
-* **Refresh Token:** Implementar fluxo de renovação de sessão sem deslogar o usuário.
+### 7. [Dados] Soft Delete
+* **Problema:** Quando deletamos uma empresa (se implementarmos isso), o dado some para sempre.
+* **Ação:** Adicionar coluna `deleted_at` em todas as tabelas críticas. O sistema deve filtrar `WHERE deleted_at IS NULL`.
 
-## 🚨 Prioridade Alta (Sprint 08)
-* **[Testes] Warning Google GenAI:**
-    * A lib `google.generativeai` foi descontinuada. Os testes estão gerando `FutureWarning`.
-    * **Ação:** Migrar para a nova lib `google.genai` ou atualizar a integração no `ai_client.py`.
-* **[Banco] Sistema de Migração:**
-    * Atualmente precisamos deletar o `licita_doc.db` a cada mudança de tabela.
-    * **Ação:** Configurar **Alembic** para gerenciar migrações de esquema sem perder dados.
-
-## 🎨 Frontend & UX
-* **Feedback de Usuário:** Ainda usamos `alert()` e `console.log`. Substituir por componentes de **Toast** (Sonner) e **Dialogs** para mensagens de erro/sucesso.
-* **Validação Visual:** Mostrar mensagens de erro do Zod diretamente abaixo dos inputs no Login e Upload.
-
-## ⚙️ Backend & Dados
-* **[Backend] Mapeamento Manual de Colunas:**
-    * No `company_repository.py`, ainda mapeamos manualmente `name` -> `razao_social`. Padronizar usando Pydantic Aliases.
-* **Soft Delete:** Implementar coluna `deleted_at` em vez de apagar registros fisicamente.
-
-
-## 🚨 Prioridade Alta (Sprint 08)
-1.  **[Lib IA] Depreciação Google GenAI:**
-    * **Problema:** A lib atual `google.generativeai` exibe warnings de fim de suporte.
-    * **Ação:** Migrar para `google.genai` ou atualizar a integração no `ai_client.py`.
-2.  **[Banco] Migrations:**
-    * **Problema:** Ainda deletamos o banco físico a cada mudança de schema.
-    * **Ação:** Configurar **Alembic**.
-
-## 🎨 Frontend & UX
-1.  **Feedback Visual:** Implementar Toasts (Sonner) para substituir `alert()` e erros silenciosos.
-2.  **Dashboard Cliente:** Criar a tela "Read-Only" onde o cliente vê o status das certidões (Verde/Vermelho).
-
-## ⚙️ Backend
-1.  **Refatoração de Upload:** O endpoint de upload atual funciona, mas precisa ser restrito para que *apenas Admins* possam enviar arquivos para *outras empresas* (Base do modelo Concierge).
+### 8. [Testes] Cobertura do Concierge
+* **Problema:** Criamos lógicas complexas de permissão (Admin pode subir pra outros) e IA, mas não criamos testes automatizados para isso.
+* **Ação:** Criar testes unitários para `ai_router.py` e para a nova lógica de `document_router.py`.

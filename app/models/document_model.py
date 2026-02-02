@@ -1,9 +1,9 @@
 import uuid
+import enum
 from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
-import enum
 
 # Hack para funcionar UUID
 def generate_uuid():
@@ -37,4 +37,6 @@ class Document(Base):
     company = relationship("app.models.user_model.Company", backref="documents")
     
     # Auditoria
+    uploaded_by_id = Column(String, ForeignKey("users.id"), nullable=True)
+    uploader = relationship("app.models.user_model.User")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
