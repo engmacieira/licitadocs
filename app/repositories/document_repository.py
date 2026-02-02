@@ -11,7 +11,7 @@ class DocumentRepository:
         file_path: str, 
         company_id: str, 
         expiration_date: Optional[date] = None,
-        upload_by_id: Optional[str] = None
+        uploaded_by_id: Optional[str] = None
     ):
         """
         Cria o registro do documento no banco.
@@ -26,7 +26,7 @@ class DocumentRepository:
             company_id=company_id,
             expiration_date=expiration_date,
             status=status.value,
-            uploaded_by_id=upload_by_id
+            uploaded_by_id=uploaded_by_id
         )
         
         db.add(db_doc)
