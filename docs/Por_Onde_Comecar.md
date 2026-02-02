@@ -53,3 +53,25 @@ O foco agora é **Separar as Visões**:
 * [x] **Sprint 07:** Multi-Tenancy (Isolamento de Dados).
 * [x] **Sprint 08:** Modelo Concierge (Admin Upload + Chat Contextual).
 * [ ] **Sprint 09:** Notificações de Vencimento (E-mail/Zap).
+
+# 🚀 Guia de Início: Sprint 10
+
+Olá! Estamos iniciando a **Sprint 10** do projeto **LicitaDoc**. 
+O foco desta sprint não é criar novas funcionalidades, mas **refatorar e documentar** o que construímos até aqui (v0.9.0_blindagem).
+
+## 📍 Onde paramos:
+1. **Backend:** FastAPI com 86% de cobertura de testes. O banco está estável com modelos de User, Company e Document.
+2. **Frontend:** React + Tailwind + Vite, com Vitest configurado.
+3. **CI/CD:** Pipeline no GitHub Actions validando os testes automaticamente.
+
+## 🛠️ O que precisamos fazer agora (Prioridades):
+1. **Refatoração de Schemas:** Começar pelo `app/schemas/user_schemas.py` para adicionar Aliases e Documentação (já iniciamos uma prévia).
+2. **Documentação de Rotas:** Passar pelo `document_router.py` e `ai_router.py` adicionando metadados para o Swagger.
+3. **Organização do Frontend:** Isolar as chamadas de API que hoje estão hardcoded.
+
+## 📂 Arquivos Importantes para Contexto:
+- `app/schemas/user_schemas.py` (Modelo de contrato de dados)
+- `app/routers/document_router.py` (Coração do sistema de arquivos)
+- `app/models/user_model.py` (Definição de tabelas)
+
+**Instrução para a IA:** "Por favor, analise os schemas atuais e sugira a melhor forma de implementarmos Aliases do Pydantic para que o Frontend receba chaves em CamelCase, sem quebrar os testes existentes."
