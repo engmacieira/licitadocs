@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { X, Loader2, Save, Pencil } from 'lucide-react';
+import { X, Building2, FileText } from 'lucide-react';
+import { toast } from 'sonner';
+
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { companyService } from '../../../services/companyService';
@@ -10,7 +12,7 @@ import type { Company } from '../../../services/companyService';
 
 const companySchema = z.object({
     name: z.string().min(3, "A razão social deve ter pelo menos 3 caracteres"),
-    cnpj: z.string().length(14, "O CNPJ deve ter exatamente 14 números"),
+    cnpj: z.string().length(14, "O CNPJ deve ter exatamente 14 números (sem pontuação)"),
 });
 
 type CompanySchema = z.infer<typeof companySchema>;
@@ -19,7 +21,7 @@ interface Props {
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    companyToEdit?: Company | null; // 🆕 Prop nova: Se vier preenchida, é edição
+    companyToEdit?: Company | null;
 }
 
 export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }: Props) {
@@ -33,14 +35,14 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
         resolver: zodResolver(companySchema)
     });
 
-    // 🧠 Efeito Mágico: Quando o modal abre, se for edição, preenche os campos
+    // Resetar ou Preencher formulário ao abrir
     useEffect(() => {
         if (isOpen) {
             if (companyToEdit) {
-                setValue('name', companyToEdit.name);
+                setValue('name', companyToEdit.name); // ou razao_social dependendo do backend
                 setValue('cnpj', companyToEdit.cnpj);
             } else {
-                reset({ name: '', cnpj: '' }); // Limpa se for criação
+                reset({ name: '', cnpj: '' });
             }
         }
     }, [isOpen, companyToEdit, setValue, reset]);
@@ -48,76 +50,84 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
     async function handleSave(data: CompanySchema) {
         try {
             if (companyToEdit) {
-                // 🔄 MODO EDIÇÃO
+                // Modo Edição
                 await companyService.update(companyToEdit.id, data);
-                alert("Empresa atualizada com sucesso!");
+                toast.success("Empresa atualizada com sucesso!");
             } else {
-                // ➕ MODO CRIAÇÃO
+                // Modo Criação
                 await companyService.create(data);
-                alert("Empresa cadastrada com sucesso!");
+                toast.success("Empresa cadastrada com sucesso!");
             }
-
-            reset();
             onSuccess();
             onClose();
         } catch (error: any) {
             console.error(error);
             const msg = error.response?.data?.detail || "Erro ao salvar empresa.";
-            alert(`Erro: ${msg}`);
+            toast.error("Não foi possível salvar", { description: msg });
         }
     }
 
     if (!isOpen) return null;
 
-    const isEditing = !!companyToEdit;
-
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
 
-                {/* Cabeçalho */}
-                <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
-                    <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                        {isEditing ? <Pencil className="text-blue-600" size={18} /> : <Save className="text-green-600" size={18} />}
-                        {isEditing ? 'Editar Empresa' : 'Nova Empresa'}
-                    </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-slate-200">
-                        <X size={20} />
-                    </button>
+                {/* Header do Modal */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                    <X size={20} />
+                </button>
+
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <Building2 className="text-blue-600" />
+                        {companyToEdit ? 'Editar Empresa' : 'Nova Empresa'}
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">
+                        {companyToEdit ? 'Atualize os dados cadastrais.' : 'Preencha os dados para criar um novo cofre.'}
+                    </p>
                 </div>
 
                 {/* Formulário */}
-                <form onSubmit={handleSubmit(handleSave)} className="p-6 space-y-5">
+                <form onSubmit={handleSubmit(handleSave)} className="space-y-4">
 
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Razão Social</label>
-                        <Input
-                            placeholder="Ex: Construtora Silva Ltda"
-                            {...register('name')}
-                        />
-                        {errors.name && <span className="text-xs text-red-500 font-medium">{errors.name.message}</span>}
-                    </div>
+                    <Input
+                        label="Razão Social / Nome"
+                        placeholder="Ex: Construtora Silva LTDA"
+                        icon={<Building2 size={18} />}
+                        error={errors.name?.message}
+                        {...register('name')}
+                    />
 
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">CNPJ</label>
-                        <Input
-                            placeholder="Ex: 12345678000199"
-                            maxLength={14}
-                            {...register('cnpj')}
-                            disabled={isEditing} // 🔒 Geralmente não se muda o CNPJ (é a chave fiscal)
-                            className={isEditing ? "bg-slate-100 text-slate-500 cursor-not-allowed" : ""}
-                        />
-                        {errors.cnpj && <span className="text-xs text-red-500 font-medium">{errors.cnpj.message}</span>}
-                        {!isEditing && <p className="text-xs text-slate-400">Somente números.</p>}
-                    </div>
+                    <Input
+                        label="CNPJ (Apenas números)"
+                        placeholder="Ex: 12345678000199"
+                        maxLength={14}
+                        icon={<FileText size={18} />}
+                        error={errors.cnpj?.message}
+                        {...register('cnpj')}
+                        disabled={!!companyToEdit} // Bloqueia edição de CNPJ (boa prática)
+                        helperText={companyToEdit ? "O CNPJ não pode ser alterado." : "Digite apenas os números."}
+                    />
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-                        <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-50 mt-6">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                        >
                             Cancelar
                         </Button>
-                        <Button type="submit" disabled={isSubmitting} className={isEditing ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}>
-                            {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}
-                            {isEditing ? 'Salvar Alterações' : 'Cadastrar Empresa'}
+                        <Button
+                            type="submit"
+                            isLoading={isSubmitting}
+                            className={companyToEdit ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"}
+                        >
+                            {companyToEdit ? 'Salvar Alterações' : 'Cadastrar Empresa'}
                         </Button>
                     </div>
                 </form>

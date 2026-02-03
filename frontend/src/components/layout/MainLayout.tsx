@@ -1,40 +1,99 @@
-import { Outlet } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '../../contexts/AuthContext';
-import { User } from 'lucide-react';
+import { User, Menu, X } from 'lucide-react';
+import { ChatWidget } from '../ChatWidget';
 
 export function MainLayout() {
     const { user } = useAuth();
+    const location = useLocation();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    // Mapeamento simples de títulos por rota (UX: O usuário sabe onde está)
+    const pageTitles: Record<string, string> = {
+        '/dashboard': 'Visão Geral',
+        '/documents': 'Meus Documentos',
+        '/ai-chat': 'Consultor IA',
+        '/admin/dashboard': 'Painel Administrativo',
+        '/admin/companies': 'Gestão de Empresas',
+        '/admin/upload': 'Upload de Documentos'
+    };
+
+    const currentTitle = pageTitles[location.pathname] || 'LicitaDoc';
 
     return (
         <div className="min-h-screen bg-slate-50 flex">
-            {/* Menu Lateral Fixo */}
-            <Sidebar />
 
-            {/* Área de Conteúdo Principal (Deslocada para a direita) */}
-            <main className="flex-1 ml-64 min-w-0">
+            {/* Sidebar Desktop (Fixo) */}
+            <Sidebar className="hidden md:flex" />
 
-                {/* Header Simples */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <h2 className="text-lg font-semibold text-slate-700">
-                        Painel Administrativo
-                    </h2>
+            {/* Sidebar Mobile (Drawer) */}
+            {isMobileMenuOpen && (
+                <div className="fixed inset-0 z-50 md:hidden">
+                    {/* Overlay Escuro */}
+                    <div
+                        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                    {/* Menu Deslizante */}
+                    <Sidebar className="flex w-64 h-full shadow-2xl animate-in slide-in-from-left duration-300" />
+
+                    {/* Botão Fechar Mobile */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="absolute top-4 right-4 text-white bg-slate-800 p-2 rounded-full"
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+            )}
+
+            {/* Área de Conteúdo Principal */}
+            <main className="flex-1 md:ml-64 min-w-0 transition-all duration-300 flex flex-col">
+
+                {/* Header (Sticky & Glassmorphism) */}
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 transition-all">
+
+                    <div className="flex items-center gap-4">
+                        {/* Botão Menu Mobile */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                        >
+                            <Menu size={24} />
+                        </button>
+
+                        <h2 className="text-lg font-bold text-slate-800 tracking-tight">
+                            {currentTitle}
+                        </h2>
+                    </div>
 
                     <div className="flex items-center gap-3">
                         <div className="text-right hidden sm:block">
-                            <p className="text-sm font-medium text-slate-900">{user?.sub}</p>
-                            <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
+                            <p className="text-sm font-medium text-slate-900 truncate max-w-[150px]">
+                                {user?.sub || 'Usuário'}
+                            </p>
+                            <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-sm ${user?.role === 'admin'
+                                ? 'bg-purple-100 text-purple-700'
+                                : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                {user?.role}
+                            </span>
                         </div>
-                        <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200 text-slate-600">
-                            <User size={20} />
+
+                        <div className="h-9 w-9 bg-linear-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center border border-slate-200 text-slate-600 shadow-sm">
+                            <User size={18} />
                         </div>
                     </div>
                 </header>
 
-                {/* Onde as páginas vão aparecer */}
-                <div className="p-8">
+                {/* Conteúdo da Página */}
+                <div className="p-4 md:p-8 flex-1 overflow-x-hidden">
                     <Outlet />
                 </div>
+
+                <ChatWidget />
 
             </main>
         </div>

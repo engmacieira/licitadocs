@@ -1,108 +1,161 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { companyService } from '../../../services/companyService';
 import type { Company } from '../../../services/companyService';
-import { useAuth } from '../../../contexts/AuthContext';
+import { Building2, Users, Activity, Plus, UploadCloud, ArrowRight } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Componentes UI
+import { StatsCard } from '../../../components/ui/StatsCard';
+import { Skeleton } from '../../../components/ui/Skeleton';
+import { Button } from '../../../components/ui/Button';
 
 export function AdminDashboard() {
-    const { user, signOut } = useAuth();
+    const navigate = useNavigate();
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadCompanies();
+        loadData();
     }, []);
 
-    async function loadCompanies() {
+    async function loadData() {
         try {
+            // Pequeno delay para exibir o Skeleton (sensação de processamento)
+            // await new Promise(resolve => setTimeout(resolve, 600)); 
             const data = await companyService.getAll();
             setCompanies(data);
         } catch (error) {
-            console.error("Erro ao buscar empresas", error);
-            alert("Falha ao carregar lista de clientes.");
+            console.error(error);
+            toast.error("Erro ao carregar dados do painel.");
         } finally {
             setLoading(false);
         }
     }
 
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header Admin */}
-            <header className="bg-slate-900 text-white shadow-lg">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold bg-linear-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                            LicitaDoc
-                        </span>
-                        <span className="bg-slate-700 text-xs px-2 py-1 rounded border border-slate-600">
-                            Área Operacional
-                        </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-300">Olá, {user?.sub}</span>
-                        <button
-                            onClick={signOut}
-                            className="text-sm hover:text-red-400 transition-colors"
-                        >
-                            Sair
-                        </button>
-                    </div>
-                </div>
-            </header>
+    // Cálculos Simples para o Dashboard
+    const totalCompanies = companies.length;
+    const activeCompanies = companies.filter(c => c.is_active).length;
+    const inactiveCompanies = totalCompanies - activeCompanies;
 
-            {/* Conteúdo Principal */}
-            <main className="max-w-7xl mx-auto px-4 py-8">
-                <div className="flex justify-between items-end mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-800">Carteira de Clientes</h1>
-                        <p className="text-gray-500 mt-1">
-                            Gerencie os documentos e a conformidade das empresas parceiras.
-                        </p>
-                    </div>
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
-                        <span>+</span> Nova Empresa
-                    </button>
+    return (
+        <div className="space-y-8">
+            {/* 1. Cabeçalho da Página (Título + Ações) */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Visão Geral</h1>
+                    <p className="text-slate-500">Acompanhe métricas e gerencie seus clientes.</p>
+                </div>
+                <div className="flex gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={() => navigate('/admin/upload')}
+                    >
+                        <UploadCloud className="mr-2 h-4 w-4" />
+                        Upload Rápido
+                    </Button>
+                    <Button
+                        onClick={() => navigate('/admin/companies')}
+                    >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Nova Empresa
+                    </Button>
+                </div>
+            </div>
+
+            {/* 2. Cards de Estatísticas */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <StatsCard
+                    title="Total de Clientes"
+                    value={loading ? "..." : totalCompanies}
+                    icon={Building2}
+                    color="blue"
+                    loading={loading}
+                    description="Empresas cadastradas na base"
+                />
+                <StatsCard
+                    title="Contratos Ativos"
+                    value={loading ? "..." : activeCompanies}
+                    icon={Activity}
+                    color="green"
+                    loading={loading}
+                    trend="up"
+                    description="Clientes operando normalmente"
+                />
+                <StatsCard
+                    title="Inativos / Pendentes"
+                    value={loading ? "..." : inactiveCompanies}
+                    icon={Users}
+                    color="amber"
+                    loading={loading}
+                    trend={inactiveCompanies > 0 ? 'down' : 'neutral'}
+                    description="Requer atenção do admin"
+                />
+            </div>
+
+            {/* 3. Seção de Clientes Recentes (Preview) */}
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-800">Carteira de Clientes</h2>
+                    <Link
+                        to="/admin/companies"
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center hover:underline"
+                    >
+                        Ver todos <ArrowRight size={16} className="ml-1" />
+                    </Link>
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-12">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p className="text-gray-500">Carregando carteira...</p>
+                    // Grid de Skeletons
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="bg-white p-6 rounded-xl border border-slate-200 h-32 space-y-3">
+                                <div className="flex justify-between">
+                                    <Skeleton className="h-10 w-10 rounded-lg" />
+                                    <Skeleton className="h-6 w-16 rounded-full" />
+                                </div>
+                                <Skeleton className="h-5 w-3/4" />
+                                <Skeleton className="h-4 w-1/2" />
+                            </div>
+                        ))}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {companies.map((company) => (
-                            <div key={company.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow p-6">
+                    // Grid de Empresas
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {companies.slice(0, 6).map((company) => (
+                            <div
+                                key={company.id}
+                                className="group bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1 cursor-pointer"
+                                onClick={() => navigate('/admin/companies')} // Futuramente pode ir para detalhes da empresa
+                            >
                                 <div className="flex justify-between items-start mb-4">
-                                    <div className="bg-blue-50 p-3 rounded-lg">
-                                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                                        </svg>
+                                    <div className={`p-2.5 rounded-lg ${company.is_active ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                                        <Building2 size={20} />
                                     </div>
-                                    <span className={`text-xs font-medium px-2 py-1 rounded-full ${company.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${company.is_active
+                                            ? 'bg-green-50 text-green-700 border-green-100'
+                                            : 'bg-red-50 text-red-700 border-red-100'
+                                        }`}>
                                         {company.is_active ? 'Ativo' : 'Inativo'}
                                     </span>
                                 </div>
 
-                                <h3 className="font-bold text-lg text-gray-900 mb-1">
-                                    {company.name || company.razao_social || "Empresa sem Nome"}
+                                <h3 className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+                                    {company.razao_social || company.name}
                                 </h3>
-                                <p className="text-sm text-gray-500 mb-4 font-mono">
-                                    CNPJ: {company.cnpj}
+                                <p className="text-sm text-slate-500 font-mono mt-1">
+                                    {company.cnpj}
                                 </p>
 
-                                <div className="border-t border-gray-100 pt-4 mt-2">
-                                    <button className="w-full py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2 group">
-                                        Acessar Cofre
-                                        <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </button>
+                                <div className="mt-4 pt-4 border-t border-slate-50 flex items-center text-xs text-slate-400 gap-1">
+                                    <Activity size={12} />
+                                    <span>Última atualização recente</span>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
-            </main>
+            </div>
         </div>
     );
 }

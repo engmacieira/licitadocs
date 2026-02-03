@@ -27,6 +27,7 @@ export const documentService = {
             formData.append('target_company_id', targetCompanyId);
         }
 
+        // UX: A resposta aqui é usada pelo toast.promise no componente
         const response = await api.post('/documents/upload', formData);
         return response.data;
     }

@@ -2,6 +2,7 @@ import api from './api';
 
 export interface ChatResponse {
     response: string;
+    // Adicionar outros campos se o backend retornar (ex: sources, citations)
 }
 
 export const aiService = {

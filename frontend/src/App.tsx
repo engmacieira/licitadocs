@@ -1,25 +1,31 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { LoginPage } from './pages/Login';
-import { DocumentsPage } from './pages/Documents';
+import { Toaster } from 'sonner';
+
+// Layouts e Pages
 import { MainLayout } from './components/layout/MainLayout';
+import { LoginPage } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { AIChatPage } from './pages/AIChat';
+import { DocumentsPage } from './pages/Documents';
+
+// Admin Pages
 import { CompaniesPage } from './pages/Admin/Companies';
 import { AdminDashboard } from './pages/Admin/Dashboard';
 import { AdminUpload } from './pages/Admin/Upload';
 
-
 function App() {
   return (
     <BrowserRouter>
+      {/* Sistema de Notificações Global */}
+      <Toaster richColors position="top-right" closeButton />
+
       <AuthProvider>
         <Routes>
           {/* Rota Pública */}
           <Route path="/" element={<LoginPage />} />
 
-          {/* Rotas Privadas */}
+          {/* Rotas Protegidas (Requer Login) */}
           <Route
             element={
               <ProtectedRoute>
@@ -27,15 +33,18 @@ function App() {
               </ProtectedRoute>
             }
           >
-            {/* 🎯 ROTAS CORRIGIDAS (Sem duplicatas) */}
+            {/* Rotas de Cliente */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/ai-chat" element={<AIChatPage />} />
-            <Route path="/admin/companies" element={<CompaniesPage />} />
+
+            {/* O Chat agora é um Widget flutuante no MainLayout, não precisa de rota */}
+
+            {/* Rotas de Admin */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/companies" element={<CompaniesPage />} />
             <Route path="/admin/upload" element={<AdminUpload />} />
 
-            {/* Redireciona rotas perdidas para o dashboard */}
+            {/* Fallback: Qualquer rota desconhecida vai pro dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>

@@ -1,39 +1,49 @@
 # 💸 Dívidas Técnicas e Melhorias Futuras
 
-Este documento lista pontos de melhoria técnica que foram postergados conscientemente para manter a agilidade da entrega do MVP.
+Este documento rastreia débitos técnicos conscientes e pontos de melhoria para garantir a evolução saudável do LicitaDoc.
 
 ---
 
-## 🚨 Prioridade Crítica (Necessário para Produção)
+## 🚨 Prioridade Crítica (Backend & Infra)
+
+Estes itens representam riscos de segurança ou operação e devem ser priorizados antes do Go-Live oficial.
 
 ### 1. [Segurança] SECRET_KEY Hardcoded
-* **Problema:** O arquivo `app/core/security.py` tem um valor padrão (`"troque_isso_..."`) se a variável de ambiente não existir.
-* **Risco:** Se subirmos para produção esquecendo de configurar o `.env`, o sistema fica vulnerável.
-* **Ação:** Implementar uma verificação que **impede** o servidor de subir em ambiente `PROD` se a chave for a padrão.
+* **Problema:** O arquivo `app/core/security.py` possui um valor padrão inseguro caso a variável de ambiente falhe.
+* **Risco:** Vulnerabilidade crítica em produção se o `.env` não for carregado corretamente.
+* **Ação:** Implementar check no `main.py` que impede a inicialização do servidor em ambiente `PROD` se a chave for a padrão.
 
 ### 2. [Banco] Migrations com Alembic
-* **Problema:** Usamos `Base.metadata.create_all` no `main.py`. Qualquer alteração de tabela exige apagar o banco.
-* **Ação:** Configurar **Alembic** para versionar o schema.
+* **Problema:** Atualmente usamos `Base.metadata.create_all`. Qualquer alteração de coluna exige dropar o banco inteiro.
+* **Risco:** Impossível manter dados persistentes ao evoluir o schema.
+* **Ação:** Configurar **Alembic** para versionamento de schema e migrações seguras.
 
-### 3. [Segurança] Route Guards (Frontend)
-* **Problema:** Um usuário "Cliente" pode acessar rotas visuais de "/admin" se digitar a URL direto (embora a API bloqueie os dados).
-* **Ação:** Criar componente `<PrivateRoute role="admin" />` no React.
-
----
-
-## 🎨 Frontend & UX (Foco da Sprint 11)
-
-### 4. [UX] Feedback Visual (Toasts)
-* **Problema:** Usamos `alert()` ou `console.log` para erros e sucessos.
-* **Ação:** Implementar biblioteca de Toasts (ex: **Sonner**) para avisos elegantes.
-
-### 5. [UX] Loading States
-* **Problema:** Tabelas ficam vazias ou piscam enquanto a API carrega.
-* **Ação:** Adicionar "Skeletons" (esqueletos de carregamento).
+### 3. [Segurança] Route Guards por Role (Frontend)
+* **Problema:** O componente `ProtectedRoute` verifica apenas se o usuário está logado. Um usuário "Cliente" tecnicamente consegue acessar a rota `/admin/dashboard` se digitar na URL (embora a API bloqueie os dados, a tela carrega).
+* **Ação:** Criar componente `<RoleRoute role="admin" />` para redirecionar usuários sem permissão para o dashboard correto.
 
 ---
 
-## ✅ Dívidas Pagas (Histórico)
-* ~~[Refatoração] API Hardcoded no Frontend~~ (Resolvido na Sprint 10 com `api.ts`).
-* ~~[Refatoração] Lógica de IA solta no Router~~ (Resolvido na Sprint 10 com `AIService`).
-* ~~[Doc] Falta de Swagger/Docstrings~~ (Resolvido na Sprint 10).
+## 🧪 Qualidade & Testes
+
+### 4. [QA] Testes End-to-End (E2E)
+* **Problema:** Temos testes unitários no Backend, mas o fluxo visual (Login -> Dashboard -> Upload) não é testado automaticamente.
+* **Ação:** Configurar **Cypress** ou **Playwright** para garantir que o fluxo crítico do usuário não quebre em refatorações de UI.
+
+---
+
+## ✅ Dívidas Pagas (Histórico Recente)
+
+> Itens resolvidos nas últimas Sprints.
+
+### ~~[UX] Feedback Visual (Toasts)~~ (Pago na Sprint 11)
+* **Solução:** Implementada biblioteca `sonner`. Agora erros de API (401, 500) e sucessos de operação são notificados via Toasts elegantes, eliminando `alert()` e `console.log`.
+
+### ~~[UX] Loading States~~ (Pago na Sprint 11)
+* **Solução:** Criados componentes de **Skeleton** para Tabelas, Cards e Chat. A interface não "pisca" mais branco enquanto carrega dados.
+
+### ~~[Frontend] Limpeza de Código Legado~~ (Pago na Sprint 11)
+* **Solução:** A estrutura antiga de páginas de Chat (`src/pages/AIChat`) foi removida em favor do **ChatWidget Global**, centralizando a lógica de IA no `MainLayout`.
+
+### ~~[Frontend] Centralização de Serviços~~ (Pago na Sprint 10)
+* **Solução:** Toda chamada `axios` direta foi removida das páginas e encapsulada em `src/services/`, facilitando a manutenção e tratamento de erros global.

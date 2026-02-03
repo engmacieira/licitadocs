@@ -18,7 +18,6 @@ export interface CompanyCreate {
 export const companyService = {
     // 1. Listar (GET)
     getAll: async () => {
-        // ⚠️ IMPORTANTE: URL completa e com barra final para evitar Redirect 307
         const response = await api.get<Company[]>('/admin/companies/');
         return response.data;
     },
@@ -37,7 +36,6 @@ export const companyService = {
 
     // 4. Excluir (DELETE)
     delete: async (id: string) => {
-        // Lembre-se: URL completa + ID
         await api.delete(`/admin/companies/${id}`);
     }
 };
