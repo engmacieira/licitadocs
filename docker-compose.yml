@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: licitadocs_db
+    restart: always
+    environment:
+      - POSTGRES_USER=licita_user
+      - POSTGRES_PASSWORD=licita_pass
+      - POSTGRES_DB=licitadocs
+    ports:
+      - "5433:5432" # <--- MUDAMOS AQUI (A porta externa agora é 5433)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

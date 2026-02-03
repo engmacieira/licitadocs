@@ -30,6 +30,12 @@ Estes itens representam riscos de segurança ou operação e devem ser priorizad
 * **Problema:** Temos testes unitários no Backend, mas o fluxo visual (Login -> Dashboard -> Upload) não é testado automaticamente.
 * **Ação:** Configurar **Cypress** ou **Playwright** para garantir que o fluxo crítico do usuário não quebre em refatorações de UI.
 
+
+## 🔒 Segurança e Infra
+* **[Infra]** Hardcode de credenciais do Banco de Dados no código (env.py e database.py).
+    * *Motivo:* Problemas de encoding (cp1252/utf-8) no Windows impediram leitura limpa do .env.
+    * *Ação Futura:* Investigar configuração do Python/OS para carregar variáveis de ambiente corretamente e remover as strings de conexão do código fonte.
+
 ---
 
 ## ✅ Dívidas Pagas (Histórico Recente)
