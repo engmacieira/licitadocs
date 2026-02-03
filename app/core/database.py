@@ -3,6 +3,7 @@ Configuração do Banco de Dados (SQLAlchemy).
 Gerencia a conexão e a sessão (SessionLocal) usada em cada requisição.
 """
 import os
+import uuid
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -30,6 +31,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 5. Base Model
 # Todas as classes (User, Company, Document) herdarão daqui
 Base = declarative_base()
+
+# 6. Gerador de UUID
+# Gera UUID compatível com chave primária (String)
+def generate_uuid():
+    return str(uuid.uuid4())
 
 # Dependency Injection (Usado nas Rotas: db: Session = Depends(get_db))
 def get_db():

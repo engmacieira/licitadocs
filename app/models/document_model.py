@@ -77,6 +77,14 @@ class Document(Base):
     
     # Backref permite acessar 'company.documents' sem declarar lá explicitamente
     company = relationship("app.models.user_model.Company", backref="documents")
+    
+    # Relacionamento 1:1 com Certidão (Se este documento for uma certidão)
+    certificate_info = relationship(
+        "Certificate", 
+        back_populates="document", 
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
     # =================================================================
     # Auditoria (Quem e Quando)

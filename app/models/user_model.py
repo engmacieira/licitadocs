@@ -7,10 +7,7 @@ import enum
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base
-
-def generate_uuid():
-    return str(uuid.uuid4())
+from app.core.database import Base, generate_uuid
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"   # Acesso total (Upload, Gestão)

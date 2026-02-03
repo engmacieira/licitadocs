@@ -16,7 +16,7 @@ from app.routers import (
 
 # Inicialização do Banco de Dados (Modo Dev)
 # Cria as tabelas se não existirem. Em produção, use Alembic migrations.
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 # Configuração da Aplicação
 app = FastAPI(
