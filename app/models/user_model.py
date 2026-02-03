@@ -1,69 +1,93 @@
+"""
+Modelagem de Usuários e Empresas (SQLAlchemy).
+Gerencia Autenticação (User) e Dados Corporativos (Company).
+"""
 import uuid
 import enum
 from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import UUID # Preparando para Postgres futuro
 from app.core.database import Base
 
-# Hack para funcionar UUID no SQLite e no Postgres sem dor de cabeça
 def generate_uuid():
     return str(uuid.uuid4())
 
-# 1. Definição dos Cargos Disponíveis
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    CLIENT = "client"
+    ADMIN = "admin"   # Acesso total (Upload, Gestão)
+    CLIENT = "client" # Acesso apenas leitura (Dashboard)
 
 class User(Base):
     """
-    Tabela de Usuários.
-    Gerencia o acesso ao sistema (Login).
+    Entidade de Acesso (Login).
+    Pode ser um Admin (Operação) ou um Cliente (Empresa).
     """
     __tablename__ = "users"
 
-    # Identificação única universal
+    # Identificadores
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     
-    # Dados de Acesso
-    email = Column(String, unique=True, index=True, nullable=False)
-    password_hash = Column(String, nullable=False) # NUNCA salvar senha pura
+    # Credenciais
+    email = Column(String, unique=True, index=True, nullable=False, doc="E-mail de login")
+    password_hash = Column(String, nullable=False, doc="Hash Bcrypt da senha (nunca plaintext)")
     
-    # Controle
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    role = Column(String, default=UserRole.CLIENT.value, nullable=False)
+    # Controle de Acesso
+    is_active = Column(Boolean, default=True, doc="Se False, bloqueia o login imediatamente")
+    role = Column(String, default=UserRole.CLIENT.value, nullable=False, doc="Define permissões (admin/client)")
     
-    # --- COLUNA PARA MULTI-TENANCY ---
-    # Vincula o usuário a uma empresa específica
-    company_id = Column(String, ForeignKey("companies.id"), nullable=True) 
+    # Multi-Tenancy (Vínculo com Empresa)
+    company_id = Column(String, ForeignKey("companies.id"), nullable=True)
     
     # Relacionamentos
-    user_company = relationship("Company", back_populates="employees", foreign_keys=[company_id])
+    # user_company: A empresa onde este usuário trabalha/pertence
+    user_company = relationship(
+        "Company", 
+        back_populates="employees", 
+        foreign_keys=[company_id]
+    )
     
-    # Para saber quem criou a empresa originalmente
-    owned_company = relationship("Company", back_populates="owner", uselist=False, foreign_keys="[Company.owner_id]")
+    # owned_company: A empresa que este usuário CRIOU (se for um Admin criando clientes)
+    owned_company = relationship(
+        "Company", 
+        back_populates="owner", 
+        uselist=False, 
+        foreign_keys="[Company.owner_id]"
+    )
+
+    # Auditoria
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Company(Base):
     """
-    Tabela de Empresas.
-    Os documentos serão vinculados a esta entidade.
+    Entidade Corporativa.
+    Agrupa documentos e usuários. É o 'Tenant' do sistema.
     """
     __tablename__ = "companies"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     
-    # Dados cadastrais
+    # Dados Cadastrais
     cnpj = Column(String, unique=True, index=True, nullable=False)
-    razao_social = Column(String, nullable=False)
-    nome_fantasia = Column(String, nullable=True)
     
-    # Chave Estrangeira (Quem é o dono desta empresa?)
-    owner_id = Column(String, ForeignKey("users.id"))
+    # NOTA DE REFATORAÇÃO: O banco usa 'razao_social', mas a API/Schema expõe como 'name'.
+    # O mapeamento é feito via Pydantic (validation_alias). Não alterar aqui sem migration!
+    razao_social = Column(String, nullable=False, doc="Nome oficial da empresa")
+    nome_fantasia = Column(String, nullable=True, doc="Nome comercial (opcional)")
     
-    # Relacionamento reverso
-    owner = relationship("User", back_populates="owned_company", foreign_keys=[owner_id])
-    employees = relationship("User", back_populates="user_company", foreign_keys=[User.company_id])
+    # Auditoria de Criação (Quem cadastrou essa empresa?)
+    owner_id = Column(String, ForeignKey("users.id", use_alter=True, name="fk_company_owner"))
     
-    # Auditoria
+    # Relacionamentos
+    owner = relationship(
+        "User", 
+        back_populates="owned_company", 
+        foreign_keys=[owner_id]
+    )
+    
+    # Lista de funcionários vinculados a esta empresa
+    employees = relationship(
+        "User", 
+        back_populates="user_company", 
+        foreign_keys=[User.company_id]
+    )
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())

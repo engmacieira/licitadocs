@@ -1,37 +1,25 @@
 """
 Repositório de Usuários.
 Camada responsável por todas as operações diretas no banco de dados referentes a Usuários.
-Segue o padrão Repository para isolar o domínio da tecnologia de persistência.
-Data: Sprint 01
+
 """
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from typing import Optional
+
 from app.models.user_model import User
 from app.schemas.user_schemas import UserCreate
 from app.core.security import get_password_hash
 
 class UserRepository:
     @staticmethod
-    def create_user(db: Session, user_in: UserCreate):
+    def create_user(db: Session, user_in: UserCreate) -> User:
         """
-        Cria um novo usuário no banco de dados.
-        
-        Fluxo:
-        1. Recebe dados validados (Schema).
-        2. Criptografa a senha.
-        3. Persiste no banco.
-        
-        Args:
-            db (Session): Sessão ativa do banco de dados.
-            user_in (UserCreate): Dados do usuário.
-            
-        Returns:
-            User: O objeto usuário criado.
+        Cria um novo usuário com senha hash.
+        Lança ValueError se e-mail duplicado.
         """
-        # 1. Criptografia
         hashed_password = get_password_hash(user_in.password)
         
-        # 2. Montagem do Objeto
         db_user = User(
             email=user_in.email,
             password_hash=hashed_password,
@@ -39,27 +27,26 @@ class UserRepository:
             company_id=user_in.company_id
         )
         
-        # 3. Persistência com Tratamento de Erro
         try:
             db.add(db_user)
-            db.commit()      # Efetiva a transação
-            db.refresh(db_user) # Recarrega o objeto com o ID gerado e dados do banco
+            db.commit()
+            db.refresh(db_user)
             return db_user
             
-        except IntegrityError as e:
-            # Rollback é obrigatório em caso de erro para não travar a sessão
-            db.rollback() 
-            # Em um cenário real, trataríamos melhor o erro (ex: email duplicado)
-            # Para agora, vamos relançar ou retornar None
-            print(f"Erro ao criar usuário: {e}") 
-            raise ValueError("Email já cadastrado ou erro de integridade.")
-            
-        except Exception as e:
+        except IntegrityError:
             db.rollback()
-            print(f"Erro inesperado no repositório: {e}")
-            raise e
+            raise ValueError("Email já cadastrado.")
+            
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise ValueError(f"Erro de banco ao criar usuário: {str(e)}")
 
     @staticmethod
-    def get_by_email(db: Session, email: str):
+    def get_by_email(db: Session, email: str) -> Optional[User]:
         """Busca um usuário pelo email."""
         return db.query(User).filter(User.email == email).first()
+        
+    @staticmethod
+    def get_by_id(db: Session, user_id: str) -> Optional[User]:
+        """Busca um usuário pelo ID."""
+        return db.query(User).filter(User.id == user_id).first()

@@ -1,41 +1,64 @@
+"""
+Ponto de Entrada da Aplicação (Entrypoint).
+Inicializa o FastAPI, configura Middlewares e registra as Rotas.
+"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.core.database import engine, Base
-from app.models import user_model, document_model
-from app.routers import auth_router, document_router, admin_router, ai_router, user_router
-
-# Cria as tabelas ao iniciar (dev only)
-Base.metadata.create_all(bind=engine)
-
-app = FastAPI(
-    title="LicitaDoc API", 
-    version="0.4.0",
-    description="API para gestão de documentos de licitação com inteligência artificial."
+from app.routers import (
+    auth_router, 
+    document_router, 
+    admin_router, 
+    ai_router, 
+    user_router
 )
 
-# --- 2. CONFIGURAÇÃO DO CORS (O Fix) ---
-# Isso permite que o Frontend (localhost:5173) converse com o Backend
+# Inicialização do Banco de Dados (Modo Dev)
+# Cria as tabelas se não existirem. Em produção, use Alembic migrations.
+Base.metadata.create_all(bind=engine)
+
+# Configuração da Aplicação
+app = FastAPI(
+    title="LicitaDoc API",
+    version="0.9.0", # Versão Sprint 10 (Blindagem)
+    description="""
+    API Backend do sistema LicitaDoc.
+    
+    ## Módulos Principais:
+    * **Auth:** Login e Registro (JWT).
+    * **Documents:** Upload e Listagem com isolamento por empresa.
+    * **AI:** Concierge Jurídico (RAG) para análise de editais.
+    * **Admin:** Gestão de Multi-Tenancy (Empresas).
+    """,
+    docs_url="/docs", # URL do Swagger UI
+    redoc_url="/redoc" # URL da documentação alternativa
+)
+
+# --- Configuração de CORS (Cross-Origin Resource Sharing) ---
+# Permite que o Frontend (React) rodando em outra porta acesse a API.
 origins = [
-    "http://localhost:5173",  # Endereço do React/Vite
-    "http://127.0.0.1:5173",  # Variação comum
+    "http://localhost:5173",  # Vite Localhost
+    "http://127.0.0.1:5173",  # Vite Localhost (IP)
+    # Adicionar domínio de produção aqui futuramente
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,       # Quem pode acessar
-    allow_credentials=True,      # Permitir cookies/tokens
-    allow_methods=["*"],         # Permitir GET, POST, PUT, DELETE...
-    allow_headers=["*"],         # Permitir todos os cabeçalhos
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"], # Permite Authorization e outros headers
 )
-# ---------------------------------------
 
-# Registrando as rotas
-app.include_router(auth_router.router) # <--- Conecta o router de Auth
-app.include_router(document_router.router) # <--- Conecta o router de Documentos
-app.include_router(admin_router.router) # <--- Conecta o router de Admin
-app.include_router(ai_router.router) # <--- Conecta o router de AI
-app.include_router(user_router.router) # <--- Conecta o router de Usuários
+# --- Registro de Rotas (Routers) ---
+app.include_router(auth_router.router)
+app.include_router(user_router.router)
+app.include_router(document_router.router)
+app.include_router(ai_router.router)
+app.include_router(admin_router.router)
 
-@app.get("/")
-def read_root():
-    return {"message": "Sistema LicitaDoc Operante", "docs": "/docs"}
+# Rota de Health Check (útil para monitoramento)
+@app.get("/", tags=["Health"])
+def health_check():
+    return {"status": "ok", "version": "0.9.0", "system": "LicitaDoc API"}

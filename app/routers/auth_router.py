@@ -1,7 +1,6 @@
 """
 Router de Autenticação.
 Controla as rotas relacionadas a cadastro e login de usuários.
-Data: Sprint 01 -> Atualizado Sprint 07
 """
 from datetime import timedelta
 import uuid
@@ -14,21 +13,25 @@ from app.models.user_model import Company
 from app.schemas.user_schemas import UserCreate, UserResponse, Token
 from app.repositories.user_repository import UserRepository
 
-# Prefix: todas as rotas aqui começarão com /auth
-# Tags: para agrupar na documentação automática (Swagger)
+# Tags: Agrupa as rotas no Swagger UI
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    """
-    Registra um novo usuário no sistema.
+@router.post(
+    "/register", 
+    response_model=UserResponse, 
+    status_code=status.HTTP_201_CREATED,
+    summary="Registrar novo usuário (Sign Up)",
+    description="""
+    Cria uma nova conta de usuário no sistema.
     
-    - Verifica se o e-mail já existe.
-    - Cria o usuário com senha criptografada.
-    - Retorna os dados do usuário (sem a senha).
+    **Fluxo de Onboarding Automático:**
+    Como o sistema é Multi-Tenant (B2B), ao criar um usuário, o sistema também:
+    1. Cria uma **Empresa** provisória vinculada a este usuário.
+    2. Define o usuário como **Owner** (Dono) dessa empresa.
     """
-    # 1. Regra de Negócio: Email Único
-    # Antes de tentar criar, perguntamos ao Repository se já existe.
+)
+def register(user: UserCreate, db: Session = Depends(get_db)):
+    # 1. Validação de Email Único
     existing_user = UserRepository.get_by_email(db, email=user.email)
     if existing_user:
         raise HTTPException(
@@ -36,43 +39,51 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             detail="Este e-mail já está cadastrado."
         )
     
-    # 2. Criação
+    # 2. Criação Transacional (User + Company)
     try:
         new_user = UserRepository.create_user(db=db, user_in=user)
         
-        # Como é B2B, o usuário JÁ nasce com uma empresa vinculada.
+        # Placeholder da Empresa (Regra de Negócio: Todo user precisa de uma company)
         random_cnpj = str(uuid.uuid4())[:14]
         new_company = Company(
-            cnpj=random_cnpj, # Placeholder (depois pedimos o real)
+            cnpj=random_cnpj, 
             razao_social=f"Empresa de {new_user.email}",
             owner_id=new_user.id
         )
         db.add(new_company)
         db.commit()
         db.refresh(new_company)
+        
+        # Vincula de volta
         new_user.company_id = new_company.id
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        # -------------------------------------------
         
         return new_user
     except ValueError as e:
-        # Captura erros de validação do Repository (ex: falha na integridade)
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.post("/login", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """
-    Rota de Login (Gera Token JWT).
+@router.post(
+    "/login", 
+    response_model=Token,
+    summary="Login (Obter Token)",
+    description="""
+    Autentica o usuário e retorna um **Access Token (JWT)**.
     
-    Recebe: username (email) e password via Form-Data (padrão OAuth2).
-    Retorna: access_token e token_type.
+    - **Formato:** OAuth2 Password Flow (Form-Data).
+    - **Username:** Use o **e-mail** do usuário.
+    - **Validade:** O token expira conforme configuração (padrão 30min).
     """
-    # 1. Busca usuário pelo email (username no form do OAuth2 é o nosso email)
+)
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(), 
+    db: Session = Depends(get_db)
+):
+    # 1. Busca usuário
     user = UserRepository.get_by_email(db, email=form_data.username)
     
-    # 2. Autenticação (Existe? Senha bate?)
+    # 2. Verifica Credenciais
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -80,11 +91,11 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # 3. Se ativo? (Regra de negócio opcional, mas recomendada)
+    # 3. Verifica Status
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Usuário inativo")
         
-    # 4. Gera o Token
+    # 4. Emite Token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires

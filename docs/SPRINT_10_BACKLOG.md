@@ -5,7 +5,7 @@
 ---
 
 ## 🏗️ Épico 1: Refatoração & Padronização
-- [ ] **Task 10.1: Unificação de Nomenclatura (DB vs API)**
+- [ ] **Task 10.1: Flexibilização de Entrada (Aceitar CamelCase) e Documentação Swagger**
   - Aplicar `Field(serialization_alias="...")` nos Schemas para que o Frontend receba `camelCase` enquanto o Python mantém `snake_case`.
 - [ ] **Task 10.2: Centralização de Configurações do Frontend**
   - Mover a URL base da API (`http://127.0.0.1:8000`) de dentro dos componentes para um arquivo `.env` ou `config.ts`.

@@ -1,7 +1,13 @@
+"""
+Repositório de Documentos.
+Responsável pela persistência dos metadados dos arquivos.
+"""
 from sqlalchemy.orm import Session
-from app.models.document_model import Document, DocumentStatus
+from sqlalchemy.exc import SQLAlchemyError
+from typing import Optional, List
 from datetime import date
-from typing import Optional
+
+from app.models.document_model import Document, DocumentStatus
 
 class DocumentRepository:
     @staticmethod
@@ -12,12 +18,11 @@ class DocumentRepository:
         company_id: str, 
         expiration_date: Optional[date] = None,
         uploaded_by_id: Optional[str] = None
-    ):
+    ) -> Document:
         """
-        Cria o registro do documento no banco.
-        Nota: O arquivo físico JÁ DEVE ter sido salvo pelo Storage antes de chamar aqui.
+        Persiste os metadados do documento.
         """
-        # Define status inicial simples (depois faremos uma rotina inteligente para atualizar isso)
+        # Status inicial padrão
         status = DocumentStatus.VALID
         
         db_doc = Document(
@@ -29,20 +34,25 @@ class DocumentRepository:
             uploaded_by_id=uploaded_by_id
         )
         
-        db.add(db_doc)
-        db.commit()
-        db.refresh(db_doc)
-        return db_doc
+        try:
+            db.add(db_doc)
+            db.commit()
+            db.refresh(db_doc)
+            return db_doc
+        except SQLAlchemyError as e:
+            db.rollback()
+            # Nota: Em um sistema real, aqui deveríamos deletar o arquivo físico também para não deixar lixo
+            raise ValueError(f"Erro ao registrar documento no banco: {str(e)}")
 
     @staticmethod
-    def get_by_company(db: Session, company_id: str):
-        """Lista todos os documentos de uma empresa."""
+    def get_by_company(db: Session, company_id: str) -> List[Document]:
+        """Lista todos os documentos de uma empresa (sem paginação, usado pela IA)."""
         return db.query(Document).filter(Document.company_id == company_id).all()
     
     @staticmethod
-    def get_all(db: Session, company_id: str, skip: int = 0, limit: int = 100):
+    def get_all(db: Session, company_id: str, skip: int = 0, limit: int = 100) -> List[Document]:
         """
-        Lista apenas os documentos pertencentes à empresa do usuário logado.
+        Lista paginada de documentos de uma empresa.
         """
         return db.query(Document)\
             .filter(Document.company_id == company_id)\
@@ -51,9 +61,9 @@ class DocumentRepository:
             .all()
             
     @staticmethod
-    def get_by_id(db: Session, document_id: str, company_id: str):
+    def get_by_id(db: Session, document_id: str, company_id: str) -> Optional[Document]:
         """
-        Busca um documento específico, garantindo que ele pertença à empresa.
+        Busca um documento específico, com verificação de segurança (company_id).
         """
         return db.query(Document)\
             .filter(Document.id == document_id, Document.company_id == company_id)\

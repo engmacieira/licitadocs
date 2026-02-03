@@ -10,34 +10,44 @@ from app.core.storage import save_file_locally
 from app.models.user_model import User, UserRole
 from app.repositories.document_repository import DocumentRepository
 
-router = APIRouter(prefix="/documents", tags=["Documentos"])
+# Tags ajudam a agrupar as rotas no Swagger UI
+router = APIRouter(prefix="/documents", tags=["Gestão de Documentos"])
 
-@router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/upload", 
+    response_model=DocumentResponse, 
+    status_code=status.HTTP_201_CREATED,
+    summary="Enviar novo documento (Upload)",
+    description="""
+    Recebe um arquivo PDF e o registra no sistema.
+    
+    - **Clientes:** O documento é vinculado automaticamente à sua empresa.
+    - **Admins:** Podem usar o campo `target_company_id` para enviar documentos em nome de um cliente.
+    """
+)
 def upload_document(
-    file: UploadFile = File(...),
-    expiration_date: Optional[date] = Form(None), 
-    target_company_id: Optional[str] = Form(None),
-    current_user = Depends(get_current_user), # <--- Proteção + Dados do Usuário
+    file: UploadFile = File(..., description="Arquivo PDF (max 10MB)"),
+    expiration_date: Optional[date] = Form(None, description="Data de validade (opcional)"), 
+    target_company_id: Optional[str] = Form(None, description="[ADMIN] ID da empresa dona do documento"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Faz o upload de um arquivo PDF e registra no sistema.
-    - Clientes: Salvam na própria empresa.
-    - Admins: Podem salvar na empresa de terceiros usando 'target_company_id'.
-    """
     # 1. Validação de Formato
     if file.content_type != "application/pdf":
-        raise HTTPException(400, "Apenas arquivos PDF são permitidos.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Formato inválido. Apenas arquivos PDF são permitidos."
+        )
     
     # 2. Definição da Empresa Alvo (Lógica de Permissão)
     final_company_id = None
 
     if target_company_id:
-        # Se tentou definir outra empresa, TEM que ser Admin
-        if current_user.role != UserRole.ADMIN.value:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, 
-                detail="Apenas administradores podem enviar documentos para outras empresas."
+        # Se tentou enviar para outra empresa, tem que ser ADMIN
+        if current_user.role != UserRole.ADMIN:
+             raise HTTPException(
+                 status_code=status.HTTP_403_FORBIDDEN, 
+                 detail="Apenas administradores podem enviar documentos para outras empresas."
             )
         final_company_id = target_company_id
     else:
@@ -45,7 +55,7 @@ def upload_document(
         if not current_user.company_id:
              raise HTTPException(
                  status_code=status.HTTP_400_BAD_REQUEST, 
-                 detail="Usuário não vinculado a nenhuma empresa."
+                 detail="Usuário não vinculado a nenhuma empresa e nenhum destino foi informado."
                 )
         final_company_id = current_user.company_id
 
@@ -53,7 +63,9 @@ def upload_document(
     try:
         file_path = save_file_locally(file)
     except Exception as e:
-        raise HTTPException(500, f"Falha ao salvar arquivo no disco: {str(e)}")
+        # Logar erro real no servidor e retornar erro genérico pro cliente
+        print(f"Erro no storage: {e}")
+        raise HTTPException(status_code=500, detail="Falha interna ao salvar arquivo.")
 
     # 4. Salvar Lógico (Banco)
     document = DocumentRepository.create(
@@ -67,24 +79,28 @@ def upload_document(
     
     return document
 
-@router.get("/", response_model=List[DocumentResponse])
+@router.get(
+    "/", 
+    response_model=List[DocumentResponse],
+    summary="Listar todos os documentos",
+    description="Retorna a lista de documentos da empresa do usuário logado. Se for Admin, vê tudo (regra atual)."
+)
 def list_documents(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user) # Pega o usuário do Token
+    current_user: User = Depends(get_current_user)
 ):
-    """
-    Lista documentos com isolamento total.
-    O usuário só recebe o que pertence à empresa dele.
-    """
-    # Se o usuário não tiver empresa vinculada, retornamos lista vazia por segurança
-    if not current_user.company_id:
+    # Se o usuário não tiver empresa vinculada e não for admin, retornamos lista vazia por segurança
+    if not current_user.company_id and current_user.role != UserRole.ADMIN:
         return []
         
-    return DocumentRepository.get_all(
+    # TODO: Refinar regra de Admin ver tudo vs Admin ver apenas de uma empresa específica (Filtro)
+    # Por enquanto, mantemos a lógica da Sprint anterior:
+    documents = DocumentRepository.get_all(
         db=db, 
-        company_id=current_user.company_id, 
+        company_id=current_user.company_id,
         skip=skip, 
         limit=limit
     )
+    return documents

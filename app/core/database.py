@@ -1,31 +1,42 @@
+"""
+Configuração do Banco de Dados (SQLAlchemy).
+Gerencia a conexão e a sessão (SessionLocal) usada em cada requisição.
+"""
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Buscando a URL do banco do arquivo .env ou usando um padrão SQLite para dev
-# Em produção (Postgres), essa variável virá do ambiente do servidor.
+# 1. Definição da URL de Conexão
+# Prioridade: Variável de Ambiente (Prod) > SQLite Local (Dev)
 SQLALCHEMY_DATABASE_URL = os.getenv("DB_URL", "sqlite:///./licita_doc.db")
 
-# Configuração específica para SQLite (threads) vs Postgres
+# 2. Configurações Específicas
 connect_args = {}
 if "sqlite" in SQLALCHEMY_DATABASE_URL:
+    # SQLite precisa dessa flag para permitir acesso de múltiplas threads (FastAPI é async)
     connect_args = {"check_same_thread": False}
 
-# 1. Engine: O motor que processa as queries
+# 3. Engine (O Motor)
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
     connect_args=connect_args,
-    echo=False # Mude para True se quiser ver o SQL bruto no terminal (bom para debug)
+    # echo=True  # Descomente para ver SQL bruto no terminal (Debug)
 )
 
-# 2. SessionLocal: A fábrica de sessões. Cada requisição terá sua própria sessão.
+# 4. SessionFactory (Fábrica de Sessões)
+# autocommit=False: Controle transacional manual (nós damos o commit)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 3. Base: A classe pai de todos os nossos Models
+# 5. Base Model
+# Todas as classes (User, Company, Document) herdarão daqui
 Base = declarative_base()
 
-# Função utilitária para pegar a conexão (Dependency Injection do FastAPI)
+# Dependency Injection (Usado nas Rotas: db: Session = Depends(get_db))
 def get_db():
+    """
+    Gera uma nova sessão de banco para cada requisição HTTP e a fecha no final.
+    Garante que não deixaremos conexões penduradas (Memory Leak).
+    """
     db = SessionLocal()
     try:
         yield db
