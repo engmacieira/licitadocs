@@ -13,6 +13,7 @@ from app.routers import (
     ai_router, 
     user_router
 )
+from app.models import certificate_model
 
 # Inicialização do Banco de Dados (Modo Dev)
 # Cria as tabelas se não existirem. Em produção, use Alembic migrations.
