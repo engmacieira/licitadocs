@@ -1,26 +1,20 @@
-# 🤖 Contexto de Continuidade: LicitaDoc
+# 🤖 Contexto de Continuidade: Licitadocs
 
 > **PARA O AGENTE/DESENVOLVEDOR (MARK):**
-> O projeto acaba de passar por uma REFATORAÇÃO MASSIVA (Sprint 10). O código está estável e testado. Não quebre o padrão estabelecido.
+> Este arquivo é o seu Ponto de Restauração. Antes de processar qualquer novo prompt, analise este estado.
 
 ## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Preparação para Produção (v0.9.0)
-* **Sprint Concluída:** Sprint 10 (Refatoração & Documentação)
-* **Próxima Sprint:** Sprint 11 (UX & Polimento Visual)
-* **Última Ação:** Centralização dos serviços do Frontend (`api.ts`, `documentService.ts`) e validação total dos testes (Backend Green).
+* **Fase do Projeto:** Consolidação de Infraestrutura / Início de Features Avançadas (Certidões).
+* **Sprint Atual:** Encerrando Sprint 12 -> **Indo para Sprint 13**.
+* **Última Ação Realizada:** Migração completa para PostgreSQL (Docker porta 5433) e validação do Frontend/Login.
+* **PRÓXIMO PASSO IMEDIATO:** Planejar a Sprint 13 (Backlog de Gestão de Certidões: Upload, Validade e Alertas).
 
-## 🏗️ Definições Arquiteturais (Obrigatórias)
-* **Backend:** * Schemas Pydantic usam `populate_by_name=True`.
-    * Rotas devem ter docstrings e anotações para o Swagger.
-    * Lógica de IA deve residir em `AIService`, não no Router.
-* **Frontend:**
-    * **NUNCA** usar `fetch` ou `axios` direto nos componentes. Importe de `src/services/`.
-    * Tipagem TypeScript estrita (nada de `any`).
+## 🏗️ Definições Arquiteturais (Atualizado)
+* **Backend:** Python (FastAPI) + SQLAlchemy + **Alembic** + **PostgreSQL (Docker :5433)**.
+    * *Atenção:* O arquivo `database.py` possui um fallback hardcoded devido a erros de encoding do Windows.
+* **Frontend:** React + TypeScript + Vite.
+* **Infra:** Docker Compose (Service: `db`).
 
-## 🧭 Próximo Passo Imediato
-Iniciar o planejamento da **Sprint 11**, focando em:
-1. Melhorar o feedback visual de Upload (Toasts/Barra de progresso).
-2. Refinar o Dashboard do Cliente (que hoje é apenas uma lista simples).
-
----
-**Status dos Testes:** 🟢 PASSING (Sem Warnings Críticos)
+## 🧭 Mapa da Verdade
+* **O que fazer:** Consulte `docs/SPRINT_12_CONCLUSAO.md` para ver o setup atual.
+* **Dívidas:** Consulte `docs/DividasTecnicas.md` (Prioridade: Remover hardcode de senhas).
