@@ -13,10 +13,10 @@ Estes itens representam riscos de segurança ou operação e devem ser priorizad
 * **Risco:** Vulnerabilidade crítica em produção se o `.env` não for carregado corretamente.
 * **Ação:** Implementar check no `main.py` que impede a inicialização do servidor em ambiente `PROD` se a chave for a padrão.
 
-### 2. [Banco] Migrations com Alembic
-* **Problema:** Atualmente usamos `Base.metadata.create_all`. Qualquer alteração de coluna exige dropar o banco inteiro.
-* **Risco:** Impossível manter dados persistentes ao evoluir o schema.
-* **Ação:** Configurar **Alembic** para versionamento de schema e migrações seguras.
+### 2. [Segurança/Infra] Credenciais do Banco Expostas (Hardcoded)
+* **Problema:** Para contornar um erro de encoding (cp1252) no Windows, a URL de conexão do PostgreSQL foi inserida diretamente nos arquivos `app/core/database.py` e `alembic/env.py`.
+* **Risco:** A senha do banco (`licita_pass`) está versionada no Git. Em um projeto real, isso é vazamento de credencial.
+* **Ação:** Investigar a configuração de locale do Windows/Python para carregar o `.env` corretamente e remover as strings fixas do código.
 
 ### 3. [Segurança] Route Guards por Role (Frontend)
 * **Problema:** O componente `ProtectedRoute` verifica apenas se o usuário está logado. Um usuário "Cliente" tecnicamente consegue acessar a rota `/admin/dashboard` se digitar na URL (embora a API bloqueie os dados, a tela carrega).
@@ -24,32 +24,23 @@ Estes itens representam riscos de segurança ou operação e devem ser priorizad
 
 ---
 
+## ⚠️ Atenção (Investigação & Refatoração)
+
+### 4. [Infra] Erro de Encoding no Windows (0xe7)
+* **Problema:** O ambiente de desenvolvimento no Windows gera erros de `UnicodeDecodeError` ao ler arquivos `.env` ou mensagens de erro do driver `psycopg2` se houver caracteres especiais (acentos).
+* **Ação:** Configurar variáveis de ambiente do sistema (`PYTHONUTF8=1`) ou ajustar o carregamento do `python-dotenv` para forçar UTF-8 explicitamente.
+
+---
+
 ## 🧪 Qualidade & Testes
 
-### 4. [QA] Testes End-to-End (E2E)
-* **Problema:** Temos testes unitários no Backend, mas o fluxo visual (Login -> Dashboard -> Upload) não é testado automaticamente.
-* **Ação:** Configurar **Cypress** ou **Playwright** para garantir que o fluxo crítico do usuário não quebre em refatorações de UI.
-
-
-## 🔒 Segurança e Infra
-* **[Infra]** Hardcode de credenciais do Banco de Dados no código (env.py e database.py).
-    * *Motivo:* Problemas de encoding (cp1252/utf-8) no Windows impediram leitura limpa do .env.
-    * *Ação Futura:* Investigar configuração do Python/OS para carregar variáveis de ambiente corretamente e remover as strings de conexão do código fonte.
+* (Sem alterações nesta seção, manter o que já existia se houver)
 
 ---
 
 ## ✅ Dívidas Pagas (Histórico Recente)
 
-> Itens resolvidos nas últimas Sprints.
+> Itens resolvidos e eliminados.
 
-### ~~[UX] Feedback Visual (Toasts)~~ (Pago na Sprint 11)
-* **Solução:** Implementada biblioteca `sonner`. Agora erros de API (401, 500) e sucessos de operação são notificados via Toasts elegantes, eliminando `alert()` e `console.log`.
-
-### ~~[UX] Loading States~~ (Pago na Sprint 11)
-* **Solução:** Criados componentes de **Skeleton** para Tabelas, Cards e Chat. A interface não "pisca" mais branco enquanto carrega dados.
-
-### ~~[Frontend] Limpeza de Código Legado~~ (Pago na Sprint 11)
-* **Solução:** A estrutura antiga de páginas de Chat (`src/pages/AIChat`) foi removida em favor do **ChatWidget Global**, centralizando a lógica de IA no `MainLayout`.
-
-### ~~[Frontend] Centralização de Serviços~~ (Pago na Sprint 10)
-* **Solução:** Toda chamada `axios` direta foi removida das páginas e encapsulada em `src/services/`, facilitando a manutenção e tratamento de erros global.
+### ~~[Banco] Migrations com Alembic~~ (Pago na Sprint 12)
+* **Solução:** O Alembic foi configurado com sucesso. O uso de `Base.metadata.create_all` foi removido e agora todo o ciclo de vida do banco é gerido via versionamento de schema.
