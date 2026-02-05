@@ -41,6 +41,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov
+      
+      - name: Run Migrations
+        env:
+          DATABASE_URL: postgresql://licita_user:licita_pass@localhost:5433/licitadocs
+        run: alembic upgrade head
 
       - name: Run Backend Tests
         run: pytest --cov=app
