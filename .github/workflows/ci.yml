@@ -16,7 +16,7 @@ jobs:
         env:
           POSTGRES_USER: licita_user
           POSTGRES_PASSWORD: licita_pass
-          POSTGRES_DB: licita_db
+          POSTGRES_DB: licitadocs
         ports:
           # Mapeia a porta 5433 do runner (que seu código espera) 
           # para a porta 5432 do container
