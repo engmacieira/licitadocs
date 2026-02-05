@@ -9,6 +9,25 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: licita_user
+          POSTGRES_PASSWORD: licita_pass
+          POSTGRES_DB: licita_db
+        ports:
+          # Mapeia a porta 5433 do runner (que seu código espera) 
+          # para a porta 5432 do container
+          - 5433:5432
+        # Healthcheck para garantir que o banco subiu antes de rodar os testes
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+          
     steps:
       - uses: actions/checkout@v4
       
