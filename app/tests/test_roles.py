@@ -2,19 +2,17 @@ from app.models.user_model import UserRole, User
 from fastapi import status
 
 def test_default_user_is_client(client):
-    """
-    Cenário: Registro comum via API.
-    Resultado Esperado: Role deve ser 'client'.
-    """
-    # 1. Registra usuário
-    payload = {"email": "comum@teste.com", "password": "senha_forte_123", "is_active": True}
-    res = client.post("/auth/register", json=payload)
+    # 1. Registra usuário via Rota Simples
+    payload = {"email": "comum@teste.com", "password": "senha_forte_123"}
     
-    # TRAVA DE SEGURANÇA: Se falhar aqui, o teste avisa o motivo
-    assert res.status_code == status.HTTP_201_CREATED, f"Erro ao criar usuário: {res.json()}"
+    # MUDANÇA AQUI: /auth/register-simple
+    res = client.post("/auth/register-simple", json=payload)
     
-    # 2. Verifica retorno da API
+    assert res.status_code == status.HTTP_201_CREATED
     data = res.json()
+    
+    # Verifica se nasceu como client (padrão da rota simples)
+    # Nota: Talvez precise ajustar o assert dependendo do retorno da register-simple
     assert data["role"] == "client"
 
 def test_admin_permissions_check(client, db_session):
@@ -26,10 +24,8 @@ def test_admin_permissions_check(client, db_session):
     # 1. Cria usuário comum (COM SENHA FORTE)
     email = "futuro_admin@teste.com"
     payload = {"email": email, "password": "senha_forte_123"}
-    res = client.post("/auth/register", json=payload)
-    
-    # TRAVA DE SEGURANÇA
-    assert res.status_code == status.HTTP_201_CREATED, f"Erro ao criar futuro admin: {res.json()}"
+    res = client.post("/auth/register-simple", json=payload)
+    assert res.status_code == status.HTTP_201_CREATED
     
     # 2. Hack: Vai no banco (usando a fixture db) e promove ele a ADMIN
     user = db_session.query(User).filter(User.email == email).first()

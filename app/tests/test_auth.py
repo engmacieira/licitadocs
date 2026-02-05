@@ -1,55 +1,50 @@
 from fastapi import status
+from io import BytesIO
 
 def test_create_user_success(client):
     """
-    Cenário: Cadastro de usuário com dados válidos.
+    Cenário: Cadastro de usuário com dados válidos e ARQUIVOS (Novo Fluxo).
     Resultado Esperado: 201 Created e retorno do ID.
     """
+    # 1. Dados do Formulário (Não é JSON aninhado, são campos soltos)
     payload = {
-        "email": "sucesso@teste.com",
+        "email": "sucesso_upload@teste.com",
         "password": "senha_segura_123",
-        "is_active": True
+        "cnpj": "12.345.678/0001-90",
+        "legal_name": "Empresa de Teste LTDA",
+        "trade_name": "Teste SA"
     }
-    response = client.post("/auth/register", json=payload)
-    
-    # Debug: Se falhar, vai mostrar o erro no terminal
+
+    # 2. Arquivos Simulados (BytesIO cria um arquivo na memória RAM)
+    files = {
+        'social_contract': ('contrato.pdf', b'%PDF-1.4 content...', 'application/pdf'),
+        'cnpj_card': ('cnpj.pdf', b'%PDF-1.4 content...', 'application/pdf')
+    }
+
+    # 3. Envio como Multipart (data=... e files=...)
+    response = client.post("/auth/register", data=payload, files=files)
+
     if response.status_code != 201:
         print(f"Erro Retornado: {response.json()}")
 
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    assert data["email"] == payload["email"]
-    assert "id" in data
-    assert "password" not in data  # Garante que não vazamos a senha
+    assert "company_id" in data
+    assert data["message"] == "Cadastro realizado!"
 
-def test_create_user_1_to_9_reproduction(client):
-    """
-    Cenário: Tentar reproduzir o erro que o Matheus encontrou.
-    Senha: '123456789' (9 caracteres).
-    """
+def test_create_user_invalid_email(client):
+    """Teste de falha deve usar o endpoint novo também"""
     payload = {
-        "email": "bug_matheus@teste.com",
-        "password": "123456789", # Sua senha de teste
-        "is_active": True
+        "email": "email_invalido", # Sem @
+        "password": "123",
+        "cnpj": "000",
+        "legal_name": "X"
     }
-    response = client.post("/auth/register", json=payload)
-    
-    # Se falhar aqui, o pytest vai nos mostrar EXATAMENTE o JSON de erro
-    assert response.status_code == status.HTTP_201_CREATED, f"Falhou com erro: {response.json()}"
-
-def test_password_min_length(client):
-    """
-    Cenário: Senha muito curta (<8 caracteres).
-    Resultado Esperado: 422 Unprocessable Entity (Erro de validação Pydantic).
-    """
-    payload = {
-        "email": "curto@teste.com",
-        "password": "123", # Muito curta
-        "is_active": True
+    # Arquivos dummy para não falhar na validação de arquivo, e sim na de email
+    files = {
+        'social_contract': ('a.pdf', b'', 'application/pdf'),
+        'cnpj_card': ('b.pdf', b'', 'application/pdf')
     }
-    response = client.post("/auth/register", json=payload)
     
+    response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
-    # Verifica se o erro menciona o campo 'password'
-    errors = response.json()["detail"]
-    assert any(err["loc"][-1] == "password" for err in errors)

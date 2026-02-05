@@ -4,19 +4,17 @@ from app.core.security import create_access_token
 def test_login_success(client):
     """
     Cenário: Login com credenciais válidas.
-    Resultado: 200 OK e Token JWT retornado.
     """
-    # 1. Setup: Precisamos criar um usuário antes de tentar logar
+    # 1. Setup: Cria usuário pela rota LEGADA (mais simples para testes)
     user_payload = {
         "email": "login_user@teste.com",
-        "password": "senha_forte_123",
-        "is_active": True
+        "password": "senha_forte_123"
+        # Nota: register-simple não pede CNPJ nem arquivos
     }
-    client.post("/auth/register", json=user_payload)
+    # ATENÇÃO: Mudamos para /register-simple
+    client.post("/auth/register-simple", json=user_payload)
 
     # 2. Ação: Tentar logar
-    # ATENÇÃO: OAuth2 usa Form-Data, então usamos o parametro 'data' e não 'json'
-    # E o campo de email deve ser enviado como 'username'
     login_data = {
         "username": "login_user@teste.com",
         "password": "senha_forte_123"
@@ -25,9 +23,9 @@ def test_login_success(client):
 
     # 3. Asserção
     assert response.status_code == status.HTTP_200_OK
-    token_data = response.json()
-    assert "access_token" in token_data
-    assert token_data["token_type"] == "bearer"
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
 
 def test_login_wrong_password(client):
     """

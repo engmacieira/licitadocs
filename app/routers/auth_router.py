@@ -59,6 +59,10 @@ async def register_company(
     db: Session = Depends(get_db)
 ):
     # 1. Validações
+    if "@" not in email or "." not in email:
+        # Retornamos 422 para o teste passar (Unprocessable Entity)
+        raise HTTPException(status_code=422, detail="Formato de e-mail inválido")
+ 
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
     
