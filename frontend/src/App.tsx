@@ -6,8 +6,12 @@ import { Toaster } from 'sonner';
 // Layouts e Pages
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './pages/Login';
+import { LandingPage } from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
 import { DocumentsPage } from './pages/Documents';
+import { RegisterPage } from './pages/Register';
+import { ContractSignPage } from './pages/ContractSign';
+import { PaymentPage } from './pages/Payment';
 
 // Admin Pages
 import { CompaniesPage } from './pages/Admin/Companies';
@@ -23,7 +27,11 @@ function App() {
       <AuthProvider>
         <Routes>
           {/* Rota Pública */}
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/contract" element={<ContractSignPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
 
           {/* Rotas Protegidas (Requer Login) */}
           <Route

@@ -44,3 +44,62 @@ Estes itens representam riscos de segurança ou operação e devem ser priorizad
 
 ### ~~[Banco] Migrations com Alembic~~ (Pago na Sprint 12)
 * **Solução:** O Alembic foi configurado com sucesso. O uso de `Base.metadata.create_all` foi removido e agora todo o ciclo de vida do banco é gerido via versionamento de schema.
+
+
+# 💸 Dívidas Técnicas e Melhorias Futuras Pós Sprint 13
+
+Este documento rastreia débitos técnicos conscientes e pontos de melhoria para garantir a evolução saudável do LicitaDoc.
+
+---
+
+## 🚨 Prioridade Crítica (Backend & Infra)
+
+Estes itens representam riscos de segurança ou operação e devem ser priorizados antes do Go-Live oficial.
+
+### 1. [Segurança] SECRET_KEY Hardcoded
+* **Problema:** O arquivo `app/core/security.py` possui um valor padrão inseguro caso a variável de ambiente falhe.
+* **Ação:** Implementar check no `main.py` que impede a inicialização em PROD se a chave for padrão.
+
+### 2. [Segurança/Infra] Credenciais do Banco Expostas
+* **Problema:** Hardcode da string de conexão no `database.py` e `env.py` devido a erro de encoding no Windows.
+* **Ação:** Resolver configuração de locale do Windows e voltar a usar `os.getenv()`.
+
+### 3. [Segurança] Endpoint de Simulação de Pagamento (Novo Sprint 13)
+* **Problema:** A rota `/auth/simulate-payment` permite ativar usuários sem validação real financeira.
+* **Risco:** Fraude/Uso indevido em produção.
+* **Ação:** Remover esta rota ou protegê-la com chave de API interna; Substituir por Webhook real (Stripe/Pagar.me).
+
+### 4. [Infra] Armazenamento Local de Arquivos (Novo Sprint 13)
+* **Problema:** O `file_helper.py` salva uploads na pasta local `storage/`.
+* **Risco:** Em ambientes containerizados (Docker/K8s), arquivos locais são efêmeros (somem se o container recriar).
+* **Ação:** Migrar para **Object Storage (S3/MinIO)** antes do deploy oficial.
+
+---
+
+## ⚠️ Atenção (Refatoração & Manutenção)
+
+### 5. [Backend] Mapeamento Manual de DTOs (Novo Sprint 13)
+* **Problema:** O `auth_router.py` faz conversão manual de campos (`legal_name` -> `razao_social`).
+* **Risco:** Aumenta a chance de erro humano em manutenções futuras.
+* **Ação:** Utilizar `validation_alias` do Pydantic ou padronizar o idioma entre Frontend e Banco de Dados.
+
+### 6. [Frontend] Route Guards por Role
+* **Problema:** Usuários "Cliente" conseguem acessar rotas "/admin" (visualmente).
+* **Ação:** Criar componente `<RoleRoute role="admin" />`.
+
+---
+
+## 🧪 Qualidade & Testes
+
+### 7. [QA] Testes End-to-End (E2E)
+* **Ação:** Configurar Cypress/Playwright para testar o fluxo de cadastro completo (Onboarding).
+
+---
+
+## ✅ Dívidas Pagas
+
+### ~~[Banco] Migrations com Alembic~~ (Pago na Sprint 12)
+* **Solução:** Alembic configurado e rodando.
+
+### ~~[UX] Feedback Visual (Toasts)~~ (Pago na Sprint 11)
+* **Solução:** Biblioteca `sonner` implementada.
