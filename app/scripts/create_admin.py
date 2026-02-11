@@ -15,7 +15,7 @@ from app.core.security import get_password_hash
 def create_super_admin():
     db = SessionLocal()
     
-    email = "matheus_macieira@hotmail.com"
+    email = "matheus@hotmail.com"
     password = "a22061993"
     
     # 1. Verifica se já existe
@@ -41,7 +41,7 @@ def create_super_admin():
     # 3. Cria a Empresa do Admin 
     print("Criando empresa matriz...")
     admin_company = Company(
-        cnpj="00.000.000/0001-91",
+        cnpj="00.000.000/0002-91",
         razao_social="LicitaDoc HQ",
         owner_id=admin_user.id
     )

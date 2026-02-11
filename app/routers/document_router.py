@@ -1,73 +1,81 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
+from fastapi.responses import FileResponse # Importante para o download
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
+import os
 
 from app.core.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_current_active_user
 from app.schemas.document_schemas import DocumentResponse
 from app.core.storage import save_file_locally
 from app.models.user_model import User, UserRole
+from app.models.document_model import Document # Importe o Model
 from app.repositories.document_repository import DocumentRepository
 
-# Tags ajudam a agrupar as rotas no Swagger UI
 router = APIRouter(prefix="/documents", tags=["Gestão de Documentos"])
 
+# --- 1. LISTAGEM INTELIGENTE (Admin vê tudo ou filtra, Cliente vê só o dele) ---
+@router.get(
+    "/", 
+    response_model=List[DocumentResponse],
+    summary="Listar documentos",
+    description="Retorna documentos. Clientes veem apenas os seus. Admins veem tudo."
+)
+def list_documents(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    # Se for ADMIN, retorna tudo (ou poderia filtrar por query param se quisesse)
+    if current_user.role == UserRole.ADMIN.value:
+         return db.query(Document).order_by(Document.created_at.desc()).all()
+    
+    # Se for CLIENTE, obrigatoriamente filtra pela company_id dele
+    if current_user.company_id:
+        return db.query(Document).filter(
+            Document.company_id == current_user.company_id
+        ).order_by(Document.created_at.desc()).all()
+
+    # Se não tem empresa e não é admin
+    return []
+
+# --- 2. UPLOAD PROTEGIDO (Só Admin) ---
 @router.post(
     "/upload", 
     response_model=DocumentResponse, 
     status_code=status.HTTP_201_CREATED,
-    summary="Enviar novo documento (Upload)",
-    description="""
-    Recebe um arquivo PDF e o registra no sistema.
-    
-    - **Clientes:** O documento é vinculado automaticamente à sua empresa.
-    - **Admins:** Podem usar o campo `target_company_id` para enviar documentos em nome de um cliente.
-    """
+    summary="Enviar novo documento"
 )
 def upload_document(
-    file: UploadFile = File(..., description="Arquivo PDF (max 10MB)"),
-    expiration_date: Optional[date] = Form(None, description="Data de validade (opcional)"), 
-    target_company_id: Optional[str] = Form(None, description="[ADMIN] ID da empresa dona do documento"),
-    current_user: User = Depends(get_current_user),
+    file: UploadFile = File(...),
+    expiration_date: Optional[date] = Form(None), 
+    target_company_id: Optional[str] = Form(None),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação de Formato
-    if file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Formato inválido. Apenas arquivos PDF são permitidos."
-        )
+    # BLINDAGEM: Apenas Admin pode fazer upload nesta versão
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Apenas administradores podem enviar documentos.")
     
-    # 2. Definição da Empresa Alvo (Lógica de Permissão)
-    final_company_id = None
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Apenas arquivos PDF são permitidos.")
 
-    if target_company_id:
-        # Se tentou enviar para outra empresa, tem que ser ADMIN
-        if current_user.role != UserRole.ADMIN:
-             raise HTTPException(
-                 status_code=status.HTTP_403_FORBIDDEN, 
-                 detail="Apenas administradores podem enviar documentos para outras empresas."
-            )
-        final_company_id = target_company_id
-    else:
-        # Se não definiu, usa a própria (Comportamento Padrão)
-        if not current_user.company_id:
-             raise HTTPException(
-                 status_code=status.HTTP_400_BAD_REQUEST, 
-                 detail="Usuário não vinculado a nenhuma empresa e nenhum destino foi informado."
-                )
-        final_company_id = current_user.company_id
+    # Se é admin, ele PRECISA dizer para qual empresa é o documento
+    final_company_id = target_company_id
+    if not final_company_id:
+         # Se o admin esqueceu de mandar o ID, tenta usar o dele (mas idealmente deveria ser obrigatório para admins enviando para terceiros)
+         final_company_id = current_user.company_id
 
-    # 3. Salvar Físico (Storage)
+    if not final_company_id:
+        raise HTTPException(status_code=400, detail="ID da empresa destino é obrigatório.")
+
+    # Salva no disco
     try:
         file_path = save_file_locally(file)
     except Exception as e:
-        # Logar erro real no servidor e retornar erro genérico pro cliente
-        print(f"Erro no storage: {e}")
-        raise HTTPException(status_code=500, detail="Falha interna ao salvar arquivo.")
+        raise HTTPException(status_code=500, detail="Falha ao salvar arquivo.")
 
-    # 4. Salvar Lógico (Banco)
+    # Salva no Banco
     document = DocumentRepository.create(
         db=db,
         filename=file.filename,
@@ -79,28 +87,27 @@ def upload_document(
     
     return document
 
-@router.get(
-    "/", 
-    response_model=List[DocumentResponse],
-    summary="Listar todos os documentos",
-    description="Retorna a lista de documentos da empresa do usuário logado. Se for Admin, vê tudo (regra atual)."
-)
-def list_documents(
-    skip: int = 0, 
-    limit: int = 100, 
+# --- 3. DOWNLOAD (Novo Endpoint que faltava para o cliente baixar) ---
+@router.get("/{doc_id}/download")
+def download_document(
+    doc_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ):
-    # Se o usuário não tiver empresa vinculada e não for admin, retornamos lista vazia por segurança
-    if not current_user.company_id and current_user.role != UserRole.ADMIN:
-        return []
-        
-    # TODO: Refinar regra de Admin ver tudo vs Admin ver apenas de uma empresa específica (Filtro)
-    # Por enquanto, mantemos a lógica da Sprint anterior:
-    documents = DocumentRepository.get_all(
-        db=db, 
-        company_id=current_user.company_id,
-        skip=skip, 
-        limit=limit
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    # SEGURANÇA: Se não for admin, só pode baixar se for da mesma empresa
+    if current_user.role != UserRole.ADMIN.value:
+        if doc.company_id != current_user.company_id:
+            raise HTTPException(status_code=403, detail="Acesso negado a este documento.")
+
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Arquivo físico não encontrado")
+
+    return FileResponse(
+        path=doc.file_path,
+        filename=doc.filename,
+        media_type='application/octet-stream'
     )
-    return documents

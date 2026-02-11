@@ -1,113 +1,166 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { documentService } from '../../../services/documentService';
+import { useEffect, useState, useRef } from 'react';
 import { companyService } from '../../../services/companyService';
 import type { Company } from '../../../services/companyService';
-import { UploadCloud, Calendar, Building2, FileText } from 'lucide-react';
+import { Button } from '../../../components/ui/Button';
+import { UploadCloud, Building2, CheckCircle, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function AdminUpload() {
-    const navigate = useNavigate();
-
-    // Estados do Formulário
+export function UploadPage() {
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [selectedCompanyId, setSelectedCompanyId] = useState('');
-    const [expirationDate, setExpirationDate] = useState('');
-    const [file, setFile] = useState<File | null>(null);
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
 
-    // Estados de UI
-    const [loading, setLoading] = useState(false);
-    const [uploading, setUploading] = useState(false);
+    // Referência para o input de arquivo
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Carrega a lista de empresas para o Dropdown
     useEffect(() => {
         loadCompanies();
     }, []);
 
     async function loadCompanies() {
         try {
-            setLoading(true);
             const data = await companyService.getAll();
-            setCompanies(data);
+            // Ordena alfabeticamente para facilitar a busca visual
+            const sorted = data.sort((a, b) =>
+                (a.razao_social || a.name).localeCompare(b.razao_social || b.name)
+            );
+            setCompanies(sorted);
         } catch (error) {
-            toast.error("Erro ao carregar lista de empresas."); // <--- Toast
+            toast.error("Erro ao carregar lista de empresas.");
         } finally {
             setLoading(false);
         }
     }
 
-    async function handleUpload(e: React.FormEvent) {
-        e.preventDefault();
+    async function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
 
-        if (!file || !selectedCompanyId || !expirationDate) {
-            toast.warning("Por favor, preencha todos os campos."); // <--- Toast
+        if (!selectedCompanyId) {
+            toast.warning("Por favor, selecione uma empresa antes de enviar o arquivo.");
+            // Limpa o input para permitir tentar de novo
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
+        const file = files[0];
+        setIsUploading(true);
+        const toastId = toast.loading(`Enviando ${file.name}...`);
+
         try {
-            setUploading(true);
+            await companyService.uploadDocument(selectedCompanyId, file);
 
-            // UX: Toast de "Processando"
-            const promise = documentService.upload(file, expirationDate, selectedCompanyId);
+            toast.dismiss(toastId);
+            toast.success("Upload realizado com sucesso!");
 
-            toast.promise(promise, {
-                loading: 'Enviando documento para o cofre...',
-                success: 'Documento enviado e processado com sucesso!',
-                error: 'Erro ao fazer upload. Verifique o arquivo.'
-            });
+            // Opcional: Limpar a seleção após o sucesso
+            // setSelectedCompanyId(''); 
 
-            await promise;
-
-            // Limpa o form após sucesso
-            setFile(null);
-            setExpirationDate('');
-            // Opcional: navigate('/admin/dashboard'); 
         } catch (error) {
-            console.error(error);
-            // O erro já é tratado pelo toast.promise, mas se quiser manual:
-            // toast.error("Falha no envio");
+            toast.dismiss(toastId);
+            toast.error("Falha ao enviar documento.");
         } finally {
-            setUploading(false);
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     }
 
+    // Encontra a empresa selecionada para mostrar detalhes (feedback visual)
+    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
+
     return (
-        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-            <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-2xl relative overflow-hidden">
-                {/* Loader de Progresso no Topo (US-UI-02) */}
-                {uploading && (
-                    <div className="absolute top-0 left-0 w-full h-1 bg-blue-100">
-                        <div className="h-full bg-blue-600 animate-progress origin-left"></div>
+        <div className="p-8 space-y-8 max-w-4xl mx-auto">
+            {/* Cabeçalho */}
+            <div>
+                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <UploadCloud className="h-8 w-8 text-blue-600" />
+                    Upload Centralizado
+                </h1>
+                <p className="text-slate-500 mt-1">
+                    Envie documentos para qualquer empresa de forma rápida.
+                </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm space-y-8">
+
+                {/* 1. Seleção de Empresa */}
+                <div className="space-y-3">
+                    <label className="block text-sm font-medium text-slate-700">
+                        1. Selecione a Empresa Destino
+                    </label>
+                    <div className="relative">
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 pointer-events-none" />
+                        <select
+                            value={selectedCompanyId}
+                            onChange={(e) => setSelectedCompanyId(e.target.value)}
+                            disabled={loading || isUploading}
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none text-slate-700 transition-all"
+                        >
+                            <option value="">-- Selecione uma empresa da lista --</option>
+                            {companies.map((company) => (
+                                <option key={company.id} value={company.id}>
+                                    {company.razao_social || company.name} ({company.cnpj})
+                                </option>
+                            ))}
+                        </select>
+                        {/* Ícone de seta customizado (opcional, ou usa o nativo do browser) */}
                     </div>
-                )}
 
-                {/* ... (Cabeçalho igual) ... */}
+                    {/* Feedback da Seleção */}
+                    {selectedCompany && (
+                        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg border border-green-100 animate-in fade-in slide-in-from-top-1">
+                            <CheckCircle className="h-4 w-4" />
+                            <span>
+                                Enviando para: <strong>{selectedCompany.razao_social}</strong>
+                            </span>
+                        </div>
+                    )}
+                </div>
 
-                <form onSubmit={handleUpload} className="space-y-6">
-                    {/* ... (Inputs iguais) ... */}
+                {/* 2. Área de Upload */}
+                <div className={`space-y-3 transition-opacity duration-300 ${!selectedCompanyId ? 'opacity-50 pointer-events-none grayscale' : 'opacity-100'}`}>
+                    <label className="block text-sm font-medium text-slate-700">
+                        2. Envie o Arquivo
+                    </label>
 
-                    {/* Botão com Estado de Loading Visual */}
-                    <button
-                        type="submit"
-                        disabled={uploading}
-                        className={`w-full py-3 px-4 rounded-lg text-white font-bold shadow-md transition-all flex items-center justify-center gap-2 ${uploading
-                                ? 'bg-blue-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
+                    <div
+                        className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all duration-200 group ${isUploading
+                            ? 'bg-blue-50 border-blue-300'
+                            : 'bg-slate-50 border-slate-300 hover:bg-white hover:border-blue-400 hover:shadow-md'
                             }`}
+                        onClick={() => selectedCompanyId && fileInputRef.current?.click()}
                     >
-                        {uploading ? (
-                            <>
-                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Enviando...
-                            </>
-                        ) : (
-                            <>
-                                <UploadCloud size={20} />
-                                Confirmar Upload
-                            </>
-                        )}
-                    </button>
-                </form>
+                        <div className="flex flex-col items-center pointer-events-none">
+                            <div className={`h-16 w-16 rounded-full flex items-center justify-center mb-4 transition-colors ${isUploading ? 'bg-blue-200 text-blue-700 animate-pulse' : 'bg-white text-blue-600 shadow-sm group-hover:scale-110 group-hover:text-blue-500'
+                                }`}>
+                                {isUploading ? <UploadCloud className="h-8 w-8" /> : <FileText className="h-8 w-8" />}
+                            </div>
+
+                            <h3 className="text-lg font-medium text-slate-900">
+                                {isUploading ? 'Enviando...' : 'Clique para selecionar o arquivo'}
+                            </h3>
+                            <p className="text-slate-500 mt-2 max-w-sm mx-auto text-sm">
+                                Suporta PDF, Word, Excel e Imagens. O arquivo será vinculado automaticamente à empresa selecionada acima.
+                            </p>
+                        </div>
+
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileSelect}
+                            disabled={!selectedCompanyId || isUploading}
+                        />
+                    </div>
+                </div>
+
+                {/* Dica de Rodapé */}
+                <div className="pt-4 border-t border-slate-100 text-center">
+                    <p className="text-xs text-slate-400">
+                        Dica: Para ver os arquivos enviados, acesse o menu <strong className="text-slate-600">Gestão de Empresas</strong> e clique no ícone de "Olho".
+                    </p>
+                </div>
             </div>
         </div>
     );

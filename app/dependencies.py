@@ -47,6 +47,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         
     return user
 
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Verifica se o usuário está ativo.
+    Útil para rotas onde o usuário precisa estar logado e ativo (mas não necessariamente Admin).
+    """
+    if not current_user.is_active:
+        raise HTTPException(status_code=400, detail="Usuário inativo")
+    return current_user
+
 def get_current_active_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Dependência de Autorização: Apenas ADMINs podem passar.

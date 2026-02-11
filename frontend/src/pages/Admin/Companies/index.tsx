@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { companyService } from '../../../services/companyService';
 import type { Company } from '../../../services/companyService';
 import { Button } from '../../../components/ui/Button';
-import { Plus, Building2, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Building2, Search, Pencil, Trash2, Power, Eye } from 'lucide-react'; // Adicionei Power
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { CreateCompanyModal } from './CreateCompanyModal';
 import { toast } from 'sonner';
 
 export function CompaniesPage() {
+    const navigate = useNavigate();
     const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +24,6 @@ export function CompaniesPage() {
 
     async function loadData() {
         try {
-            // await new Promise(resolve => setTimeout(resolve, 500)); // Delay para teste visual
             const data = await companyService.getAll();
             setCompanies(data);
         } catch (error) {
@@ -33,156 +34,185 @@ export function CompaniesPage() {
         }
     }
 
+    // Alternar Status
+    async function handleToggleStatus(company: Company) {
+        try {
+            // Atualização Otimista (Muda na tela antes de confirmar no servidor para ser rápido)
+            const newStatus = !company.is_active;
+            setCompanies(prev => prev.map(c =>
+                c.id === company.id ? { ...c, is_active: newStatus } : c
+            ));
+
+            await companyService.toggleStatus(company.id);
+
+            const action = newStatus ? "ativado" : "bloqueado";
+            toast.success(`Acesso de ${company.razao_social || company.name} ${action}!`);
+
+        } catch (error) {
+            toast.error("Erro ao alterar status. Desfazendo...");
+            loadData(); // Recarrega os dados reais em caso de erro
+        }
+    }
+
     async function handleDelete(company: Company) {
-        // Confirmação nativa (simples e funcional)
-        if (!window.confirm(`Tem certeza que deseja excluir "${company.name}"?`)) return;
+        if (!window.confirm(`Tem certeza que deseja excluir "${company.razao_social || company.name}"?`)) return;
 
         try {
             await companyService.delete(company.id);
             toast.success("Empresa removida com sucesso.");
-            loadData(); // Recarrega
+            loadData();
         } catch (error) {
-            toast.error("Erro ao excluir empresa. Verifique se há documentos vinculados.");
+            toast.error("Erro ao excluir empresa.");
         }
     }
 
-    function handleOpenCreate() {
-        setEditingCompany(null);
-        setIsModalOpen(true);
-    }
-
-    function handleOpenEdit(company: Company) {
+    function handleEdit(company: Company) {
         setEditingCompany(company);
         setIsModalOpen(true);
     }
 
-    // Lógica de Filtragem Local
-    const filteredCompanies = companies.filter(c =>
-        (c.name || c.razao_social || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.cnpj || '').includes(searchTerm)
-    );
+    function handleCreate() {
+        setEditingCompany(null);
+        setIsModalOpen(true);
+    }
+
+    // Filtro de busca (Case insensitive)
+    const filteredCompanies = companies.filter(c => {
+        const search = searchTerm.toLowerCase();
+        return (
+            (c.razao_social && c.razao_social.toLowerCase().includes(search)) ||
+            (c.name && c.name.toLowerCase().includes(search)) ||
+            (c.cnpj && c.cnpj.includes(search))
+        );
+    });
 
     return (
-        <div className="space-y-6">
-            {/* Cabeçalho */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-8 space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gestão de Empresas</h1>
-                    <p className="text-slate-500">Administre os clientes e seus acessos.</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Gestão de Empresas</h1>
+                    <p className="text-slate-500">Administre seus clientes e contratos.</p>
                 </div>
-                <Button onClick={handleOpenCreate}>
-                    <Plus className="mr-2" size={18} />
-                    Nova Empresa
+                <Button onClick={handleCreate}>
+                    <Plus className="mr-2 h-4 w-4" /> Nova Empresa
                 </Button>
             </div>
 
-            {/* Barra de Ferramentas */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
-                <div className="relative w-full md:max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Buscar por nome ou CNPJ..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    />
-                </div>
-                <div className="text-sm text-slate-500 ml-auto">
-                    Total: <strong>{filteredCompanies.length}</strong> empresas
-                </div>
-            </div>
-
-            {/* Tabela de Resultados */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                {loading ? (
-                    // Skeleton Loading
-                    <div className="p-4 space-y-4">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                                <div className="flex items-center gap-3 w-1/3">
-                                    <Skeleton className="h-10 w-10 rounded-lg" />
-                                    <div className="space-y-2 w-full">
-                                        <Skeleton className="h-4 w-3/4" />
-                                        <Skeleton className="h-3 w-1/2" />
-                                    </div>
-                                </div>
-                                <Skeleton className="h-4 w-32 hidden md:block" />
-                                <div className="flex gap-2">
-                                    <Skeleton className="h-8 w-8 rounded-md" />
-                                    <Skeleton className="h-8 w-8 rounded-md" />
-                                </div>
-                            </div>
-                        ))}
+            {/* Filtros e Tabela */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                {/* Barra de Busca */}
+                <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                    <div className="relative max-w-sm">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por nome ou CNPJ..."
+                            className="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
-                ) : filteredCompanies.length === 0 ? (
-                    // Empty State
-                    <div className="p-16 text-center flex flex-col items-center">
-                        <div className="bg-slate-50 p-4 rounded-full mb-4">
-                            <Building2 size={40} className="text-slate-300" />
-                        </div>
-                        <h3 className="text-lg font-medium text-slate-900">Nenhuma empresa encontrada</h3>
-                        <p className="text-slate-500 mt-1">
-                            {searchTerm ? `Não encontramos nada para "${searchTerm}"` : "Cadastre sua primeira empresa para começar."}
-                        </p>
+                </div>
+
+                {loading ? (
+                    <div className="p-8 space-y-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
                     </div>
                 ) : (
-                    // Tabela Real
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-xs font-semibold">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-50 text-slate-600 font-medium">
                                 <tr>
                                     <th className="px-6 py-4">Empresa</th>
-                                    <th className="px-6 py-4 hidden md:table-cell">CNPJ</th>
+                                    <th className="px-6 py-4">CNPJ</th>
                                     <th className="px-6 py-4 text-center">Status</th>
                                     <th className="px-6 py-4 text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredCompanies.map((company) => (
-                                    <tr key={company.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${company.is_active ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                    <Building2 size={20} />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-slate-800">{company.name || company.razao_social}</p>
-                                                    <p className="text-xs text-slate-400 md:hidden">{company.cnpj}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 font-mono text-slate-600 hidden md:table-cell">
-                                            {company.cnpj}
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${company.is_active
-                                                ? 'bg-green-50 text-green-700 border-green-100'
-                                                : 'bg-red-50 text-red-700 border-red-100'
-                                                }`}>
-                                                {company.is_active ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => handleOpenEdit(company)}
-                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <Pencil size={18} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(company)}
-                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </div>
+                                {filteredCompanies.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
+                                            Nenhuma empresa encontrada.
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    filteredCompanies.map((company) => (
+                                        <tr key={company.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                                                        <Building2 size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-slate-900">
+                                                            {company.razao_social || company.name}
+                                                        </div>
+                                                        {company.nome_fantasia && (
+                                                            <div className="text-xs text-slate-500">{company.nome_fantasia}</div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 font-mono text-slate-500">
+                                                {company.cnpj}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${company.is_active
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                    {company.is_active ? 'Ativo' : 'Bloqueado'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {/* 1. Botão Ativar/Bloquear */}
+                                                    <button
+                                                        onClick={() => handleToggleStatus(company)}
+                                                        className={`p-2 rounded-lg transition-colors ${company.is_active
+                                                                ? 'text-green-600 hover:bg-green-50'
+                                                                : 'text-slate-400 hover:bg-slate-100'
+                                                            }`}
+                                                        title={company.is_active ? "Clique para Bloquear" : "Clique para Ativar"}
+                                                    >
+                                                        <Power size={18} />
+                                                    </button>
+
+                                                    {/* 2. Botão Ver Detalhes */}
+                                                    <button
+                                                        onClick={() => navigate(`/admin/companies/${company.id}`)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Ver Detalhes"
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+
+                                                    {/* 3. Botão Editar */}
+                                                    <button
+                                                        onClick={() => handleEdit(company)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Editar"
+                                                    >
+                                                        <Pencil size={18} />
+                                                    </button>
+
+                                                    {/* 4. Botão Excluir */}
+                                                    <button
+                                                        onClick={() => handleDelete(company)}
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

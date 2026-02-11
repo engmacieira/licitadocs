@@ -2,7 +2,7 @@
 Schemas de Empresa (Pydantic).
 Define a estrutura de dados para criação, atualização e leitura de empresas.
 """
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, AliasPath
 from typing import Optional
 from datetime import datetime
 
@@ -44,6 +44,12 @@ class CompanyResponse(BaseModel):
     )
     cnpj: str = Field(..., description="CNPJ cadastrado")
     created_at: datetime = Field(..., description="Data de cadastro")
+    
+    is_active: bool = Field(
+        default=True, 
+        validation_alias=AliasPath("owner", "is_active"), 
+        description="Status de acesso do proprietário"
+    )
     
     model_config = ConfigDict(
         from_attributes=True,

@@ -16,7 +16,8 @@ import { PaymentPage } from './pages/Payment';
 // Admin Pages
 import { CompaniesPage } from './pages/Admin/Companies';
 import { AdminDashboard } from './pages/Admin/Dashboard';
-import { AdminUpload } from './pages/Admin/Upload';
+import { UploadPage } from './pages/Admin/Upload';
+import { CompanyDetails } from './pages/Admin/CompanyDetails';
 
 function App() {
   return (
@@ -50,7 +51,9 @@ function App() {
             {/* Rotas de Admin */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/companies" element={<CompaniesPage />} />
-            <Route path="/admin/upload" element={<AdminUpload />} />
+            <Route path="/admin/upload" element={<UploadPage />} />
+            <Route path="/admin/companies" element={<CompaniesPage />} />
+            <Route path="/admin/companies/:id" element={<CompanyDetails />} />
 
             {/* Fallback: Qualquer rota desconhecida vai pro dashboard */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

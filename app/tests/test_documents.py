@@ -11,28 +11,29 @@ client = TestClient(app)
 
 def test_upload_document_success(db_session: Session):
     """
-    Cenário: Upload de um PDF válido por um usuário logado COM empresa.
+    Cenário: Upload de um PDF válido por um ADMIN.
     """
-    # 1. Setup: Criar Empresa e Usuário
+    # 1. Setup: Criar Empresa
     company = Company(razao_social="Empresa Teste", cnpj="12345678000199")
     db_session.add(company)
     db_session.commit()
 
-    user = User(
-        email="uploader@teste.com", 
+    # 2. Criar ADMIN (Único que pode fazer upload agora)
+    admin_user = User(
+        email="admin_uploader@teste.com", 
         password_hash="pw", 
         is_active=True, 
-        role="admin",
-        company_id=company.id # <--- VITAL: Usuário precisa ter casa
+        role=UserRole.ADMIN.value, # <--- IMPORTANTE: Tem que ser ADMIN
+        company_id=company.id 
     )
-    db_session.add(user)
+    db_session.add(admin_user)
     db_session.commit()
-    db_session.refresh(user)
+    db_session.refresh(admin_user)
 
-    # 2. Bypass Auth
-    app.dependency_overrides[get_current_user] = lambda: user
+    # 3. Bypass Auth como Admin
+    app.dependency_overrides[get_current_user] = lambda: admin_user
 
-    # 3. Arquivo Fake
+    # 4. Arquivo Fake
     file_obj = io.BytesIO(b"%PDF-1.4 fake content")
     
     try:
@@ -42,15 +43,16 @@ def test_upload_document_success(db_session: Session):
             response = client.post(
                 "/documents/upload",
                 files={"file": ("contrato.pdf", file_obj, "application/pdf")},
-                data={"expiration_date": "2026-12-31"},
-                headers={} # Auth via override
+                data={
+                    "expiration_date": "2026-12-31",
+                    "target_company_id": company.id # Admin deve informar a empresa destino
+                },
+                headers={} 
             )
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
         assert data["filename"] == "contrato.pdf"
-        # O repositório corrigido agora salva uploaded_by_id, mas o response schema pode não mostrar.
-        # O importante é o 201.
 
     finally:
         del app.dependency_overrides[get_current_user]
@@ -58,21 +60,29 @@ def test_upload_document_success(db_session: Session):
 def test_upload_invalid_extension(db_session: Session):
     """
     Cenário: Tentar enviar .txt deve falhar com 400.
+    OBS: Precisa ser ADMIN para chegar na validação da extensão.
     """
     company = Company(razao_social="Empresa Fail", cnpj="99988877000100")
     db_session.add(company)
     db_session.commit()
 
-    user = User(email="fail@test.com", password_hash="pw", company_id=company.id, is_active=True)
-    db_session.add(user)
+    # User precisa ser ADMIN para passar da barreira do 403
+    admin_user = User(
+        email="admin_fail@test.com", 
+        password_hash="pw", 
+        role=UserRole.ADMIN.value, 
+        is_active=True
+    )
+    db_session.add(admin_user)
     db_session.commit()
 
-    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_current_user] = lambda: admin_user
 
     try:
         response = client.post(
             "/documents/upload",
-            files={"file": ("wrong.txt", io.BytesIO(b"txt"), "text/plain")}
+            files={"file": ("wrong.txt", io.BytesIO(b"txt"), "text/plain")},
+            data={"target_company_id": company.id}
         )
         assert response.status_code == 400
         assert "PDF" in response.json()["detail"]
@@ -87,23 +97,31 @@ def test_list_documents(db_session: Session):
     db_session.add(company)
     db_session.commit()
     
-    user = User(email="list@test.com", password_hash="pw", company_id=company.id, is_active=True)
-    db_session.add(user)
+    # Admin para fazer o upload de setup
+    admin = User(email="admin_setup@test.com", password_hash="pw", role=UserRole.ADMIN.value, is_active=True)
+    db_session.add(admin)
+    
+    # Cliente para testar a listagem
+    client_user = User(email="list@test.com", password_hash="pw", company_id=company.id, role=UserRole.CLIENT.value, is_active=True)
+    db_session.add(client_user)
     db_session.commit()
 
-    app.dependency_overrides[get_current_user] = lambda: user
-
     try:
-        # Upload prévio
+        # 1. Admin faz o upload
+        app.dependency_overrides[get_current_user] = lambda: admin
+        
         file_obj = io.BytesIO(b"%PDF-1.4 conteudo")
         with patch("app.routers.document_router.save_file_locally") as mock_save:
             mock_save.return_value = "storage/dummy.pdf"
             client.post(
                 "/documents/upload",
                 files={"file": ("lista.pdf", file_obj, "application/pdf")},
+                data={"target_company_id": company.id}
             )
 
-        # Listar
+        # 2. Cliente tenta listar (Agora sim deve funcionar e ver o arquivo)
+        app.dependency_overrides[get_current_user] = lambda: client_user
+        
         response = client.get("/documents/")
         assert response.status_code == 200
         data = response.json()
@@ -116,16 +134,13 @@ def test_admin_upload_for_client(db_session: Session):
     """
     Cenário: Admin faz upload para outra empresa.
     """
-    # Admin
-    admin = User(email="admin@boss.com", password_hash="pw", role="admin", is_active=True)
+    admin = User(email="admin@boss.com", password_hash="pw", role=UserRole.ADMIN.value, is_active=True)
     db_session.add(admin)
     
-    # Cliente (Empresa Alvo)
     company = Company(razao_social="Alvo Ltda", cnpj="55555555000155")
     db_session.add(company)
     db_session.commit()
     
-    # Bypass como Admin
     app.dependency_overrides[get_current_user] = lambda: admin
 
     file_obj = io.BytesIO(b"%PDF-1.4 content")
@@ -141,9 +156,5 @@ def test_admin_upload_for_client(db_session: Session):
             )
 
         assert response.status_code == 201
-        data = response.json()
-        # Admin subindo para Alvo -> documento deve ser do Alvo
-        # Nota: O Response pode não retornar company_id dependendo do Schema,
-        # mas o status 201 confirma sucesso.
     finally:
         del app.dependency_overrides[get_current_user]

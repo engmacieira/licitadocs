@@ -103,3 +103,23 @@ Estes itens representam riscos de segurança ou operação e devem ser priorizad
 
 ### ~~[UX] Feedback Visual (Toasts)~~ (Pago na Sprint 11)
 * **Solução:** Biblioteca `sonner` implementada.
+
+# 💸 Dívidas Técnicas & Melhorias Futuras
+
+Este documento rastreia pontos do código que precisam de refatoração, otimização ou correções de longo prazo.
+
+---
+
+## 🔴 Alta Prioridade (Impedem Escala)
+- [ ] **Migração de Storage (Local -> S3/MinIO):** Atualmente o sistema salva arquivos na pasta `/uploads` do container. Isso não escala e perde dados se o container for recriado.
+- [ ] **Validação de CNPJ no Backend:** O Frontend valida, mas a API ainda aceita qualquer string no campo CNPJ da empresa.
+- [ ] **Filtro de Documentos por Empresa (Admin):** O endpoint `GET /documents` para Admin retorna *todos* os documentos do banco. Precisamos permitir filtrar por `company_id` via Query Param (ex: `/documents?company_id=...`).
+
+## 🟡 Média Prioridade (Manutenibilidade)
+- [ ] **Refatorar `StatsCard`:** O componente está misturando lógica de apresentação (cores) com dados. Mover para um padrão de variantes do Tailwind.
+- [ ] **Centralizar Regras de Permissão:** Mover a lógica `if user.role == 'admin'` dos Routers para um `PermissionService` ou Decorators reutilizáveis.
+- [ ] **Hardcoded PDF:** A validação `file.filename.endswith('.pdf')` está hardcoded no Router. Mover para uma constante de configuração `ALLOWED_EXTENSIONS`.
+
+## 🟢 Baixa Prioridade (Cosmético/DX)
+- [ ] **Paginação Real no Dashboard:** As listas de "Recentes" trazem apenas 5 itens, mas não há link para "Ver Todos" paginado no Backend.
+- [ ] **Seeds de Teste:** Criar um script `seed.py` mais robusto que popule o banco com dados aleatórios (Faker) para testes de carga.

@@ -1,83 +1,95 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileText, LogOut, Building2, UploadCloud } from 'lucide-react';
-import { clsx } from 'clsx';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+    LayoutDashboard,
+    FileText,
+    Building2,
+    Settings,
+    LogOut,
+    UploadCloud
+} from 'lucide-react';
 
-interface SidebarProps {
-    className?: string; // Para controle mobile futuro
-}
+export function Sidebar() {
+    const { user, signOut } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
 
-export function Sidebar({ className }: SidebarProps) {
-    const { signOut, user } = useAuth();
-
-    // Menu dinâmico baseado no cargo (Role)
+    // Verifica se é admin (baseado na role definida no Backend)
     const isAdmin = user?.role === 'admin';
 
-    const navItems = [
-        {
-            icon: LayoutDashboard,
-            label: isAdmin ? 'Painel Admin' : 'Visão Geral',
-            path: isAdmin ? '/admin/dashboard' : '/dashboard'
-        },
-        // Itens de Admin
-        ...(isAdmin ? [
-            { icon: Building2, label: 'Empresas', path: '/admin/companies' },
-            { icon: UploadCloud, label: 'Upload Admin', path: '/admin/upload' },
-        ] : [
-            // Itens de Cliente
-            { icon: FileText, label: 'Meus Documentos', path: '/documents' },
-        ]),
-        // Comum
-        // { icon: Settings, label: 'Configurações', path: '/settings' }, 
-    ];
+    // Define os links baseados no perfil
+    const navItems = isAdmin
+        ? [
+            // --- MENU DO ADMINISTRADOR ---
+            { label: 'Visão Geral', icon: LayoutDashboard, path: '/admin/dashboard' },
+            { label: 'Gestão de Empresas', icon: Building2, path: '/admin/companies' },
+            { label: 'Upload Centralizado', icon: UploadCloud, path: '/admin/upload' },
+            { label: 'Configurações', icon: Settings, path: '/settings' },
+        ]
+        : [
+            // --- MENU DO CLIENTE ---
+            { label: 'Meu Painel', icon: LayoutDashboard, path: '/dashboard' },
+            { label: 'Meus Documentos', icon: FileText, path: '/documents' },
+            { label: 'Minha Empresa', icon: Building2, path: '/company-profile' },
+        ];
+
+    const handleSignOut = () => {
+        signOut();
+        navigate('/login');
+    };
 
     return (
-        <aside className={clsx(
-            "w-64 bg-slate-900 text-white flex-col h-screen fixed left-0 top-0 border-r border-slate-800 z-20 transition-transform",
-            // Se não passar className, assume comportamento padrão (visível desktop)
-            className || "hidden md:flex"
-        )}>
+        <aside className="w-64 bg-slate-900 text-white min-h-screen flex flex-col transition-all duration-300">
+            {/* Header da Sidebar */}
+            <div className="h-16 flex items-center px-6 border-b border-slate-800">
+                <div className="bg-blue-600 p-1.5 rounded-lg mr-3">
+                    <FileText className="h-5 w-5 text-white" />
+                </div>
+                <span className="font-bold text-lg tracking-tight">LicitaDocs</span>
+            </div>
 
-            {/* Logo */}
-            <div className="h-16 flex items-center px-6 border-b border-slate-800/50">
-                <span className="text-xl font-bold bg-linear-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
-                    LicitaDoc <span className="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-normal">v1.0</span>
-                </span>
+            {/* Perfil Resumido */}
+            <div className="px-6 py-6 border-b border-slate-800">
+                <p className="text-sm font-medium text-white truncate">
+                    {/* CORREÇÃO AQUI: Usamos 'sub' que é o campo padrão do JWT para o email/id */}
+                    {user?.sub}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${isAdmin ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
+                        }`}>
+                        {isAdmin ? 'Administrador' : 'Cliente'}
+                    </span>
+                </div>
             </div>
 
             {/* Navegação */}
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-                <p className="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-2">
-                    Menu Principal
-                </p>
-
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className={({ isActive }) =>
-                            clsx(
-                                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group",
-                                isActive
-                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 translate-x-1"
-                                    : "text-slate-400 hover:bg-slate-800/50 hover:text-white hover:translate-x-1"
-                            )
-                        }
-                    >
-                        {/* Ícone com brilho no hover */}
-                        <item.icon size={18} className="group-hover:text-blue-400 transition-colors" />
-                        {item.label}
-                    </NavLink>
-                ))}
+            <nav className="flex-1 px-4 py-6 space-y-1">
+                {navItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                        <Link
+                            key={item.path}
+                            to={item.path}
+                            className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors group ${isActive
+                                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                }`}
+                        >
+                            <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-white' : 'text-slate-500 group-hover:text-white'
+                                }`} />
+                            {item.label}
+                        </Link>
+                    );
+                })}
             </nav>
 
-            {/* Footer do Menu */}
-            <div className="p-4 border-t border-slate-800/50 bg-slate-900/50">
+            {/* Footer / Logout */}
+            <div className="p-4 border-t border-slate-800">
                 <button
-                    onClick={signOut}
-                    className="flex items-center gap-3 px-3 py-2.5 w-full text-slate-400 hover:text-red-400 hover:bg-red-950/30 rounded-lg text-sm font-medium transition-all group"
+                    onClick={handleSignOut}
+                    className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-400 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors"
                 >
-                    <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+                    <LogOut className="mr-3 h-5 w-5" />
                     Sair do Sistema
                 </button>
             </div>

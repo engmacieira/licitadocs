@@ -11,7 +11,8 @@ from app.routers import (
     document_router, 
     admin_router, 
     ai_router, 
-    user_router
+    user_router, 
+    dashboard_router
 )
 from app.models import certificate_model
 
@@ -22,7 +23,7 @@ from app.models import certificate_model
 # Configuração da Aplicação
 app = FastAPI(
     title="LicitaDoc API",
-    version="0.9.0", # Versão Sprint 10 (Blindagem)
+    version="1.0.3", 
     description="""
     API Backend do sistema LicitaDoc.
     
@@ -58,8 +59,9 @@ app.include_router(user_router.router)
 app.include_router(document_router.router)
 app.include_router(ai_router.router)
 app.include_router(admin_router.router)
+app.include_router(dashboard_router.router)
 
 # Rota de Health Check (útil para monitoramento)
 @app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok", "version": "0.9.0", "system": "LicitaDoc API"}
+    return {"status": "ok", "version": "1.0.3", "system": "LicitaDoc API"}
