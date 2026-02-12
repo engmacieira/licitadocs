@@ -5,7 +5,8 @@ from typing import List, Any
 
 from app.core.database import get_db
 from app.dependencies import get_current_active_admin, get_current_active_user
-from app.models.user_model import User, Company
+from app.models.user_model import User
+from app.models.company_model import Company
 from app.models.document_model import Document 
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])

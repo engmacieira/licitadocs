@@ -4,7 +4,7 @@ Responsável por mapear a tabela 'documents' e suas regras de negócio.
 """
 import uuid
 import enum
-from sqlalchemy import Column, String, Date, ForeignKey, DateTime
+from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -34,13 +34,8 @@ class Document(Base):
     # =================================================================
     # Identificadores
     # =================================================================
-    id = Column(
-        String, 
-        primary_key=True, 
-        default=generate_uuid, 
-        index=True,
-        doc="Identificador único universal (UUID) do documento"
-    )
+    title = Column(String, nullable=True)
+    id = Column(String, primary_key=True, default=generate_uuid, index=True, doc="Identificador único universal (UUID) do documento")
 
     # =================================================================
     # Metadados do Arquivo
@@ -76,7 +71,7 @@ class Document(Base):
     company_id = Column(String, ForeignKey("companies.id"), nullable=False)
     
     # Backref permite acessar 'company.documents' sem declarar lá explicitamente
-    company = relationship("app.models.user_model.Company", backref="documents")
+    company = relationship("app.models.company_model.Company", back_populates="documents")
     
     # Relacionamento 1:1 com Certidão (Se este documento for uma certidão)
     certificate_info = relationship(

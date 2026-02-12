@@ -12,7 +12,8 @@ from app.routers import (
     admin_router, 
     ai_router, 
     user_router, 
-    dashboard_router
+    dashboard_router,
+    company_router
 )
 from app.models import certificate_model
 
@@ -59,6 +60,7 @@ app.include_router(user_router.router)
 app.include_router(document_router.router)
 app.include_router(ai_router.router)
 app.include_router(admin_router.router)
+app.include_router(company_router.router)
 app.include_router(dashboard_router.router)
 
 # Rota de Health Check (útil para monitoramento)

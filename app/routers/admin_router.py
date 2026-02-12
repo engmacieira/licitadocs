@@ -14,7 +14,8 @@ from app.core.database import get_db
 from app.dependencies import get_current_active_admin
 from app.schemas.company_schemas import CompanyCreate, CompanyUpdate, CompanyResponse
 from app.repositories.company_repository import CompanyRepository
-from app.models.user_model import User, Company
+from app.models.user_model import User
+from app.models.company_model import Company
 from app.models.document_model import Document
 
 

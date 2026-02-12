@@ -6,7 +6,8 @@ def test_create_user_success(client):
     Cenário: Cadastro de usuário com dados válidos e ARQUIVOS (Novo Fluxo).
     Resultado Esperado: 201 Created e retorno do ID.
     """
-    # 1. Dados do Formulário (Não é JSON aninhado, são campos soltos)
+    # 1. Dados do Formulário
+    # Em testes multipart, dicionários simples funcionam bem, mas vamos garantir
     payload = {
         "email": "sucesso_upload@teste.com",
         "password": "senha_segura_123",
@@ -15,13 +16,15 @@ def test_create_user_success(client):
         "trade_name": "Teste SA"
     }
 
-    # 2. Arquivos Simulados (BytesIO cria um arquivo na memória RAM)
+    # 2. Arquivos Simulados
+    # Dica: O nome do campo (key) deve bater com o do endpoint (social_contract, cnpj_card)
     files = {
         'social_contract': ('contrato.pdf', b'%PDF-1.4 content...', 'application/pdf'),
         'cnpj_card': ('cnpj.pdf', b'%PDF-1.4 content...', 'application/pdf')
     }
 
-    # 3. Envio como Multipart (data=... e files=...)
+    # 3. Envio
+    # O segredo aqui é que data=payload envia Content-Type: multipart/form-data automaticamente
     response = client.post("/auth/register", data=payload, files=files)
 
     if response.status_code != 201:
@@ -40,11 +43,15 @@ def test_create_user_invalid_email(client):
         "cnpj": "000",
         "legal_name": "X"
     }
-    # Arquivos dummy para não falhar na validação de arquivo, e sim na de email
+    
+    # Precisamos enviar arquivos mesmo no teste de falha de email, 
+    # senão ele falha antes dizendo "Missing Field: social_contract"
     files = {
         'social_contract': ('a.pdf', b'', 'application/pdf'),
         'cnpj_card': ('b.pdf', b'', 'application/pdf')
     }
     
     response = client.post("/auth/register", data=payload, files=files)
+    
+    # O FastAPI retorna 422 tanto para erro de validação de tipo quanto de valor
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

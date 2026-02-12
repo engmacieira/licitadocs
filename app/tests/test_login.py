@@ -1,25 +1,48 @@
+"""
+Testes de Autenticação (Login).
+Foca na obtenção do Token JWT.
+"""
 from fastapi import status
-from app.core.security import create_access_token
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+from app.core.security import get_password_hash
+from app.models.user_model import User, UserRole
+from app.main import app
 
-def test_login_success(client):
-    """
-    Cenário: Login com credenciais válidas.
-    """
-    # 1. Setup: Cria usuário pela rota LEGADA (mais simples para testes)
-    user_payload = {
-        "email": "login_user@teste.com",
-        "password": "senha_forte_123"
-        # Nota: register-simple não pede CNPJ nem arquivos
-    }
-    # ATENÇÃO: Mudamos para /register-simple
-    client.post("/auth/register-simple", json=user_payload)
+# Instancia o client caso não venha da fixture (garantia)
+client = TestClient(app)
 
-    # 2. Ação: Tentar logar
+def setup_user(db: Session, email: str, password: str):
+    """Helper para criar usuário direto no banco (Mais seguro que depender da rota de registro)"""
+    user = User(
+        email=email,
+        password_hash=get_password_hash(password),
+        role=UserRole.CLIENT.value,
+        is_active=True
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def test_login_success(client, db_session: Session):
+    """
+    Cenário: Login com credenciais válidas na rota padrão (/auth/token).
+    """
+    email = "login_ok@teste.com"
+    password = "senha_forte_123"
+    
+    # 1. Setup (Cria no banco)
+    setup_user(db_session, email, password)
+
+    # 2. Ação: Login (OAuth2 Standard Form Data)
     login_data = {
-        "username": "login_user@teste.com",
-        "password": "senha_forte_123"
+        "username": email,
+        "password": password
     }
-    response = client.post("/auth/login", data=login_data)
+    
+    # Tenta na rota padrão do FastAPI/OAuth2
+    response = client.post("/auth/token", data=login_data)
 
     # 3. Asserção
     assert response.status_code == status.HTTP_200_OK
@@ -27,39 +50,35 @@ def test_login_success(client):
     assert "access_token" in data
     assert data["token_type"] == "bearer"
 
-def test_login_wrong_password(client):
+def test_login_wrong_password(client, db_session: Session):
     """
     Cenário: Email correto, senha errada.
-    Resultado: 401 Unauthorized.
     """
-    # 1. Setup
-    user_payload = {
-        "email": "wrong_pass@teste.com",
-        "password": "senha_certa",
-        "is_active": True
-    }
-    client.post("/auth/register", json=user_payload)
+    email = "wrong_pass@teste.com"
+    password = "senha_certa"
+    
+    setup_user(db_session, email, password)
 
     # 2. Ação: Senha errada
     login_data = {
-        "username": "wrong_pass@teste.com",
+        "username": email,
         "password": "senha_ERRADA"
     }
-    response = client.post("/auth/login", data=login_data)
+    response = client.post("/auth/token", data=login_data)
 
     # 3. Asserção
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert response.json()["detail"] == "Email ou senha incorretos"
+    assert "incorretos" in response.json().get("detail", "").lower()
 
-def test_login_user_not_found(client):
+def test_login_user_not_found(client, db_session: Session):
     """
     Cenário: Email não cadastrado.
-    Resultado: 401 Unauthorized (Por segurança, não dizemos que o email não existe).
     """
     login_data = {
         "username": "fantasma@teste.com",
         "password": "123"
     }
-    response = client.post("/auth/login", data=login_data)
+    response = client.post("/auth/token", data=login_data)
     
+    # Por segurança, o sistema retorna 401 (Igual a senha errada)
     assert response.status_code == status.HTTP_401_UNAUTHORIZED

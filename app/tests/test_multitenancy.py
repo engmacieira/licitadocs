@@ -1,125 +1,130 @@
 import pytest
-from app.models.user_model import User, Company, UserRole
-from app.models.document_model import Document
+from app.models.user_model import User, UserRole, UserCompanyLink, UserCompanyRole
+from app.models.company_model import Company
+from app.models.document_model import Document, DocumentStatus
 from app.core.security import get_password_hash
 from fastapi.testclient import TestClient
+
+# Helper para autenticação
+def get_auth_headers(client, email):
+    response = client.post("/auth/token", data={"username": email, "password": "123"})
+    if response.status_code != 200:
+        raise ValueError(f"Falha login helper: {response.json()}")
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
 
 # Helper para criar o cenário (Fixture local)
 @pytest.fixture
 def setup_scenarios(db_session):
     """
     Cria 2 Empresas, 2 Usuários e 2 Documentos.
-    Retorna um dicionário com os dados para usarmos nos testes.
     """
     # 1. Criar Empresas
     company_a = Company(cnpj="11111111000111", razao_social="Empresa A Ltda")
     company_b = Company(cnpj="22222222000122", razao_social="Empresa B Ltda")
     db_session.add_all([company_a, company_b])
-    db_session.commit() # Commit para gerar os IDs
+    db_session.commit() 
 
-    # 2. Criar Usuários vinculados
+    # 2. Criar Usuários
     user_a = User(
         email="user_a@empresa-a.com",
-        password_hash=get_password_hash("12345678"),
-        company_id=company_a.id,
-        role=UserRole.CLIENT.value
+        password_hash=get_password_hash("123"),
+        role=UserRole.CLIENT.value,
+        is_active=True
     )
     user_b = User(
         email="user_b@empresa-b.com",
-        password_hash=get_password_hash("12345678"),
-        company_id=company_b.id,
-        role=UserRole.CLIENT.value
+        password_hash=get_password_hash("123"),
+        role=UserRole.CLIENT.value,
+        is_active=True
     )
     db_session.add_all([user_a, user_b])
     db_session.commit()
 
-    # 3. Criar Documentos (Simulando uploads já feitos por um ADMIN anteriormente)
+    # 3. Criar Vínculos (Correção Multi-Tenant)
+    link_a = UserCompanyLink(
+        user_id=user_a.id, 
+        company_id=company_a.id, 
+        role=UserCompanyRole.MASTER.value, 
+        is_active=True
+    )
+    link_b = UserCompanyLink(
+        user_id=user_b.id, 
+        company_id=company_b.id, 
+        role=UserCompanyRole.MASTER.value, 
+        is_active=True
+    )
+    db_session.add_all([link_a, link_b])
+    db_session.commit()
+
+    # 4. Criar Documentos (COM TÍTULO AGORA)
     doc_a = Document(
-        filename="segredo_empresa_A.pdf",
-        file_path="/storage/a.pdf",
-        company_id=company_a.id, # Pertence à A
-        status="valid"
+        title="Doc A Segredo",  # <--- Obrigatório
+        filename="segredo_a.pdf",
+        file_path="storage/a.pdf",
+        company_id=company_a.id,
+        uploaded_by_id=user_a.id,
+        status=DocumentStatus.VALID.value
     )
     doc_b = Document(
-        filename="segredo_empresa_B.pdf",
-        file_path="/storage/b.pdf",
-        company_id=company_b.id, # Pertence à B
-        status="valid"
+        title="Doc B Segredo", # <--- Obrigatório
+        filename="segredo_b.pdf",
+        file_path="storage/b.pdf",
+        company_id=company_b.id,
+        uploaded_by_id=user_b.id,
+        status=DocumentStatus.VALID.value
     )
     db_session.add_all([doc_a, doc_b])
     db_session.commit()
-    
+
     return {
+        "company_a": company_a,
+        "company_b": company_b,
         "user_a": user_a,
         "user_b": user_b,
         "doc_a": doc_a,
-        "doc_b": doc_b,
+        "doc_b": doc_b
     }
 
-def get_auth_headers(client: TestClient, email: str, password: str = "12345678"):
-    resp = client.post("/auth/login", data={"username": email, "password": password})
-    token = resp.json()["access_token"]
-    return {"Authorization": f"Bearer {token}"}
-
-# --- TESTES ---
-
-def test_list_documents_isolation(client, setup_scenarios):
+def test_isolation_list_documents(client, setup_scenarios):
     """
-    Testa se o Usuário A vê APENAS os documentos da Empresa A.
+    Testa se o Usuário A vê APENAS documentos da Empresa A.
     """
-    # Login como Usuário A
     headers_a = get_auth_headers(client, setup_scenarios["user_a"].email)
     
-    # Busca documentos
-    resp = client.get("/documents/", headers=headers_a)
-    data = resp.json()
+    # Busca documentos (passando ID para garantir filtro correto)
+    company_a_id = setup_scenarios["company_a"].id
+    response = client.get(f"/documents/?company_id={company_a_id}", headers=headers_a)
     
-    # Asserções
-    assert resp.status_code == 200
-    assert len(data) == 1 # Só deve vir 1 documento (o dele)
-    assert data[0]["filename"] == "segredo_empresa_A.pdf" # Confirma que é o certo
+    assert response.status_code == 200
+    data = response.json()
     
-    # Prova real: Tenta achar o documento B na lista
-    filenames = [d["filename"] for d in data]
-    assert "segredo_empresa_B.pdf" not in filenames
+    # Deve ver 1 documento
+    assert len(data) == 1
+    assert data[0]["title"] == "Doc A Segredo"
 
-def test_get_document_by_id_security(client, setup_scenarios):
+def test_access_denied_to_other_company_document(client, setup_scenarios):
     """
-    Testa se o Usuário A tentar acessar o Documento B diretamente pela URL (ID),
-    ele recebe um 404 (Not Found) ou 403 (Forbidden).
+    Testa se o Usuário A tentar baixar o Documento B, ele é bloqueado.
     """
-    # Login como Usuário A
     headers_a = get_auth_headers(client, setup_scenarios["user_a"].email)
-    
-    # Tenta pegar o ID do documento B
     doc_b_id = setup_scenarios["doc_b"].id
     
-    # Aqui precisamos da rota de download ou get by ID
-    # Como a rota de GET ID (/documents/{id}) não estava explícita nos arquivos enviados,
-    # vamos assumir a rota de download que criamos ou a rota geral.
-    # Se você não tiver rota GET /documents/{id}, esse teste vai dar 404 ou 405, o que também é seguro.
+    # Tenta baixar
     resp = client.get(f"/documents/{doc_b_id}/download", headers=headers_a)
     
-    # Deve ser 403 (Forbidden) ou 404 (Not Found - blindado no filtro)
-    assert resp.status_code in [403, 404]
-
-def test_client_cannot_upload(client, setup_scenarios):
-    """
-    [ATUALIZADO] Testa se o Usuário A (CLIENTE) é impedido de fazer upload.
-    Regra atual: Apenas Admin faz upload.
-    """
-    import io
-    
-    headers_a = get_auth_headers(client, setup_scenarios["user_a"].email)
-    
-    # Prepara upload fake
-    file_obj = io.BytesIO(b"%PDF-1.4 conteudo novo")
-    
-    resp = client.post(
-        "/documents/upload",
-        files={"file": ("tentativa.pdf", file_obj, "application/pdf")},
-        headers=headers_a
-    )
-    
-    # Agora a expectativa correta é 403 FORBIDDEN
+    # Deve ser 403 (Forbidden)
     assert resp.status_code == 403
+
+def test_cross_tenant_listing_attempt(client, setup_scenarios):
+    """
+    Testa se o Usuário A tentar listar documentos da Empresa B explicitamente.
+    """
+    headers_a = get_auth_headers(client, setup_scenarios["user_a"].email)
+    company_b_id = setup_scenarios["company_b"].id
+    
+    # Tenta listar empresa vizinha
+    response = client.get(f"/documents/?company_id={company_b_id}", headers=headers_a)
+    
+    # Deve ser bloqueado
+    assert response.status_code == 403

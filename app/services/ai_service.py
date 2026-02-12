@@ -5,62 +5,60 @@ Centraliza a lógica de negócio do "Concierge" (Engenharia de Prompt e Contexto
 from sqlalchemy.orm import Session
 from app.models.user_model import User
 from app.repositories.document_repository import DocumentRepository
-from app.core.ai_client import ai_client
+from app.core.ai_client import AIClient
 
 class AIService:
     @staticmethod
     def generate_concierge_response(db: Session, user: User, user_message: str) -> str:
         """
         Orquestra o fluxo do Chatbot:
-        1. Valida permissão.
-        2. Busca documentos da empresa no banco (Contexto RAG).
-        3. Monta o Prompt de Sistema.
-        4. Chama o Client do Gemini.
+        1. Identifica a empresa do usuário.
+        2. Busca documentos dessa empresa (Contexto RAG).
+        3. Chama a IA.
         """
         
-        # 1. Validação Básica
-        if not user.company_id:
-            return "Erro: Você não está vinculado a uma empresa para consultar documentos."
+        # [CORREÇÃO DE COMPATIBILIDADE SPRINT 15]
+        # Antes: company_id = user.company_id
+        # Agora: Pegamos a primeira empresa vinculada (Regra: Cliente vê sua empresa)
+        company_id = None
+        
+        # 1. Tenta pegar via link direto (Jeito Novo)
+        if user.company_links:
+            company_id = user.company_links[0].company_id
+        
+        # 2. Se não achou (ex: Admin sem vínculo explícito ou usuário legado), tenta lógica alternativa
+        # Mas para o chat funcionar, PRECISA de uma empresa.
+        if not company_id:
+             return "Não consegui identificar sua empresa para consultar os documentos. Contate o suporte."
 
-        # 2. Busca o Contexto (Metadados dos Documentos Reais)
-        documents = DocumentRepository.get_by_company(db, user.company_id)
+        # 3. Busca documentos dessa empresa para dar contexto à IA
+        documents = DocumentRepository.get_by_company(db, company_id=company_id)
         
-        # Formata a lista para texto
-        doc_list_text = "O cliente possui os seguintes documentos no cofre:\n"
-        if not documents:
-            doc_list_text += "- Nenhum documento cadastrado (Cofre Vazio).\n"
-        else:
-            for doc in documents:
-                validade = doc.expiration_date.strftime("%d/%m/%Y") if doc.expiration_date else "Indeterminada"
-                # Adicionamos emojis para ajudar a IA a entender o status visualmente
-                status_icon = "✅" if doc.status == "valid" else "⚠️" if doc.status == "warning" else "❌"
-                doc_list_text += f"- {status_icon} Arquivo: '{doc.filename}' | Validade: {validade} | Status: {doc.status}\n"
+        # Cria um mini-resumo dos docs para a IA saber o que existe
+        doc_context = "\n".join([f"- {d.filename} (Status: {d.status})" for d in documents])
+        
+        if not doc_context:
+            doc_context = "Nenhum documento encontrado no sistema para esta empresa."
 
-        # 3. Engenharia de Prompt (Persona + Contexto)
-        system_instruction = f"""
-        ATUE COMO: O 'Concierge LicitaDoc', um assistente especializado em gestão documental para licitações.
+        # 4. Monta o Prompt
+        system_prompt = f"""
+        Você é um consultor especialista em licitações chamado 'Licitador IA'.
+        Você trabalha para a empresa ID: {company_id}.
         
-        SEU CONTEXTO (O COFRE DA EMPRESA):
-        {doc_list_text}
+        O usuário tem os seguintes documentos cadastrados no sistema:
+        {doc_context}
         
-        SUAS REGRAS:
-        1. OBSERVAÇÃO: Responda APENAS com base na lista de documentos acima.
-        2. ANÁLISE: Se o usuário perguntar "O que falta?", analise se ele tem as certidões básicas (CNPJ, FGTS, Trabalhista, Municipal, Estadual). Se faltar alguma, avise.
-        3. STATUS: Se houver documentos vencidos (❌) ou vencendo (⚠️), alerte o usuário imediatamente.
-        4. TOM DE VOZ: Profissional, prestativo e direto.
-        5. PROTEÇÃO: Se a pergunta não for sobre licitações ou documentos, diga que não pode ajudar.
-        
-        PERGUNTA DO USUÁRIO:
-        "{user_message}"
+        Responda à dúvida do usuário com base nesses documentos e no seu conhecimento sobre licitações.
+        Se ele perguntar sobre um documento que não está na lista, avise que ele precisa fazer o upload.
+        Seja cordial e profissional.
         """
 
-        # 4. Chamada à IA (Usando o método correto do AIClient)
+        # 5. Chama o Cliente LLM (Gemini/OpenAI)
         try:
-            response_text = ai_client.generate_chat_response(
-                message=user_message,
-                context=system_instruction
+            return AIClient.generate_chat_response(
+                system_instruction=system_prompt,
+                user_message=user_message
             )
-            return response_text
         except Exception as e:
-            print(f"Erro no AIService: {e}")
-            return "Desculpe, meu sistema de processamento está indisponível momentaneamente. Tente novamente."
+            print(f"Erro na IA: {e}")
+            return "Desculpe, meu cérebro digital está um pouco lento agora. Tente novamente em instantes."

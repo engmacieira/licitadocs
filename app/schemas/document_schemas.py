@@ -19,6 +19,7 @@ class DocumentResponse(BaseModel):
         description="Identificador único do documento (UUID)",
         examples=["550e8400-e29b-41d4-a716-446655440000"]
     )
+    title: str = Field(..., description="Título do documento")
     filename: str = Field(
         ..., 
         description="Nome original do arquivo enviado",

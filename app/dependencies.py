@@ -6,10 +6,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
+from typing import Optional
 
 from app.core.database import get_db
 from app.core.security import SECRET_KEY, ALGORITHM
-from app.models.user_model import UserRole, User
+from app.models.user_model import UserRole, User, UserCompanyLink, UserCompanyRole
 from app.repositories.user_repository import UserRepository
 
 # Configura o esquema de segurança para o Swagger UI
@@ -66,3 +67,30 @@ def get_current_active_admin(current_user: User = Depends(get_current_user)) -> 
             detail="Acesso negado: Requer privilégios de Administrador."
         )
     return current_user
+
+def verify_company_access(
+    company_id: str, 
+    user: User, 
+    required_role: Optional[str] = None
+) -> UserCompanyLink:
+    """
+    Verifica se o usuário tem acesso à empresa especificada.
+    Se required_role for passado (ex: MASTER), verifica se ele tem esse cargo.
+    """
+    # Procura o vínculo na lista de links do usuário (carregada na memória)
+    # Isso evita uma query extra no banco se o user já estiver carregado
+    link = next((l for l in user.company_links if l.company_id == company_id), None)
+
+    if not link or not link.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Você não tem acesso a esta empresa."
+        )
+
+    if required_role and link.role != required_role:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail=f"Permissão insuficiente. Requer acesso {required_role}."
+        )
+    
+    return link

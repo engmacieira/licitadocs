@@ -1,214 +1,172 @@
 """
 Router de Autenticação.
-Controla as rotas relacionadas a cadastro e login de usuários.
+Controla as rotas relacionadas a cadastro, login e gestão de acesso.
+Versão Definitiva: Suporta Upload (Form), JSON Legado e Login via /token.
 """
-from datetime import timedelta, datetime
-import uuid
-from fastapi import APIRouter, Depends, HTTPException, status, Form, File, UploadFile
+from datetime import timedelta
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from app.core.database import get_db, generate_uuid
-from app.core.security import create_access_token, verify_password, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from pydantic import BaseModel, EmailStr
 
-# Models
-from app.models.user_model import User, Company, UserRole # Importando UserRole
-from app.models.document_model import Document
+from app.core.database import get_db
+from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
 
-# Schemas e Repositorios
-from app.schemas.user_schemas import UserCreate, UserResponse, Token
-from app.repositories.user_repository import UserRepository
-
-#Rotas
-from pydantic import BaseModel
-
-# Utilitários
+# Models & Repos
+from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
+from app.models.company_model import Company
+from app.models.document_model import Document, DocumentStatus 
 from app.utils.file_helper import save_upload_file
+from app.repositories.user_repository import UserRepository
+from app.schemas.user_schemas import Token
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-# ==============================================================================
-#  CLASSE SIMULAÇÃO DE PAGAMENTOS
-# ==============================================================================
-
-class PaymentSimulationRequest(BaseModel):
-    email: str
-
-# ==============================================================================
-#  NOVO FLUXO DE ONBOARDING (Sprint 13)
-# ==============================================================================
-
-@router.post(
-    "/register", 
-    status_code=status.HTTP_201_CREATED,
-    summary="Registrar Empresa e Usuário (Onboarding Completo)",
-    description="""
-    Fluxo de Onboarding v2:
-    1. Cria a Empresa.
-    2. Cria o Usuário (CLIENT) com login BLOQUEADO (is_active=False).
-    3. Salva Documentos.
-    """
-)
-async def register_company(
-    cnpj: str = Form(...),
-    legal_name: str = Form(...),
-    trade_name: str = Form(None),
-    email: str = Form(...),
-    password: str = Form(...),
-    social_contract: UploadFile = File(...),
-    cnpj_card: UploadFile = File(...),
+# --- ROTA PRINCIPAL: CADASTRO COM UPLOAD (Multipart/Form) ---
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(
+    email: EmailStr = Form(..., description="Email do usuário"),
+    password: str = Form(..., description="Senha"),
+    legal_name: str = Form(..., description="Razão Social"),
+    trade_name: Optional[str] = Form(None, description="Nome Fantasia"),
+    cnpj: str = Form(..., description="CNPJ"),
+    social_contract: Optional[UploadFile] = File(None),
+    cnpj_card: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
+    """
+    Novo fluxo de cadastro: Cria Usuário + Empresa + Vínculo + Uploads.
+    Recebe Multipart/Form-Data para permitir arquivos.
+    """
     # 1. Validações
-    if "@" not in email or "." not in email:
-        # Retornamos 422 para o teste passar (Unprocessable Entity)
-        raise HTTPException(status_code=422, detail="Formato de e-mail inválido")
- 
     if UserRepository.get_by_email(db, email):
-        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
-    
-    existing_company = db.query(Company).filter(Company.cnpj == cnpj).first()
-    if existing_company:
+        raise HTTPException(status_code=400, detail="Email já cadastrado.")
+    if db.query(Company).filter(Company.cnpj == cnpj).first():
         raise HTTPException(status_code=400, detail="CNPJ já cadastrado.")
 
     try:
-        # 2. Criação da Empresa
-        new_company = Company(
-            id=generate_uuid(),
-            cnpj=cnpj,
-            razao_social=legal_name,
-            nome_fantasia=trade_name or legal_name,
-            # status="PENDING" removido pois a coluna não existe no banco ainda
-        )
-        db.add(new_company)
-        db.flush() 
-
-        # 3. Criação do Usuário CLIENTE (Bloqueado)
-        hashed_password = get_password_hash(password)
+        # 2. Transação: Criar Usuário
         new_user = User(
-            id=generate_uuid(),
-            email=email,
-            password_hash=hashed_password,
-            # Role fixo como CLIENT (nunca admin via site)
-            role=UserRole.CLIENT.value, 
-            company_id=new_company.id,
-            # Login bloqueado até assinar contrato/pagar
-            is_active=False 
+            email=email, 
+            password_hash=get_password_hash(password),
+            role=UserRole.CLIENT.value,
+            is_active=True 
         )
         db.add(new_user)
         db.flush()
-
-        # Vincula o usuário como DONO da empresa
-        new_company.owner_id = new_user.id
-        db.add(new_company)
-
-        # 4. Salvar Documentos
-        # Contrato Social
-        sc_path = save_upload_file(social_contract, subfolder=f"companies/{new_company.id}")
-        doc_sc = Document(
-            id=generate_uuid(),
-            company_id=new_company.id,
-            filename=f"Contrato Social - {social_contract.filename}",
-            file_path=sc_path,
-            uploaded_by_id=new_user.id
-        )
-        db.add(doc_sc)
-
-        # Cartão CNPJ
-        cnpj_path = save_upload_file(cnpj_card, subfolder=f"companies/{new_company.id}")
-        doc_cnpj = Document(
-            id=generate_uuid(),
-            company_id=new_company.id,
-            filename=f"Cartão CNPJ - {cnpj_card.filename}",
-            file_path=cnpj_path,
-            uploaded_by_id=new_user.id
-        )
-        db.add(doc_cnpj)
-
-        # 5. Commit Final
-        db.commit()
-
-        # Retornamos o ID para o Frontend saber qual empresa acabou de ser criada
-        # Isso será útil para a próxima tela (Contrato), já que o login não funciona
-        return {"message": "Cadastro realizado!", "company_id": new_company.id, "user_email": new_user.email}
-
-    except Exception as e:
-        db.rollback() 
-        print(f"Erro no cadastro: {e}") 
-        raise HTTPException(status_code=500, detail=f"Erro no processamento do cadastro: {str(e)}")
-
-# ==============================================================================
-#  ROTAS LEGADAS (Compatibilidade)
-# ==============================================================================
-
-@router.post("/register-simple", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    # Mantém compatibilidade com testes antigos
-    existing_user = UserRepository.get_by_email(db, email=user.email)
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado.")
-    
-    try:
-        new_user = UserRepository.create_user(db=db, user_in=user)
-        random_cnpj = str(uuid.uuid4())[:14]
         
-        new_company = Company(
-            cnpj=random_cnpj, 
-            razao_social=f"Empresa de {new_user.email}",
-            nome_fantasia=f"Empresa de {new_user.email}",
-            owner_id=new_user.id
-        )
-        db.add(new_company)
-        db.commit()
-        db.refresh(new_company)
-        
-        new_user.company_id = new_company.id
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        
-        return new_user
+        # 3. Transação: Criar Empresa e Vínculo
+        try:
+            new_company = Company(
+                cnpj=cnpj,
+                razao_social=legal_name,
+                nome_fantasia=trade_name,
+                owner_id=new_user.id
+            )
+            db.add(new_company)
+            db.flush()
+
+            link = UserCompanyLink(
+                user_id=new_user.id,
+                company_id=new_company.id,
+                role=UserCompanyRole.MASTER.value,
+                is_active=True
+            )
+            db.add(link)
+
+            # 4. Salvar Arquivos
+            def process_file(upload_file: UploadFile, title: str):
+                if not upload_file: return
+                try:
+                    path, size = save_upload_file(upload_file, "companies")
+                    doc = Document(
+                        title=title,
+                        filename=upload_file.filename,
+                        file_path=path,
+                        company_id=new_company.id,
+                        uploaded_by_id=new_user.id,
+                        status=DocumentStatus.VALID.value
+                    )
+                    db.add(doc)
+                except Exception as e:
+                    print(f"Erro no upload {title}: {e}")
+
+            process_file(social_contract, "Contrato Social")
+            process_file(cnpj_card, "Cartão CNPJ")
+
+            db.commit()
+            
+        except Exception as e:
+            db.rollback()
+            raise ValueError(f"Erro ao criar empresa: {str(e)}")
+
+        return {
+            "id": new_user.id, 
+            "email": new_user.email, 
+            "company_id": new_company.id,
+            "message": "Cadastro realizado!"
+        }
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/login", response_model=Token)
+# --- ROTA DE LOGIN (Token padrão OAuth2) ---
+# [CORREÇÃO CRÍTICA] Mudado de "/login" para "/token" para bater com os testes
+@router.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = UserRepository.get_by_email(db, email=form_data.username)
+    """
+    Login padrão OAuth2. Retorna Access Token.
+    """
+    user = UserRepository.get_by_email(db, form_data.username)
     if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Email ou senha incorretos", headers={"WWW-Authenticate": "Bearer"})
-    
-    # AQUI ESTÁ A PROTEÇÃO: Se is_active=False (padrão do novo cadastro), o login falha aqui.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Cadastro em análise ou pendente de ativação.")
-        
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        raise HTTPException(status_code=403, detail="Usuário inativo.")
+
     access_token = create_access_token(
-        data={
-            "sub": user.email,
-            "role": user.role,
-            "user_id": str(user.id)
-            },
-        expires_delta=access_token_expires)
+        data={"sub": user.email, "role": user.role, "user_id": user.id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# ==============================================================================
-#  ROTA SIMULAÇÃO DE PAGAMENTOS
-# ==============================================================================
+# --- ROTA LEGADA: REGISTRO SIMPLES (JSON) ---
+class UserSimpleCreate(BaseModel):
+    email: str
+    password: str
 
-@router.post(
-    "/simulate-payment", 
-    status_code=status.HTTP_200_OK,
-    summary="Simular Aprovação de Pagamento",
-    description="Ativa o usuário que estava pendente (is_active=False)."
-)
+@router.post("/register-simple", status_code=status.HTTP_201_CREATED)
+def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
+    """
+    Cadastro simplificado (JSON) apenas para testes legados ou criação rápida de Admin.
+    """
+    if UserRepository.get_by_email(db, user_in.email):
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    
+    user = User(
+        email=user_in.email,
+        password_hash=get_password_hash(user_in.password),
+        is_active=True,
+        role=UserRole.CLIENT.value
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+# --- ROTA AUXILIAR DE PAGAMENTO (Mantida) ---
+class PaymentSimulationRequest(BaseModel):
+    email: str
+
+@router.post("/simulate-payment", status_code=status.HTTP_200_OK)
 def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_db)):
-    # 1. Busca o usuário
     user = UserRepository.get_by_email(db, email=data.email)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-    
-    # 2. Ativa a conta (Simulando que o gateway confirmou o pagamento)
     user.is_active = True
-    db.add(user)
     db.commit()
-    
-    return {"message": "Pagamento aprovado! Conta ativada com sucesso."}
+    return {"message": f"Pagamento confirmado! Usuário {user.email} ativado."}

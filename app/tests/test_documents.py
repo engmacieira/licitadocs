@@ -1,15 +1,17 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from app.main import app
-from app.models.user_model import User, UserRole, Company
+from app.models.user_model import User, UserRole, UserCompanyLink, UserCompanyRole
+from app.models.company_model import Company
 from app.dependencies import get_current_user
 from unittest.mock import patch
 import io
 from fastapi import status
+import pytest
 
-client = TestClient(app)
+#client = TestClient(app)
 
-def test_upload_document_success(db_session: Session):
+def test_upload_document_success(client, db_session: Session):
     """
     Cenário: Upload de um PDF válido por um ADMIN.
     """
@@ -23,12 +25,19 @@ def test_upload_document_success(db_session: Session):
         email="admin_uploader@teste.com", 
         password_hash="pw", 
         is_active=True, 
-        role=UserRole.ADMIN.value, # <--- IMPORTANTE: Tem que ser ADMIN
-        company_id=company.id 
+        role=UserRole.ADMIN.value
     )
     db_session.add(admin_user)
     db_session.commit()
-    db_session.refresh(admin_user)
+    
+    link = UserCompanyLink(
+        user_id=admin_user.id, 
+        company_id=company.id, 
+        role=UserCompanyRole.MASTER.value,
+        is_active=True
+    )
+    db_session.add(link)
+    db_session.commit()
 
     # 3. Bypass Auth como Admin
     app.dependency_overrides[get_current_user] = lambda: admin_user
@@ -44,6 +53,7 @@ def test_upload_document_success(db_session: Session):
                 "/documents/upload",
                 files={"file": ("contrato.pdf", file_obj, "application/pdf")},
                 data={
+                    "title": "Contrato Social",
                     "expiration_date": "2026-12-31",
                     "target_company_id": company.id # Admin deve informar a empresa destino
                 },
@@ -57,7 +67,7 @@ def test_upload_document_success(db_session: Session):
     finally:
         del app.dependency_overrides[get_current_user]
 
-def test_upload_invalid_extension(db_session: Session):
+def test_upload_invalid_extension(client, db_session: Session):
     """
     Cenário: Tentar enviar .txt deve falhar com 400.
     OBS: Precisa ser ADMIN para chegar na validação da extensão.
@@ -75,6 +85,10 @@ def test_upload_invalid_extension(db_session: Session):
     )
     db_session.add(admin_user)
     db_session.commit()
+    
+    link = UserCompanyLink(user_id=admin_user.id, company_id=company.id, role="MASTER")
+    db_session.add(link)
+    db_session.commit()
 
     app.dependency_overrides[get_current_user] = lambda: admin_user
 
@@ -82,14 +96,17 @@ def test_upload_invalid_extension(db_session: Session):
         response = client.post(
             "/documents/upload",
             files={"file": ("wrong.txt", io.BytesIO(b"txt"), "text/plain")},
-            data={"target_company_id": company.id}
+            data={
+                "title": "Arquivo Texto", # <--- [CORREÇÃO] Adicionado Title
+                "target_company_id": company.id
+            }
         )
         assert response.status_code == 400
         assert "PDF" in response.json()["detail"]
     finally:
         del app.dependency_overrides[get_current_user]
 
-def test_list_documents(db_session: Session):
+def test_list_documents(client, db_session: Session):
     """
     Cenário: Listar documentos deve retornar array.
     """
@@ -102,8 +119,12 @@ def test_list_documents(db_session: Session):
     db_session.add(admin)
     
     # Cliente para testar a listagem
-    client_user = User(email="list@test.com", password_hash="pw", company_id=company.id, role=UserRole.CLIENT.value, is_active=True)
+    client_user = User(email="list@test.com", password_hash="pw", role=UserRole.CLIENT.value, is_active=True)
     db_session.add(client_user)
+    db_session.commit()
+    
+    link = UserCompanyLink(user_id=client_user.id, company_id=company.id, role="VIEWER", is_active=True)
+    db_session.add(link)
     db_session.commit()
 
     try:
@@ -116,7 +137,10 @@ def test_list_documents(db_session: Session):
             client.post(
                 "/documents/upload",
                 files={"file": ("lista.pdf", file_obj, "application/pdf")},
-                data={"target_company_id": company.id}
+                data={
+                    "title": "Doc para Listagem", # <--- [CORREÇÃO] Adicionado Title
+                    "target_company_id": company.id
+                }
             )
 
         # 2. Cliente tenta listar (Agora sim deve funcionar e ver o arquivo)
@@ -130,7 +154,7 @@ def test_list_documents(db_session: Session):
     finally:
         del app.dependency_overrides[get_current_user]
 
-def test_admin_upload_for_client(db_session: Session):
+def test_admin_upload_for_client(client, db_session: Session):
     """
     Cenário: Admin faz upload para outra empresa.
     """
@@ -152,7 +176,10 @@ def test_admin_upload_for_client(db_session: Session):
             response = client.post(
                 "/documents/upload",
                 files={"file": ("doc.pdf", file_obj, "application/pdf")},
-                data={"target_company_id": company.id}
+                data={
+                    "title": "Upload Admin", # <--- [CORREÇÃO] Adicionado Title
+                    "target_company_id": company.id
+                }
             )
 
         assert response.status_code == 201

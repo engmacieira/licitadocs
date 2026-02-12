@@ -1,7 +1,6 @@
 """
 Repositório de Usuários.
 Camada responsável por todas as operações diretas no banco de dados referentes a Usuários.
-
 """
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -15,16 +14,20 @@ class UserRepository:
     @staticmethod
     def create_user(db: Session, user_in: UserCreate) -> User:
         """
-        Cria um novo usuário com senha hash.
-        Lança ValueError se e-mail duplicado.
+        Cria um novo usuário (apenas a entidade User).
+        O vínculo com empresa deve ser feito posteriormente via UserCompanyLink.
         """
         hashed_password = get_password_hash(user_in.password)
         
+        # ATUALIZADO SPRINT 15: Removido company_id direto
         db_user = User(
             email=user_in.email,
             password_hash=hashed_password,
-            is_active=user_in.is_active,    
-            company_id=user_in.company_id
+            is_active=user_in.is_active,
+            cpf=user_in.cpf,
+            rg=user_in.rg,
+            celular=user_in.celular,
+            genero=user_in.genero
         )
         
         try:
@@ -35,7 +38,7 @@ class UserRepository:
             
         except IntegrityError:
             db.rollback()
-            raise ValueError("Email já cadastrado.")
+            raise ValueError("Email ou CPF já cadastrado.")
             
         except SQLAlchemyError as e:
             db.rollback()
@@ -43,10 +46,8 @@ class UserRepository:
 
     @staticmethod
     def get_by_email(db: Session, email: str) -> Optional[User]:
-        """Busca um usuário pelo email."""
         return db.query(User).filter(User.email == email).first()
         
     @staticmethod
     def get_by_id(db: Session, user_id: str) -> Optional[User]:
-        """Busca um usuário pelo ID."""
         return db.query(User).filter(User.id == user_id).first()

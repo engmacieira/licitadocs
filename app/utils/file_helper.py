@@ -1,5 +1,6 @@
 import os
 import shutil
+import uuid
 from fastapi import UploadFile
 from pathlib import Path
 
@@ -18,13 +19,15 @@ def save_upload_file(upload_file: UploadFile, subfolder: str) -> str:
 
         # Gera um caminho final (mantendo o nome original por enquanto)
         # TODO: No futuro, gerar UUID para o nome do arquivo para evitar conflitos/sanitizar
-        file_path = target_dir / upload_file.filename
+        file_ext = Path(upload_file.filename).suffix
+        unique_name = f"{uuid.uuid4()}{file_ext}"
+        file_path = target_dir / unique_name
 
         # Grava os bytes no disco
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(upload_file.file, buffer)
 
-        return str(file_path)
+        return str(file_path), file_size
     except Exception as e:
         print(f"Erro ao salvar arquivo: {e}")
         raise e

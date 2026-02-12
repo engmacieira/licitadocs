@@ -25,7 +25,7 @@ load_dotenv()
 # Se um modelo não for importado, o Alembic não detecta a tabela.
 # ------------------------------------------------------------------
 from app.core.database import Base
-from app.models import user_model, document_model, certificate_model  
+from app.models import user_model, company_model, document_model, certificate_model  
 
 # ------------------------------------------------------------------
 # 4. Configurações do Alembic

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional, List
 
-from app.models.user_model import Company
+from app.models.company_model import Company
 from app.schemas.company_schemas import CompanyCreate, CompanyUpdate
 
 class CompanyRepository:
