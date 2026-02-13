@@ -1,129 +1,78 @@
-# 🧭 Por Onde Começar - Sprint 15: Professionalização & Multi-Tenancy
+# 🤖 CONTEXTO DO PROJETO: LICITADOC (v1.0.4)
 
-Este guia define a trilha técnica para implementar a arquitetura de múltiplas empresas e o cadastro completo. **Siga esta ordem estritamente** para evitar inconsistências no banco de dados.
+**ATENÇÃO AGENTE AI:** Este arquivo contém o estado atual, regras de arquitetura e instruções de setup do projeto. Leia-o antes de gerar qualquer código.
 
 ---
 
-## 🛑 Pré-requisito Crítico: Backup
-Antes de rodar qualquer migration, faça um backup do seu arquivo `licita_doc.db`.
-```bash
-cp licita_doc.db licita_doc_backup_sprint14.db
-👣 Passo 1: O Coração (Database Models)
-Não adianta mexer no Frontend se o Backend não tiver onde salvar os dados.
+## 1. Definição do Sistema
+**Produto:** LicitaDoc - SaaS Multi-Tenant para Gestão de Documentos de Licitação.
+**Fase Atual:** Pós-Sprint 15 (Arquitetura Multi-Tenant implementada). Iniciando Sprint 16 (Refatoração & UX).
+**Arquitetura:** Monolito Modular (Backend) + SPA (Frontend).
 
-1. Criar a Tabela Associativa (app/models/user_model.py) Precisamos transformar a relação 1:N em N:N.
+---
 
-Remova (ou comente para depreciação futura) o campo company_id em User.
+## 2. Stack Tecnológica (Strict Mode)
 
-Crie a tabela user_company_link (ou company_members).
+### Backend (Pasta `/app`)
+* **Framework:** FastAPI (Python 3.10+).
+* **ORM:** SQLAlchemy (Sync sessions).
+* **Migrations:** Alembic (**CRÍTICO:** O esquema do banco é gerenciado via versionamento).
+* **Auth:** OAuth2 com JWT. Suporte a Multi-Tenancy via `UserCompanyLink`.
+* **Uploads:** `multipart/form-data` salvos localmente em `/data` (simulando S3).
 
-Adicione os novos campos em User (cpf, rg, etc).
+### Frontend (Pasta `/frontend`)
+* **Build:** Vite + React (TypeScript).
+* **Estilo:** TailwindCSS + Shadcn/UI (Componentes em `src/components/ui`).
+* **State:** Context API (`AuthContext` gerencia Token + Empresa Atual).
+* **Data Fetching:** Axios (Instância configurada em `services/api.ts`).
 
-Python
-# Exemplo de estrutura para user_company_link
-class UserCompanyLink(Base):
-    __tablename__ = "user_company_links"
-    user_id = Column(String, ForeignKey("users.id"), primary_key=True)
-    company_id = Column(String, ForeignKey("companies.id"), primary_key=True)
-    role = Column(String, default="VIEWER") # 'MASTER' ou 'VIEWER'
-    created_at = Column(DateTime, default=func.now())
-2. Expandir a Empresa (app/models/company_model.py)
+---
 
-Adicione os campos de endereço, telefone, responsável, etc.
+## 3. Estado Atual da Arquitetura (Sprint 15+)
 
-3. Gerar a Migration
+### 🏢 Multi-Tenancy (Mudança Recente)
+O sistema não é mais "1 User = 1 Company".
+* **Tabela N:N:** `user_company_links` vincula usuários a empresas com roles (`MASTER`, `VIEWER`).
+* **Contexto:** O Backend espera `company_id` em rotas de dados (Dashboard, Docs).
+* **Middleware:** Não há middleware mágico. O filtro é explícito nos Repositories (`.filter(company_id=...)`).
 
-Bash
-alembic revision --autogenerate -m "sprint_15_multitenancy_structure"
-alembic upgrade head
-👣 Passo 2: Migração de Dados (Script)
-Agora que a tabela nova existe, precisamos mover os vínculos antigos para ela, senão os usuários atuais perdem o acesso às suas empresas.
+### 📂 Documentos
+* **Metadados:** A tabela `documents` possui `title`, `filename`, `expiration_date` e `company_id`.
+* **Download:** Endpoint protegido que verifica se o usuário tem link com a `company_id` do documento.
 
-Tarefa: Criar e rodar app/scripts/migrate_v1_to_multitenancy.py.
+### 🚦 Rotas e Permissões
+* `/admin/*`: Rotas de Superusuário (Vê tudo).
+* `/companies/{id}/*`: Rotas de Tenant (Requer vínculo com a empresa).
+* `/auth/register`: Fluxo híbrido (JSON + Arquivos) usando `FormData`.
 
-Lógica: Para cada usuário que tem company_id preenchido na tabela users:
+---
 
-Criar um insert na tabela user_company_links.
+## 4. Instruções de Setup para a IA (Como rodar)
 
-Definir role = 'MASTER' (pois eles criaram a empresa).
+Se você (IA) precisar instruir o usuário ou gerar scripts de correção, assuma este fluxo:
 
-(Opcional) Limpar o company_id da tabela users depois.
+1.  **Backend:**
+    * O ambiente virtual é `venv`.
+    * **OBRIGATÓRIO:** Rodar `alembic upgrade head` antes de iniciar. O banco `licita_doc.db` costuma ficar defasado entre sessões.
+    * Comando de start: `uvicorn app.main:app --reload`.
 
-👣 Passo 3: O Backend (Schemas & Auth)
-1. Atualizar Schemas (app/schemas/)
+2.  **Frontend:**
+    * O `.env` deve apontar `VITE_API_URL=http://localhost:8000`.
+    * Comando de start: `npm run dev`.
 
-user_schemas.py: Adicionar CPF, RG, Celular.
+---
 
-company_schemas.py: Adicionar Endereço completo, Responsável, etc.
+## 5. Regras de Desenvolvimento (Do's & Don'ts)
 
-2. Refatorar Registro (app/routers/auth_router.py) Aqui implementamos a lógica dos 3 cenários de conflito:
+* **NÃO** assuma que o usuário tem o campo `company_id` direto na tabela `users`. Use `user.company_links`.
+* **NÃO** crie estilos CSS soltos. Use classes utilitárias do Tailwind.
+* **SEMPRE** que alterar um Model (SQLAlchemy), gere uma revisão do Alembic (`alembic revision --autogenerate`).
+* **SEMPRE** mantenha a compatibilidade com o `AuthContext.tsx` atual (ele carrega empresas no login).
 
-Verificar se CNPJ já existe CompanyRepository.get_by_cnpj.
+---
 
-Verificar se Email já existe UserRepository.get_by_email.
-
-Se Email Novo + CNPJ Novo -> Cria User, Cria Company, Cria Link (Master).
-
-Se Email Novo + CNPJ Existente -> Erro 400: "Empresa já cadastrada. Solicite acesso ao administrador."
-
-Se Email Existente + CNPJ Novo -> Erro 400: "Você já possui cadastro. Faça login para adicionar nova empresa."
-
-3. Endpoint de Membros (app/routers/company_router.py ou novo member_router.py)
-
-POST /companies/{id}/members:
-
-Recebe email/nome/cpf.
-
-Cria usuário com senha provisória (ex: Mudar123!).
-
-Cria link na tabela associativa com role selecionada.
-
-👣 Passo 4: O Frontend (Infraestrutura)
-1. Instalar Dependências
-
-Bash
-cd frontend
-npm install react-input-mask zod react-hook-form
-2. Atualizar Tipagens (src/services/) Atualize as interfaces User e Company para refletir os novos campos do banco.
-
-3. Contexto de Autenticação (AuthContext.tsx) O login agora pode retornar uma lista de empresas.
-
-Se retornar 1 empresa -> Loga direto nela.
-
-Se retornar > 1 -> Mostra modal de seleção ou redireciona para rota /select-company.
-
-Precisamos guardar currentCompany no estado global.
-
-👣 Passo 5: O Frontend (Telas)
-1. Novo Registro (src/pages/Register) Transforme a tela atual em um "Wizard" ou formulário longo segmentado:
-
-Seção 1: Dados de Acesso (Email/Senha).
-
-Seção 2: Dados do Responsável (CPF, Nome, RG).
-
-Seção 3: Dados da Empresa (CNPJ, Razão, Endereço).
-
-Uso obrigatório: Máscaras de input.
-
-2. Gestão de Equipe (src/pages/Admin/Team)
-
-Lista os usuários da currentCompany.
-
-Botão "Convidar Membro" (Modal).
-
-Exibe a senha provisória num Alert após criar.
-
-3. Minha Empresa & Meus Dados
-
-Telas de formulário simples para editar os dados (PUT).
-
-🎯 Resumo da Sequência Lógica
-Backend (Models + Migration): Prepara o terreno.
-
-Script de Dados: Salva os usuários atuais.
-
-Backend (API): Prepara as rotas para receber os dados complexos.
-
-Frontend: Cria as interfaces para enviar esses dados.
-
-Dica de Ouro: Teste o fluxo de "CNPJ Duplicado" exaustivamente. É o erro mais comum em sistemas multi-tenant.
+## 6. Backlog Imediato (Sprint 16)
+O foco agora é **estabilidade**. Não sugira novas features de IA/OCR ainda.
+1.  Tratar erros 401/403 no Frontend (Interceptor).
+2.  Melhorar UX de Loading e Feedback.
+3.  Padronizar Tabelas e Modais.
