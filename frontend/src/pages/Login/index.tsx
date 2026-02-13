@@ -5,10 +5,10 @@ import * as z from 'zod';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Mail, Lock, LayoutTemplate } from 'lucide-react'; // Ícones novos
+import { Mail, Lock, LayoutTemplate } from 'lucide-react'; // Seus ícones originais
 import api from '../../services/api';
 
-// Componentes UI Refatorados
+// Componentes UI
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
@@ -23,6 +23,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export function LoginPage() {
     const navigate = useNavigate();
     const { signIn } = useAuth();
+    // O loading pode vir do hook useAuth ou local, mantive local como no seu código para não quebrar layout
     const [loading, setLoading] = useState(false);
 
     const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
@@ -33,15 +34,18 @@ export function LoginPage() {
         try {
             setLoading(true);
 
-            // 1. Realiza o Login (Obtém Token)
-            await signIn(data);
+            // 1. Realiza o Login (Obtém Token e salva no Contexto)
+            await signIn({
+                email: data.email,
+                password: data.password
+            });
 
-            // 2. Verifica Role para Redirecionamento (O "Semáforo")
+            // 2. O "Semáforo": Verifica Role para Redirecionamento (Sua lógica original)
+            // Como o signIn já configurou o header Authorization, essa chamada funciona
             const response = await api.get('/users/me');
             const user = response.data;
 
-            // Feedback positivo sutil
-            toast.success(`Bem-vindo de volta, ${user.name || 'Usuário'}!`);
+            toast.success(`Bem-vindo de volta, ${user.email.split('@')[0]}!`);
 
             if (user.role === 'admin') {
                 navigate('/admin/dashboard');
@@ -50,15 +54,24 @@ export function LoginPage() {
             }
 
         } catch (error: any) {
-            console.error(error);
-            // UX: Feedback de Erro via Toast
-            // Se o backend retornar mensagem específica, usamos ela, senão msg genérica
-            const msg = error.response?.data?.detail || "Verifique suas credenciais e tente novamente.";
+            console.error("Erro no login:", error);
 
-            toast.error("Falha ao entrar", {
-                description: msg,
-                duration: 4000,
-            });
+            // Tratamento de erros baseado no status do Backend novo
+            const status = error.response?.status;
+
+            if (status === 401) {
+                toast.error("Credenciais inválidas.", {
+                    description: "Verifique seu e-mail e senha."
+                });
+            } else if (status === 403) {
+                toast.error("Acesso negado.", {
+                    description: "Sua conta pode estar inativa ou bloqueada."
+                });
+            } else {
+                toast.error("Erro ao entrar.", {
+                    description: "Não foi possível conectar ao servidor. Tente novamente."
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -66,59 +79,57 @@ export function LoginPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-
-            {/* Cabeçalho da Página */}
-            <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-                <div className="mx-auto h-12 w-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-600/20">
-                    <LayoutTemplate size={24} />
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                {/* Logo ou Ícone Principal */}
+                <div className="mx-auto h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                    <LayoutTemplate className="h-6 w-6 text-blue-600" />
                 </div>
-                <h2 className="mt-6 text-3xl font-extrabold text-slate-900 tracking-tight">
-                    LicitaDoc
+
+                <h2 className="text-center text-3xl font-extrabold text-slate-900">
+                    Acessar Plataforma
                 </h2>
-                <p className="mt-2 text-sm text-slate-600">
-                    Gestão inteligente de documentos e certidões.
+                <p className="mt-2 text-center text-sm text-slate-600">
+                    Gerencie suas certidões com inteligência
                 </p>
             </div>
 
-            {/* Card de Login */}
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-8 px-4 shadow-xl shadow-slate-200/50 sm:rounded-xl sm:px-10 border border-slate-100">
+                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-slate-100">
+                    <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
 
-                    <form className="space-y-6" onSubmit={handleSubmit(handleLogin)}>
-
-                        {/* Input de E-mail */}
                         <Input
                             label="E-mail Corporativo"
-                            type="email"
                             placeholder="seu@email.com"
-                            icon={<Mail size={18} />}
-                            error={errors.email?.message}
+                            type="email"
                             {...register('email')}
+                            error={errors.email?.message}
+                        // Se o seu Input suportar ícones, você usaria o <Mail /> aqui
                         />
 
-                        {/* Input de Senha */}
-                        <div className="space-y-1">
+                        <div>
                             <Input
-                                label="Senha de Acesso"
-                                type="password"
+                                label="Senha"
                                 placeholder="••••••••"
-                                icon={<Lock size={18} />}
-                                error={errors.password?.message}
+                                type="password"
                                 {...register('password')}
+                                error={errors.password?.message}
+                            // Se o seu Input suportar ícones, você usaria o <Lock /> aqui
                             />
-                            <div className="flex items-center justify-end">
-                                <a href="#" className="text-xs font-medium text-blue-600 hover:text-blue-500">
+                            <div className="flex justify-end mt-1">
+                                <Link
+                                    to="/forgot-password"
+                                    className="text-xs font-medium text-blue-600 hover:text-blue-500"
+                                >
                                     Esqueceu a senha?
-                                </a>
+                                </Link>
                             </div>
                         </div>
 
-                        {/* Botão de Ação */}
                         <Button
                             type="submit"
-                            isLoading={loading}
                             className="w-full"
-                            size="lg" // Botão maior para login
+                            disabled={loading}
+                            isLoading={loading} // Se seu Button tiver prop isLoading
                         >
                             Entrar na Plataforma
                         </Button>

@@ -10,6 +10,7 @@ import { LandingPage } from './pages/LandingPage';
 import { Dashboard } from './pages/Dashboard';
 import { DocumentsPage } from './pages/Documents';
 import { RegisterPage } from './pages/Register';
+import { CompanySettings } from './pages/CompanySettings';
 import { ContractSignPage } from './pages/ContractSign';
 import { PaymentPage } from './pages/Payment';
 
@@ -45,6 +46,7 @@ function App() {
             {/* Rotas de Cliente */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/company-settings" element={<CompanySettings />} />
 
             {/* O Chat agora é um Widget flutuante no MainLayout, não precisa de rota */}
 

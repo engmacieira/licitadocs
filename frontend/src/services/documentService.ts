@@ -3,6 +3,7 @@ import api from './api';
 export interface DocumentDTO {
     id: string;
     filename: string;
+    title?: string;
     created_at?: string;
     owner_id: string;
     status: string;

@@ -1,14 +1,15 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import type { ReactNode } from 'react';
 import api from '../services/api';
+import { userService } from '../services/userService';
+import type { UserCompany } from '../services/userService';
 import { jwtDecode } from 'jwt-decode';
 
-// Tipagem do Token Decodificado
 interface User {
-    sub: string;      // Email/Username
-    role: string;     // 'admin' | 'client'
-    exp?: number;     // Timestamp de expiração
-    // Adicione outros campos se necessário (id, name, etc)
+    sub: string;
+    role: string;
+    user_id: string;
+    exp?: number;
 }
 
 interface SignInCredentials {
@@ -22,13 +23,40 @@ interface AuthContextData {
     signIn: (credentials: SignInCredentials) => Promise<void>;
     signOut: () => void;
     loading: boolean;
+
+    // Multi-Tenancy
+    companies: UserCompany[];
+    currentCompany: UserCompany | null;
+    switchCompany: (companyId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [companies, setCompanies] = useState<UserCompany[]>([]);
+    const [currentCompany, setCurrentCompany] = useState<UserCompany | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // Carrega empresas e seleciona a ativa
+    async function loadUserContext() {
+        try {
+            const myCompanies = await userService.getMyCompanies();
+            setCompanies(myCompanies);
+
+            // Se tiver empresas e nenhuma selecionada
+            if (myCompanies.length > 0 && !currentCompany) {
+                // Tenta recuperar a última usada ou pega a primeira
+                const lastCompanyId = localStorage.getItem('@LicitaDoc:companyId');
+                const target = myCompanies.find(c => c.id === lastCompanyId) || myCompanies[0];
+
+                setCurrentCompany(target);
+                localStorage.setItem('@LicitaDoc:companyId', target.id);
+            }
+        } catch (error) {
+            console.error("Falha ao carregar contexto do usuário", error);
+        }
+    }
 
     useEffect(() => {
         const loadedToken = localStorage.getItem('@LicitaDoc:token');
@@ -36,21 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (loadedToken) {
             try {
                 const decoded = jwtDecode<User>(loadedToken);
-
-                // UX/Security: Verifica se o token JÁ expirou antes de logar
-                // decoded.exp é em segundos, Date.now() é em ms
                 const currentTime = Date.now() / 1000;
 
                 if (decoded.exp && decoded.exp < currentTime) {
-                    console.warn("🔒 Token expirado detectado na inicialização. Sessão limpa.");
-                    signOut(); // Limpa tudo preventivamente
+                    signOut();
                 } else {
-                    // Token válido: restaura a sessão
                     setUser(decoded);
                     api.defaults.headers.common['Authorization'] = `Bearer ${loadedToken}`;
+                    loadUserContext(); // Restaura contexto ao recarregar página
                 }
             } catch (error) {
-                console.error("❌ Token inválido ou corrompido:", error);
                 signOut();
             }
         }
@@ -59,43 +82,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     async function signIn({ email, password }: SignInCredentials) {
-        // Backend espera OAuth2 form-data
         const formData = new URLSearchParams();
         formData.append('username', email);
         formData.append('password', password);
 
-        const response = await api.post('/auth/login', formData);
+        // [MUDANÇA] Rota /auth/token (OAuth2 Padrão)
+        const response = await api.post('/auth/token', formData);
         const { access_token } = response.data;
 
-        // 1. Salva Token
         localStorage.setItem('@LicitaDoc:token', access_token);
-
-        // 2. Configura Axios Globalmente
         api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
 
-        // 3. Atualiza Estado
         const decoded = jwtDecode<User>(access_token);
         setUser(decoded);
+
+        await loadUserContext(); // Carrega empresas logo após login
     }
 
     function signOut() {
         localStorage.removeItem('@LicitaDoc:token');
+        localStorage.removeItem('@LicitaDoc:companyId');
         setUser(null);
-        // Limpa o header para não enviar token inválido em chamadas públicas
+        setCompanies([]);
+        setCurrentCompany(null);
         delete api.defaults.headers.common['Authorization'];
     }
 
+    function switchCompany(companyId: string) {
+        const target = companies.find(c => c.id === companyId);
+        if (target) {
+            setCurrentCompany(target);
+            localStorage.setItem('@LicitaDoc:companyId', target.id);
+        }
+    }
+
     return (
-        <AuthContext.Provider value={{ user, isAuthenticated: !!user, signIn, signOut, loading }}>
+        <AuthContext.Provider value={{
+            user,
+            isAuthenticated: !!user,
+            signIn,
+            signOut,
+            loading,
+            companies,
+            currentCompany,
+            switchCompany
+        }}>
             {children}
         </AuthContext.Provider>
     );
 }
 
 export function useAuth() {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error("useAuth deve ser usado dentro de um AuthProvider");
-    }
-    return context;
+    return useContext(AuthContext);
 }

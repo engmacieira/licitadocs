@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Any
+from typing import List, Any, Optional
 
 from app.core.database import get_db
 from app.dependencies import get_current_active_admin, get_current_active_user
 from app.models.user_model import User
 from app.models.company_model import Company
-from app.models.document_model import Document 
+from app.models.document_model import Document, DocumentStatus # Importante importar o Status
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -20,15 +20,12 @@ def get_admin_dashboard_stats(
     """
     Retorna números gerais do sistema para o Admin.
     """
-    # 1. Totais
+    # 1. Totais Globais
     total_companies = db.query(Company).count()
-    
-    # CORREÇÃO: Usando Document direto em vez de Repository.model
     total_documents = db.query(Document).count()
-    
     total_users = db.query(User).count()
 
-    # 2. Documentos Recentes (Últimos 5 enviados)
+    # 2. Documentos Recentes (Últimos 5 enviados no sistema todo)
     recent_docs = db.query(Document)\
         .order_by(Document.created_at.desc())\
         .limit(5)\
@@ -48,37 +45,73 @@ def get_admin_dashboard_stats(
         "recent_companies": recent_companies
     }
 
-# --- VISÃO DO CLIENTE ---
+# --- VISÃO DO CLIENTE (Corrigida Multi-Tenancy) ---
 @router.get("/client/stats")
 def get_client_dashboard_stats(
+    company_id: Optional[str] = None, # Agora aceita o ID da empresa alvo
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Retorna números específicos da empresa do usuário logado.
+    Retorna números específicos de UMA empresa do usuário.
+    Se company_id não for informado, usa a primeira empresa encontrada.
     """
-    if not current_user.company_id:
-        return {"error": "Usuário sem empresa vinculada"}
+    
+    # 1. Determina qual empresa usar
+    target_company_id = company_id
+    
+    if not target_company_id:
+        # Fallback: Se o front não mandou ID, pega a primeira empresa vinculada
+        if not current_user.company_links:
+             # Usuário sem nenhuma empresa (ex: recém criado sem vínculo)
+             return {
+                "company_name": "Sem Empresa",
+                "total_docs": 0,
+                "docs_valid": 0,
+                "docs_expired": 0,
+                "recent_docs": []
+            }
+        target_company_id = current_user.company_links[0].company_id
+    else:
+        # Segurança: Verifica se o usuário tem acesso à empresa solicitada
+        # Procura nos links do usuário se existe esse company_id
+        has_access = any(link.company_id == target_company_id for link in current_user.company_links)
+        if not has_access:
+            raise HTTPException(status_code=403, detail="Acesso negado aos dados desta empresa.")
 
-    # 1. Meus Totais (CORREÇÃO: Usando Document)
-    my_docs_count = db.query(Document)\
-        .filter(Document.company_id == current_user.company_id)\
+    # 2. Busca dados da Empresa Alvo
+    company = db.query(Company).filter(Company.id == target_company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+
+    # 3. Estatísticas Filtradas (WHERE company_id = target)
+    total_docs = db.query(Document)\
+        .filter(Document.company_id == target_company_id)\
         .count()
 
-    # 2. Meus Documentos Recentes (CORREÇÃO: Usando Document)
+    docs_valid = db.query(Document)\
+        .filter(
+            Document.company_id == target_company_id, 
+            Document.status == DocumentStatus.VALID.value
+        ).count()
+        
+    docs_expired = db.query(Document)\
+        .filter(
+            Document.company_id == target_company_id, 
+            Document.status == DocumentStatus.EXPIRED.value
+        ).count()
+
+    # 4. Documentos Recentes desta empresa
     my_recent_docs = db.query(Document)\
-        .filter(Document.company_id == current_user.company_id)\
+        .filter(Document.company_id == target_company_id)\
         .order_by(Document.created_at.desc())\
         .limit(5)\
         .all()
     
-    # 3. Status da Empresa
-    company = db.query(Company).filter(Company.id == current_user.company_id).first()
-    
     return {
-        "company_name": company.razao_social if company else "N/A",
-        "cnpj": company.cnpj if company else "N/A",
-        "is_active": current_user.is_active, # Status do acesso dele
-        "total_documents": my_docs_count,
-        "recent_documents": my_recent_docs
+        "company_name": company.razao_social,
+        "total_docs": total_docs,
+        "docs_valid": docs_valid,
+        "docs_expired": docs_expired,
+        "recent_docs": my_recent_docs
     }

@@ -31,6 +31,8 @@ def register(
     legal_name: str = Form(..., description="Razão Social"),
     trade_name: Optional[str] = Form(None, description="Nome Fantasia"),
     cnpj: str = Form(..., description="CNPJ"),
+    responsible_name: str = Form(..., description="Nome do Responsável"),
+    cpf: str = Form(..., description="CPF do Responsável"),
     social_contract: Optional[UploadFile] = File(None),
     cnpj_card: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
@@ -46,23 +48,27 @@ def register(
         raise HTTPException(status_code=400, detail="CNPJ já cadastrado.")
 
     try:
-        # 2. Transação: Criar Usuário
+        # 2. Transação: Criar Usuário (Agora com CPF)
         new_user = User(
             email=email, 
             password_hash=get_password_hash(password),
             role=UserRole.CLIENT.value,
-            is_active=True 
+            is_active=True,
+            cpf=cpf # Salva o CPF no usuário
         )
         db.add(new_user)
         db.flush()
         
-        # 3. Transação: Criar Empresa e Vínculo
+        # 3. Transação: Criar Empresa (Agora com Responsável)
         try:
             new_company = Company(
                 cnpj=cnpj,
                 razao_social=legal_name,
                 nome_fantasia=trade_name,
-                owner_id=new_user.id
+                owner_id=new_user.id,
+                # Salva dados do responsável na empresa também
+                responsavel_nome=responsible_name, 
+                responsavel_cpf=cpf 
             )
             db.add(new_company)
             db.flush()
