@@ -1,17 +1,17 @@
 import api from './api';
 
-// --- INTERFACES ---
+// --- INTERFACES (Alinhadas com company_schemas.py) ---
 
+// Interface completa da Empresa (Visualização)
 export interface Company {
     id: string;
-    name: string;
-    razao_social: string;
-    nome_fantasia: string;
     cnpj: string;
+    razao_social: string; // O backend envia 'name' alias 'razao_social'
+    nome_fantasia?: string;
     is_active: boolean;
     created_at: string;
 
-    // [NOVOS CAMPOS] Para a tela de Configurações da Empresa
+    // Campos de Contato/Endereço
     email_corporativo?: string;
     telefone?: string;
     responsavel_nome?: string;
@@ -23,18 +23,16 @@ export interface Company {
     bairro?: string;
     cidade?: string;
     estado?: string;
+
+    // Campos de Status (Sprint 15)
+    is_contract_signed?: boolean;
+    is_payment_active?: boolean;
+    status?: boolean; // Algumas rotas retornam status ao invés de is_active
 }
 
-// Interface para criar (Admin)
-export interface CompanyCreate {
-    name: string;
-    cnpj: string;
-    razao_social?: string; // Adicionado para compatibilidade
-    nome_fantasia?: string;
-}
-
-// [NOVO] Interface para a própria empresa se atualizar (Tenant)
+// Payload para Atualização (PUT)
 export interface CompanyUpdatePayload {
+    razao_social?: string; // Backend aceita alias
     nome_fantasia?: string;
     email_corporativo?: string;
     telefone?: string;
@@ -46,104 +44,61 @@ export interface CompanyUpdatePayload {
     bairro?: string;
     cidade?: string;
     estado?: string;
+    is_admin_verified?: boolean;
+    is_contract_signed?: boolean;
+    is_payment_active?: boolean;
 }
 
-export interface CompanyDocument {
-    id: string;
-    filename: string;
-    created_at: string;
-    status: string;
-    title?: string; // Já estava correto no seu arquivo
-}
-
-export interface MemberInvite {
-    email: string;
-    role: 'MASTER' | 'VIEWER';
-    name?: string;
-    cpf?: string;
-}
-
+// Resposta da lista de membros (GET /members)
 export interface MemberResponse {
-    user_id: string;
+    user_id: string; // Backend retorna user_id, não id
+    name: string | null;
     email: string;
     role: string;
     status: boolean;
     joined_at: string;
-    name?: string;
+}
+
+// Payload para convite (POST /members)
+export interface InvitePayload {
+    email: string;
+    role: 'MASTER' | 'VIEWER';
+}
+
+// Resposta do convite (POST /members)
+export interface InviteResponse {
+    user_id: string;
+    email: string;
+    role: string;
+    message: string; // Importante para feedback
 }
 
 export const companyService = {
-    // --- MÉTODOS DE ADMINISTRAÇÃO (Mantidos do seu arquivo) ---
-    getAll: async () => {
-        const response = await api.get<Company[]>('/admin/companies/');
-        return response.data;
+    // Buscar membros da equipe
+    getTeam: async (companyId: string): Promise<MemberResponse[]> => {
+        const { data } = await api.get<MemberResponse[]>(`/companies/${companyId}/members`);
+        return data;
     },
 
-    create: async (data: CompanyCreate) => {
-        const response = await api.post('/admin/companies/', data);
-        return response.data;
+    // Atualizar dados da empresa (Corrigido de updateSelf para update)
+    update: async (companyId: string, payload: CompanyUpdatePayload): Promise<Company> => {
+        const { data } = await api.put<Company>(`/companies/${companyId}`, payload);
+        return data;
     },
 
-    // Atualização pelo Admin
-    update: async (id: string, data: Partial<CompanyCreate>) => {
-        const response = await api.put(`/admin/companies/${id}`, data);
-        return response.data;
+    // Convidar membro
+    inviteMember: async (companyId: string, payload: InvitePayload): Promise<InviteResponse> => {
+        const { data } = await api.post<InviteResponse>(`/companies/${companyId}/members`, payload);
+        return data;
     },
 
-    delete: async (id: string) => {
-        await api.delete(`/admin/companies/${id}`);
+    // (Opcional) Métodos mantidos se você usar em outros lugares
+    getAll: async (): Promise<Company[]> => {
+        const { data } = await api.get<Company[]>('/companies');
+        return data;
     },
-
-    toggleStatus: async (id: string) => {
-        const response = await api.patch(`/admin/companies/${id}/toggle-status`);
-        return response.data;
-    },
-
-    // --- MÉTODOS DO TENANT / COMPARTILHADOS ---
-
-    // [ATUALIZADO] GetById agora tenta buscar na rota pública/tenant primeiro
-    // Se falhar (ex: admin tentando ver), ele poderia tentar /admin/companies/{id}
-    // Mas vamos manter simples apontando para a rota de tenant que deve retornar os dados se o user for membro
-    getById: async (id: string) => {
-        const response = await api.get<Company>(`/companies/${id}`);
-        return response.data;
-    },
-
-    // [NOVO] Método para a empresa atualizar seus próprios dados (Endereço, etc)
-    updateSelf: async (companyId: string, data: CompanyUpdatePayload) => {
-        const response = await api.put(`/companies/${companyId}`, data);
-        return response.data;
-    },
-
-    // Listar Membros da Equipe (Mantido)
-    getTeam: async (companyId: string) => {
-        const response = await api.get<MemberResponse[]>(`/companies/${companyId}/members`);
-        return response.data;
-    },
-
-    // Convidar Membro (Mantido)
-    inviteMember: async (companyId: string, data: MemberInvite) => {
-        const response = await api.post(`/companies/${companyId}/members`, data);
-        return response.data;
-    },
-
-    // Listar Documentos (Mantido)
-    getDocuments: async (companyId: string) => {
-        const response = await api.get<CompanyDocument[]>(`/documents/?company_id=${companyId}`);
-        return response.data;
-    },
-
-    // Download Seguro (Mantido)
-    downloadDocument: async (docId: string, filename: string) => {
-        const response = await api.get(`/documents/${docId}/download`, {
-            responseType: 'blob'
-        });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
+    getById: async (id: string): Promise<Company> => {
+        const { data } = await api.get<Company>(`/companies/${id}`);
+        return data;
     }
 };

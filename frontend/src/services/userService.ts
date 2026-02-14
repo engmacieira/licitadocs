@@ -9,16 +9,29 @@ export interface UserCompany {
     created_at: string;
 }
 
+// Interface base para o perfil (Adicione os campos exatos do seu UserSchema aqui)
+export interface UserProfile {
+    id: string;
+    email: string;
+    is_active: boolean;
+    role: string;
+    // ex: full_name?: string;
+}
+
 export const userService = {
-    // Busca todas as empresas que o usuário tem acesso
-    getMyCompanies: async () => {
-        const response = await api.get<UserCompany[]>('/users/me/companies');
-        return response.data;
+    /**
+     * Busca todas as empresas vinculadas ao usuário logado.
+     */
+    getMyCompanies: async (): Promise<UserCompany[]> => {
+        const { data } = await api.get<UserCompany[]>('/users/me/companies');
+        return data;
     },
 
-    // Busca dados do perfil (caso precise recarregar)
-    getMe: async () => {
-        const response = await api.get('/users/me');
-        return response.data;
+    /**
+     * Busca os dados completos do perfil do usuário atual.
+     */
+    getMe: async (): Promise<UserProfile> => {
+        const { data } = await api.get<UserProfile>('/users/me');
+        return data;
     }
 };

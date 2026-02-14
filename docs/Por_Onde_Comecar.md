@@ -1,78 +1,54 @@
-# 🤖 CONTEXTO DO PROJETO: LICITADOC (v1.0.4)
+# 🚀 Por Onde Começar (Guia de Contexto)
 
-**ATENÇÃO AGENTE AI:** Este arquivo contém o estado atual, regras de arquitetura e instruções de setup do projeto. Leia-o antes de gerar qualquer código.
-
----
-
-## 1. Definição do Sistema
-**Produto:** LicitaDoc - SaaS Multi-Tenant para Gestão de Documentos de Licitação.
-**Fase Atual:** Pós-Sprint 15 (Arquitetura Multi-Tenant implementada). Iniciando Sprint 16 (Refatoração & UX).
-**Arquitetura:** Monolito Modular (Backend) + SPA (Frontend).
+**Última Atualização:** [Data Atual]
+**Sprint Atual:** Sprint 17 - Arquitetura de Dados & Cofre Inteligente
+**Status:** 🟡 Iniciando
 
 ---
 
-## 2. Stack Tecnológica (Strict Mode)
+## CONTEXTO IMEDIATO
+Acabamos de finalizar a **Sprint 16**, onde refatoramos todo o Frontend para exibir documentos em um formato de "Cofre Digital" (Habilitação Jurídica, Fiscal, Técnica, etc.).
 
-### Backend (Pasta `/app`)
-* **Framework:** FastAPI (Python 3.10+).
-* **ORM:** SQLAlchemy (Sync sessions).
-* **Migrations:** Alembic (**CRÍTICO:** O esquema do banco é gerenciado via versionamento).
-* **Auth:** OAuth2 com JWT. Suporte a Multi-Tenancy via `UserCompanyLink`.
-* **Uploads:** `multipart/form-data` salvos localmente em `/data` (simulando S3).
+⚠️ **Atenção:** Atualmente, essa categorização é feita por uma "gambiarra" lógica no Frontend (`frontend/src/utils/documentCategorizer.ts`) que adivinha a categoria pelo nome do arquivo.
 
-### Frontend (Pasta `/frontend`)
-* **Build:** Vite + React (TypeScript).
-* **Estilo:** TailwindCSS + Shadcn/UI (Componentes em `src/components/ui`).
-* **State:** Context API (`AuthContext` gerencia Token + Empresa Atual).
-* **Data Fetching:** Axios (Instância configurada em `services/api.ts`).
+**O Objetivo da Sprint 17** é mover essa inteligência para o Banco de Dados, criando tabelas estruturadas para suportar automação e validação de documentos.
 
 ---
 
-## 3. Estado Atual da Arquitetura (Sprint 15+)
+## 📋 PLANO DE AÇÃO (Sprint 17)
 
-### 🏢 Multi-Tenancy (Mudança Recente)
-O sistema não é mais "1 User = 1 Company".
-* **Tabela N:N:** `user_company_links` vincula usuários a empresas com roles (`MASTER`, `VIEWER`).
-* **Contexto:** O Backend espera `company_id` em rotas de dados (Dashboard, Docs).
-* **Middleware:** Não há middleware mágico. O filtro é explícito nos Repositories (`.filter(company_id=...)`).
+O próximo agente deve seguir esta ordem de execução, baseada no arquivo `docs/Sprints/SPRINT_17_BACKLOG.md`:
 
-### 📂 Documentos
-* **Metadados:** A tabela `documents` possui `title`, `filename`, `expiration_date` e `company_id`.
-* **Download:** Endpoint protegido que verifica se o usuário tem link com a `company_id` do documento.
+### 1. Modelagem de Dados (Backend)
+- [ ] Criar modelos SQLAlchemy em `app/models/`:
+    - `DocumentCategory` (Domínio macro: Jurídico, Fiscal...)
+    - `DocumentType` (Catálogo: Contrato Social, CND Federal...)
+    - `Certificate` (O documento em si, com validade e metadados JSONB).
+- [ ] Gerar a migration do Alembic: `alembic revision --autogenerate -m "create_certificate_structure"`.
 
-### 🚦 Rotas e Permissões
-* `/admin/*`: Rotas de Superusuário (Vê tudo).
-* `/companies/{id}/*`: Rotas de Tenant (Requer vínculo com a empresa).
-* `/auth/register`: Fluxo híbrido (JSON + Arquivos) usando `FormData`.
+### 2. Seeding (Dados Iniciais)
+- [ ] Criar script `app/scripts/seed_document_types.py`.
+- [ ] Popular o banco com as categorias e tipos padrões de licitação (essencial para o frontend funcionar).
 
----
-
-## 4. Instruções de Setup para a IA (Como rodar)
-
-Se você (IA) precisar instruir o usuário ou gerar scripts de correção, assuma este fluxo:
-
-1.  **Backend:**
-    * O ambiente virtual é `venv`.
-    * **OBRIGATÓRIO:** Rodar `alembic upgrade head` antes de iniciar. O banco `licita_doc.db` costuma ficar defasado entre sessões.
-    * Comando de start: `uvicorn app.main:app --reload`.
-
-2.  **Frontend:**
-    * O `.env` deve apontar `VITE_API_URL=http://localhost:8000`.
-    * Comando de start: `npm run dev`.
+### 3. Integração (Backend <-> Frontend)
+- [ ] Atualizar `DocumentRepository` para buscar da nova tabela `certificates` (fazendo merge com a tabela legada `documents` se necessário).
+- [ ] Criar rota `GET /document-types` para o frontend popular o dropdown de upload.
+- [ ] Atualizar o componente `UploadModal` no Frontend para usar IDs reais em vez de strings.
 
 ---
 
-## 5. Regras de Desenvolvimento (Do's & Don'ts)
+## 📂 ARQUIVOS CHAVE
 
-* **NÃO** assuma que o usuário tem o campo `company_id` direto na tabela `users`. Use `user.company_links`.
-* **NÃO** crie estilos CSS soltos. Use classes utilitárias do Tailwind.
-* **SEMPRE** que alterar um Model (SQLAlchemy), gere uma revisão do Alembic (`alembic revision --autogenerate`).
-* **SEMPRE** mantenha a compatibilidade com o `AuthContext.tsx` atual (ele carrega empresas no login).
+### Documentação
+- `docs/Sprints/SPRINT_17_BACKLOG.md` (📜 **Fonte da Verdade desta Sprint**)
+- `docs/DividasTecnicas.md` (Entenda o problema do `documentCategorizer.ts`)
+
+### Código Legado (Para Refatorar/Consultar)
+- `frontend/src/utils/documentCategorizer.ts` -> **Deve ser obsoleto ao fim da sprint.**
+- `app/models/document_model.py` -> Tabela antiga (será mantida para legado/genéricos).
+
+### Novos Arquivos (Para Criar)
+- `app/models/certificate_model.py`
+- `app/models/document_category_model.py`
 
 ---
-
-## 6. Backlog Imediato (Sprint 16)
-O foco agora é **estabilidade**. Não sugira novas features de IA/OCR ainda.
-1.  Tratar erros 401/403 no Frontend (Interceptor).
-2.  Melhorar UX de Loading e Feedback.
-3.  Padronizar Tabelas e Modais.

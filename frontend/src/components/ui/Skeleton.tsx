@@ -1,15 +1,15 @@
-import { clsx, type ClassValue } from "clsx";
+import type { HTMLAttributes } from "react";
+import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-// Utilitário para juntar classes (padrão shadcn/ui)
-function cn(...inputs: ClassValue[]) {
+function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
 }
 
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     return (
         <div
-            className={cn("animate-pulse rounded-md bg-slate-200/80", className)}
+            className={cn("animate-pulse rounded-md bg-slate-200", className)}
             {...props}
         />
     );

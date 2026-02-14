@@ -123,3 +123,22 @@ Este documento rastreia pontos do código que precisam de refatoração, otimiza
 ## 🟢 Baixa Prioridade (Cosmético/DX)
 - [ ] **Paginação Real no Dashboard:** As listas de "Recentes" trazem apenas 5 itens, mas não há link para "Ver Todos" paginado no Backend.
 - [ ] **Seeds de Teste:** Criar um script `seed.py` mais robusto que popule o banco com dados aleatórios (Faker) para testes de carga.
+
+## [DT-004] Lógica de Categorização de Documentos no Frontend
+
+- **Status:** 🔴 Aberta
+- **Prioridade:** Alta
+- **Sprint de Origem:** Sprint 16
+- **Descrição:**
+  Para entregar o visual de "Cofre Digital" (Habilitação Jurídica, Fiscal, Técnica) rapidamente, implementamos a lógica de categorização no arquivo `frontend/src/utils/documentCategorizer.ts`. Esta função varre o nome do arquivo (ex: "contrato_social.pdf") e "adivinha" a categoria baseada em strings hardcoded.
+  
+- **Impacto:**
+  - Se o nome do arquivo mudar ou vier diferente do padrão, o documento cai na categoria "Outros".
+  - Manutenção difícil: adicionar um novo tipo de documento exige recompilar o Frontend.
+  - Regra de negócio vazando para a camada de apresentação.
+
+- **Solução Proposta:**
+  1. Criar tabela `document_categories` no banco de dados.
+  2. Criar tabela `document_types` vinculada às categorias.
+  3. Atualizar a tabela `documents` para ter uma FK `type_id`.
+  4. O Backend deve devolver o JSON já com a categoria correta, e o Frontend apenas renderiza.

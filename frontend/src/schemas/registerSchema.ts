@@ -1,22 +1,43 @@
 import { z } from 'zod';
 
-// Regex simples para CNPJ e CPF (apenas formato, sem algoritmo de dígito verificador por enquanto)
-const cnpjRegex = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$|^\d{14}$/;
-const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/;
+// Regex para validação de formato (aceita com ou sem pontuação)
+const PATTERNS = {
+    CNPJ: /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$|^\d{14}$/,
+    CPF: /^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{11}$/
+};
 
 export const registerSchema = z.object({
     // Dados da Empresa
-    cnpj: z.string().regex(cnpjRegex, "CNPJ inválido"),
-    legalName: z.string().min(3, "Razão Social é obrigatória"),
-    tradeName: z.string().optional(),
+    cnpj: z.string()
+        .trim()
+        .regex(PATTERNS.CNPJ, "CNPJ inválido (digite apenas números ou use o formato padrão)"),
 
-    // [NOVOS] Dados do Responsável
-    responsibleName: z.string().min(3, "Nome do responsável é obrigatório"),
-    cpf: z.string().regex(cpfRegex, "CPF inválido (use apenas números ou formato padrão)"),
+    legalName: z.string()
+        .trim()
+        .min(3, "Razão Social deve ter no mínimo 3 caracteres"),
+
+    tradeName: z.string()
+        .trim()
+        .optional(),
+
+    // Dados do Responsável
+    responsibleName: z.string()
+        .trim()
+        .min(3, "Nome do responsável deve ter no mínimo 3 caracteres"),
+
+    cpf: z.string()
+        .trim()
+        .regex(PATTERNS.CPF, "CPF inválido (digite apenas números ou use o formato padrão)"),
 
     // Dados de Login
-    email: z.string().email("E-mail inválido"),
-    password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
+    email: z.string()
+        .trim()
+        .email("Digite um e-mail válido")
+        .toLowerCase(), // UX: E-mail sempre minúsculo
+
+    password: z.string()
+        .min(6, "A senha deve ter no mínimo 6 caracteres"),
+
     confirmPassword: z.string(),
 
 }).refine((data) => data.password === data.confirmPassword, {

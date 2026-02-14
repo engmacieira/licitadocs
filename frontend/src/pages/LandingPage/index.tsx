@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { FileCheck, ShieldCheck, Zap } from 'lucide-react';
+import { FileCheck, ShieldCheck, Zap, ArrowRight, ChevronRight } from 'lucide-react';
 
 export function LandingPage() {
     const navigate = useNavigate();
@@ -18,11 +18,8 @@ export function LandingPage() {
                     </div>
 
                     <nav className="flex gap-4">
-                        <Button variant="ghost" onClick={() => navigate('/login')}>
+                        <Button variant="primary" onClick={() => navigate('/login')}>
                             Login
-                        </Button>
-                        <Button variant="primary" onClick={() => navigate('/register')}>
-                            Cadastrar Empresa
                         </Button>
                     </nav>
                 </div>
@@ -42,10 +39,10 @@ export function LandingPage() {
 
                     <div className="flex justify-center gap-4">
                         <Button size="lg" onClick={() => navigate('/register')}>
-                            Quero Contratar
+                            Quero Contratar <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
-                        <Button variant="outline" size="lg" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
-                            Como Funciona
+                        <Button variant="outline" size="lg" onClick={() => navigate('/demonstracao')}>
+                            Como Funciona? <ChevronRight className="ml-2 h-4 w-4 text-slate-400" />
                         </Button>
                     </div>
                 </section>

@@ -1,6 +1,5 @@
 import api from './api';
 import type { Company } from './companyService';
-// Assumindo que DocumentDTO é compatível, senão podemos usar um tipo local
 import type { DocumentDTO } from './documentService';
 
 export interface AdminStats {
@@ -11,29 +10,29 @@ export interface AdminStats {
     recent_companies: Company[];
 }
 
-// [CORREÇÃO] Interface alinhada com o retorno do novo dashboard_router.py
 export interface ClientStats {
     company_name: string;
     total_docs: number;
     docs_valid: number;
     docs_expired: number;
     recent_docs: DocumentDTO[];
+    is_contract_signed: boolean;
+    is_payment_active: boolean;
+    is_admin_verified: boolean;
 }
 
 export const dashboardService = {
-    getAdminStats: async () => {
-        const response = await api.get<AdminStats>('/dashboard/admin/stats');
-        return response.data;
+    getAdminStats: async (): Promise<AdminStats> => {
+        const { data } = await api.get<AdminStats>('/dashboard/admin/stats');
+        return data;
     },
 
-    // [CORREÇÃO] Aceita companyId opcional para filtrar por empresa
-    getClientStats: async (companyId?: string) => {
-        // Se vier ID, monta a query string ?company_id=...
+    getClientStats: async (companyId?: string): Promise<ClientStats> => {
         const url = companyId
             ? `/dashboard/client/stats?company_id=${companyId}`
             : '/dashboard/client/stats';
 
-        const response = await api.get<ClientStats>(url);
-        return response.data;
+        const { data } = await api.get<ClientStats>(url);
+        return data;
     }
 };

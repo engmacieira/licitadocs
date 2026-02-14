@@ -10,7 +10,6 @@ export function MainLayout() {
     const location = useLocation();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    // Mapeamento simples de títulos por rota (UX: O usuário sabe onde está)
     const pageTitles: Record<string, string> = {
         '/dashboard': 'Visão Geral',
         '/documents': 'Meus Documentos',
@@ -25,41 +24,43 @@ export function MainLayout() {
     return (
         <div className="min-h-screen bg-slate-50 flex">
 
-            {/* Sidebar Desktop (Fixo) */}
-            <Sidebar className="hidden md:flex" />
+            {/* Sidebar Desktop (Fixo, Escondido em Mobile) */}
+            <Sidebar className="hidden md:flex w-64 h-screen sticky top-0" />
 
-            {/* Sidebar Mobile (Drawer) */}
+            {/* Sidebar Mobile (Drawer com Overlay) */}
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 z-50 md:hidden">
-                    {/* Overlay Escuro */}
+                    {/* Overlay Escuro (Ao clicar, fecha) */}
                     <div
-                        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
                         onClick={() => setIsMobileMenuOpen(false)}
                     />
-                    {/* Menu Deslizante */}
-                    <Sidebar className="flex w-64 h-full shadow-2xl animate-in slide-in-from-left duration-300" />
 
-                    {/* Botão Fechar Mobile */}
-                    <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="absolute top-4 right-4 text-white bg-slate-800 p-2 rounded-full"
-                    >
-                        <X size={24} />
-                    </button>
+                    {/* Menu Lateral Animado */}
+                    <div className="absolute left-0 top-0 h-full">
+                        <Sidebar className="flex w-72 h-full shadow-2xl animate-in slide-in-from-left duration-300" />
+
+                        {/* Botão Fechar dentro do contexto do menu */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="absolute top-4 -right-12 text-white bg-slate-800 p-2 rounded-full shadow-lg border border-slate-700"
+                        >
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
             )}
 
             {/* Área de Conteúdo Principal */}
-            <main className="flex-1 md:ml-64 min-w-0 transition-all duration-300 flex flex-col">
+            <main className="flex-1 min-w-0 transition-all duration-300 flex flex-col">
 
-                {/* Header (Sticky & Glassmorphism) */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 transition-all">
-
+                {/* Header (Sticky) */}
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-4">
                         {/* Botão Menu Mobile */}
                         <button
                             onClick={() => setIsMobileMenuOpen(true)}
-                            className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                         >
                             <Menu size={24} />
                         </button>
@@ -88,11 +89,12 @@ export function MainLayout() {
                     </div>
                 </header>
 
-                {/* Conteúdo da Página */}
-                <div className="p-4 md:p-8 flex-1 overflow-x-hidden">
+                {/* Conteúdo da Página com Scroll Independente */}
+                <div className="flex-1 p-4 md:p-8 overflow-y-auto">
                     <Outlet />
                 </div>
 
+                {/* Chat Widget Flutuante */}
                 <ChatWidget />
 
             </main>

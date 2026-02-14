@@ -2,7 +2,7 @@
 Modelagem de Empresas (Tenant).
 Responsável pelos dados da Pessoa Jurídica e configurações da empresa.
 """
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base, generate_uuid
@@ -48,3 +48,15 @@ class Company(Base):
     documents = relationship("app.models.document_model.Document", back_populates="company", cascade="all, delete-orphan")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Controle Geral
+    is_active = Column(Boolean, default=True)
+    
+    is_contract_signed = Column(Boolean, default=False)   # Contrato
+    is_payment_active = Column(Boolean, default=False)    # Pagamento
+    is_admin_verified = Column(Boolean, default=False)    # Aprovação Equipe
+    
+    @property
+    def is_regular(self):
+        """Retorna True apenas se cumprir todos os requisitos (Sua pontuação 15)"""
+        return self.is_contract_signed and self.is_payment_active and self.is_admin_verified

@@ -66,6 +66,15 @@ class CompanyUpdate(BaseModel):
     cidade: Optional[str] = None
     estado: Optional[str] = None
 
+    is_contract_signed: Optional[bool] = None
+    is_payment_active: Optional[bool] = None
+    is_admin_verified: Optional[bool] = None
+    
+    @field_validator('is_contract_signed', 'is_payment_active', 'is_admin_verified', mode='before')
+    @classmethod
+    def convert_none_to_false(cls, v):
+        return v if v is not None else False
+    
     model_config = ConfigDict(populate_by_name=True)
 
 class CompanyResponse(CompanyBase):
@@ -73,8 +82,17 @@ class CompanyResponse(CompanyBase):
     id: str
     owner_id: Optional[str] = None
     created_at: datetime
+    
+    is_contract_signed: bool = False
+    is_payment_active: bool = False
+    is_admin_verified: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+    
+    @field_validator('is_contract_signed', 'is_payment_active', 'is_admin_verified', mode='before')
+    @classmethod
+    def convert_none_to_false(cls, v):
+        return v if v is not None else False
     
 class CompanyWithRole(CompanyBase):
     """
@@ -114,3 +132,4 @@ class MemberAddResponse(BaseModel):
     email: str
     role: str
     message: str
+    

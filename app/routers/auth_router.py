@@ -24,6 +24,8 @@ from app.schemas.user_schemas import Token
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 # --- ROTA PRINCIPAL: CADASTRO COM UPLOAD (Multipart/Form) ---
+# app/routers/auth_router.py
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
     email: EmailStr = Form(..., description="Email do usuário"),
@@ -35,87 +37,103 @@ def register(
     cpf: str = Form(..., description="CPF do Responsável"),
     social_contract: Optional[UploadFile] = File(None),
     cnpj_card: Optional[UploadFile] = File(None),
+    responsible_doc: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Novo fluxo de cadastro: Cria Usuário + Empresa + Vínculo + Uploads.
-    Recebe Multipart/Form-Data para permitir arquivos.
-    """
-    # 1. Validações
+    # 1. Validação Inicial (Antes de tentar salvar qualquer coisa)
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="Email já cadastrado.")
-    if db.query(Company).filter(Company.cnpj == cnpj).first():
-        raise HTTPException(status_code=400, detail="CNPJ já cadastrado.")
 
+    # Início da Transação Atômica
     try:
-        # 2. Transação: Criar Usuário (Agora com CPF)
+        # 2. Cria Usuário
         new_user = User(
             email=email, 
             password_hash=get_password_hash(password),
             role=UserRole.CLIENT.value,
-            is_active=True,
-            cpf=cpf # Salva o CPF no usuário
+            is_active=True, 
+            cpf=cpf
         )
         db.add(new_user)
-        db.flush()
+        db.flush() # Gera o ID, mas não confirma ainda
         
-        # 3. Transação: Criar Empresa (Agora com Responsável)
-        try:
-            new_company = Company(
-                cnpj=cnpj,
-                razao_social=legal_name,
-                nome_fantasia=trade_name,
-                owner_id=new_user.id,
-                # Salva dados do responsável na empresa também
-                responsavel_nome=responsible_name, 
-                responsavel_cpf=cpf 
-            )
-            db.add(new_company)
-            db.flush()
+        # 3. Cria Empresa
+        new_company = Company(
+            cnpj=cnpj,
+            razao_social=legal_name,
+            nome_fantasia=trade_name,
+            owner_id=new_user.id,
+            responsavel_nome=responsible_name, 
+            responsavel_cpf=cpf 
+        )
+        db.add(new_company)
+        db.flush() # Gera o ID da empresa
 
-            link = UserCompanyLink(
-                user_id=new_user.id,
-                company_id=new_company.id,
-                role=UserCompanyRole.MASTER.value,
-                is_active=True
-            )
-            db.add(link)
+        # 4. Cria Vínculo
+        link = UserCompanyLink(
+            user_id=new_user.id,
+            company_id=new_company.id,
+            role=UserCompanyRole.MASTER.value,
+            is_active=True 
+        )
+        db.add(link)
 
-            # 4. Salvar Arquivos
-            def process_file(upload_file: UploadFile, title: str):
-                if not upload_file: return
-                try:
-                    path, size = save_upload_file(upload_file, "companies")
-                    doc = Document(
-                        title=title,
-                        filename=upload_file.filename,
-                        file_path=path,
-                        company_id=new_company.id,
-                        uploaded_by_id=new_user.id,
-                        status=DocumentStatus.VALID.value
-                    )
-                    db.add(doc)
-                except Exception as e:
-                    print(f"Erro no upload {title}: {e}")
-
-            process_file(social_contract, "Contrato Social")
-            process_file(cnpj_card, "Cartão CNPJ")
-
-            db.commit()
+        # 5. Processamento de Arquivos (Aqui estava o erro)
+        def process_file(upload_file: UploadFile, title: str):
+            if not upload_file: 
+                return
             
-        except Exception as e:
-            db.rollback()
-            raise ValueError(f"Erro ao criar empresa: {str(e)}")
+            try:
+                # O save_upload_file retorna (caminho, tamanho)
+                # Certifique-se que sua função save_upload_file retorna dois valores!
+                path, size = save_upload_file(upload_file, "companies")
+                
+                doc = Document(
+                    title=title,
+                    filename=upload_file.filename,
+                    file_path=path,
+                    # Se seu Model Document tiver campo file_size, use a variável 'size' aqui
+                    # file_size=size, <--- Se não tiver o campo no model, remova essa linha
+                    company_id=new_company.id,
+                    uploaded_by_id=new_user.id,
+                    status=DocumentStatus.VALID.value
+                )
+                db.add(doc)
+            except Exception as e:
+                # Se der erro no upload, lançamos exceção para cancelar TUDO
+                print(f"Erro crítico no upload {title}: {e}")
+                raise ValueError(f"Falha ao salvar {title}: {str(e)}")
+
+        # Processa os arquivos
+        if social_contract: process_file(social_contract, "Contrato Social")
+        if cnpj_card: process_file(cnpj_card, "Cartão CNPJ")
+        if responsible_doc: process_file(responsible_doc, "Documento Identidade")
+
+        # 6. Se chegou até aqui sem erros, SALVA TUDO
+        db.commit()
+        
+        # 7. Auto-Login (Retorna token para o frontend já logar)
+        access_token = create_access_token(
+            data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
 
         return {
-            "id": new_user.id, 
-            "email": new_user.email, 
-            "company_id": new_company.id,
-            "message": "Cadastro realizado!"
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": {
+                "id": new_user.id,
+                "email": new_user.email
+            }
         }
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        db.rollback() # DESFAZ TUDO (Remove usuário e empresa se der erro no arquivo)
+        print(f"Erro no registro: {e}")
+        # Retorna erro amigável
+        if "Email já cadastrado" in str(e):
+            raise HTTPException(status_code=400, detail="Email já cadastrado.")
+        raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro: {str(e)}")
 
 # --- ROTA DE LOGIN (Token padrão OAuth2) ---
 # [CORREÇÃO CRÍTICA] Mudado de "/login" para "/token" para bater com os testes
