@@ -31,7 +31,7 @@ class UserCompanyLink(Base):
     # Relacionamentos
     user = relationship("User", back_populates="company_links")
     company = relationship("app.models.company_model.Company", back_populates="members")
-
+    
 # --- USUÁRIO (Profile) ---
 class User(Base):
     __tablename__ = "users"
@@ -58,8 +58,7 @@ class User(Base):
     # Relação para saber quais empresas este usuário "fundou" (para fins de auditoria/cobrança)
     owned_companies = relationship(
         "app.models.company_model.Company", 
-        back_populates="owner",
-        foreign_keys="[Company.owner_id]" 
+        back_populates="owner"
     )
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

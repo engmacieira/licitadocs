@@ -3,48 +3,49 @@ Schemas de Documento (Pydantic).
 Define como os metadados dos arquivos são apresentados na API.
 """
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 from enum import Enum
 
-# Replico o Enum aqui para o Pydantic validar a saída e documentar no Swagger
 class DocumentStatusEnum(str, Enum):
     VALID = "valid"
     WARNING = "warning"
     EXPIRED = "expired"
+    PROCESSING = "processing" # Novo status da sprint 17
+    ERROR = "error"
 
+# --- SCHEMAS DE CATÁLOGO (Novo Sprint 17) ---
+class DocumentTypeResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    validity_days_default: int
+    description: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class DocumentCategoryResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    order: int
+    types: List[DocumentTypeResponse] = []
+    model_config = ConfigDict(from_attributes=True)
+
+# --- SCHEMA UNIFICADO (Legado + Novo) ---
 class DocumentResponse(BaseModel):
-    id: str = Field(
-        ..., 
-        description="Identificador único do documento (UUID)",
-        examples=["550e8400-e29b-41d4-a716-446655440000"]
-    )
-    title: str = Field(..., description="Título do documento")
-    filename: str = Field(
-        ..., 
-        description="Nome original do arquivo enviado",
-        examples=["certidao_negativa_fgts.pdf"]
-    )
-    # Não retornamos o file_path completo por segurança, apenas metadados
-    expiration_date: Optional[date] = Field(
-        None, 
-        description="Data de validade (se houver)",
-        examples=["2025-12-31"]
-    )
-    status: DocumentStatusEnum = Field(
-        DocumentStatusEnum.VALID,
-        description="Status calculado automaticamente com base na validade"
-    )
-    created_at: datetime = Field(
-        ..., 
-        description="Data e hora do upload",
-        examples=["2024-02-20T14:30:00"]
-    )
+    id: str = Field(..., description="UUID do documento ou certificado")
+    title: Optional[str] = Field(None, description="Título (Usado no legado) ou Nome do Tipo (Novo)")
+    filename: str = Field(..., description="Nome original do arquivo")
+    expiration_date: Optional[date] = Field(None, description="Data de validade")
+    status: DocumentStatusEnum = Field(DocumentStatusEnum.VALID)
+    created_at: datetime
     
-    # Configuração V2 (Gold Standard)
-    # populate_by_name=True: Garante resiliência se algum dia precisarmos instanciar via camelCase
-    # from_attributes=True: Permite converter direto do objeto SQLAlchemy
-    model_config = ConfigDict(
-        from_attributes=True,
-        populate_by_name=True
-    )
+    # Flags e Metadados do Cofre Inteligente (Sprint 17)
+    is_structured: bool = Field(False, description="True se vier da nova tabela 'certificates'")
+    type_id: Optional[str] = None
+    category_id: Optional[str] = None
+    type_name: Optional[str] = None
+    category_name: Optional[str] = None
+    authentication_code: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)

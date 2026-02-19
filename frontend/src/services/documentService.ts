@@ -1,23 +1,63 @@
 import api from './api';
 
+// ============================================================================
+// 1. TIPAGENS (Interfaces)
+// ============================================================================
+
+// --- Novo Catálogo (Sprint 17) ---
+export interface DocumentTypeDTO {
+    id: string;
+    name: string;
+    slug: string;
+    validity_days_default: number;
+    description?: string;
+}
+
+export interface DocumentCategoryDTO {
+    id: string;
+    name: string;
+    slug: string;
+    order: number;
+    types: DocumentTypeDTO[];
+}
+
+// --- DTO Unificado (Legado + Novo Cofre) ---
 export interface DocumentDTO {
     id: string;
     filename: string;
     title?: string;
-    created_at?: string; // Opcional pois pode vir nulo do back em alguns casos
-    owner_id: string;
     status: string;
     expiration_date?: string;
-    company_id?: string;
+    created_at: string;
+
+    // Flags do Cofre Inteligente (Adicionados na Sprint 17)
+    is_structured: boolean;
+    type_id?: string;
+    category_id?: string;
+    type_name?: string;
+    category_name?: string;
+    authentication_code?: string;
 }
+
+// ============================================================================
+// 2. SERVIÇO (API Calls)
+// ============================================================================
 
 export const documentService = {
     /**
-     * Busca todos os documentos.
+     * NOVO: Busca o catálogo completo de Categorias e Tipos
+     * Usado para popular os dropdowns de Upload e organizar a UI.
+     */
+    getTypes: async (): Promise<DocumentCategoryDTO[]> => {
+        const { data } = await api.get<DocumentCategoryDTO[]>('/documents/types');
+        return data;
+    },
+
+    /**
+     * Busca todos os documentos (Agora retorna o DTO Unificado com legado e certidões).
      * @param companyId - Opcional. Se fornecido, filtra documentos daquela empresa (para Admins).
      */
     getAll: async (companyId?: string): Promise<DocumentDTO[]> => {
-        // Constrói a Query String apenas se necessário, mantendo a URL limpa
         const url = companyId
             ? `/documents/?company_id=${companyId}`
             : '/documents/';
@@ -27,27 +67,30 @@ export const documentService = {
     },
 
     /**
-     * Realiza o upload de um arquivo.
-     * @param file - O arquivo binário.
-     * @param title - O título exibível (pode ser diferente do filename).
+     * Realiza o upload Inteligente (Roteia para Tabela Antiga ou Nova).
+     * @param file - O arquivo físico PDF.
      * @param targetCompanyId - (Admin) ID da empresa dona do arquivo.
+     * @param options - Metadados adicionais do documento (Título, Tipo, Data, etc).
      */
-    upload: async (file: File, title?: string, targetCompanyId?: string, expirationDate?: string): Promise<DocumentDTO> => {
+    upload: async (
+        file: File,
+        targetCompanyId: string,
+        options?: {
+            title?: string;
+            typeId?: string; // NOVO: Define se vai pra tabela Certificates
+            authenticationCode?: string; // NOVO: Código de autenticação
+            expirationDate?: string;
+        }
+    ): Promise<DocumentDTO> => {
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('target_company_id', targetCompanyId);
 
-        // Clean Code: Só adiciona ao FormData se o valor existir (evita enviar "undefined" string)
-        if (title) {
-            formData.append('title', title);
-        }
-
-        if (targetCompanyId) {
-            formData.append('target_company_id', targetCompanyId);
-        }
-
-        if (expirationDate) {
-            formData.append('expiration_date', expirationDate);
-        }
+        // Preenche os dados opcionais se existirem
+        if (options?.title) formData.append('title', options.title);
+        if (options?.typeId) formData.append('type_id', options.typeId);
+        if (options?.authenticationCode) formData.append('authentication_code', options.authenticationCode);
+        if (options?.expirationDate) formData.append('expiration_date', options.expirationDate);
 
         const { data } = await api.post<DocumentDTO>('/documents/upload', formData);
         return data;
@@ -55,14 +98,13 @@ export const documentService = {
 
     /**
      * Baixa o documento forçando o comportamento nativo do navegador.
-     * Nota: Mantém a responsabilidade de criar o Blob aqui para abstrair a complexidade do Componente.
+     * Compatível com documentos legados e certificados estruturados.
      */
     downloadDocument: async (docId: string, filename: string): Promise<void> => {
         const { data } = await api.get(`/documents/${docId}/download`, {
             responseType: 'blob'
         });
 
-        // Criação de URL temporária para download (Memory Safe)
         const url = window.URL.createObjectURL(new Blob([data]));
         const link = document.createElement('a');
 
@@ -72,7 +114,6 @@ export const documentService = {
 
         link.click();
 
-        // Limpeza imediata para evitar Memory Leak
         link.remove();
         window.URL.revokeObjectURL(url);
     }

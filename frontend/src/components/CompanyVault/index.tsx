@@ -1,23 +1,61 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
     ChevronDown, ChevronRight, FileText, CheckCircle2,
-    AlertCircle, History, Download, Scale, Landmark,
-    Briefcase, HardHat, FileSignature, FolderOpen, AlertTriangle
+    AlertCircle, History, Download, FolderOpen, AlertTriangle, Key
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { documentService } from '../../services/documentService';
 import type { DocumentDTO } from '../../services/documentService';
-import { categorizeDocuments } from '../../utils/documentCategorizer';
-import type { VaultCategory } from '../../utils/documentCategorizer';
+
 interface CompanyVaultProps {
     documents: DocumentDTO[];
 }
 
+// Interface para o nosso novo agrupamento dinâmico
+interface GroupedVault {
+    [categoryName: string]: {
+        valid: DocumentDTO[];
+        expired: DocumentDTO[];
+    }
+}
+
 export function CompanyVault({ documents }: CompanyVaultProps) {
-    const data = categorizeDocuments(documents);
-    const categories = Object.keys(data) as VaultCategory[];
+    // NOVO: O Agrupamento agora é 100% Dinâmico, baseado na base de dados!
+    const groupedData = useMemo(() => {
+        const groups: GroupedVault = {};
+
+        documents.forEach(doc => {
+            // Se o documento não tem categoria (ex: documento legado), vai para "Outros Documentos"
+            const catName = doc.category_name || 'Outros Documentos';
+
+            if (!groups[catName]) {
+                groups[catName] = { valid: [], expired: [] };
+            }
+
+            // Agrupa por status
+            if (doc.status === 'expired') {
+                groups[catName].expired.push(doc);
+            } else {
+                groups[catName].valid.push(doc);
+            }
+        });
+
+        return groups;
+    }, [documents]);
+
+    // Ordenamos as chaves para que a renderização fique consistente
+    const categories = Object.keys(groupedData).sort();
+
+    if (documents.length === 0) {
+        return (
+            <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <FolderOpen className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                <p>Nenhum documento encontrado neste cofre.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">
@@ -25,8 +63,8 @@ export function CompanyVault({ documents }: CompanyVaultProps) {
                 <VaultSection
                     key={cat}
                     title={cat}
-                    validDocs={data[cat].valid}
-                    expiredDocs={data[cat].expired}
+                    validDocs={groupedData[cat].valid}
+                    expiredDocs={groupedData[cat].expired}
                 />
             ))}
         </div>
@@ -34,87 +72,58 @@ export function CompanyVault({ documents }: CompanyVaultProps) {
 }
 
 // --- Sub-componente de Seção ---
-function VaultSection({ title, validDocs, expiredDocs }: { title: VaultCategory, validDocs: DocumentDTO[], expiredDocs: DocumentDTO[] }) {
+function VaultSection({ title, validDocs, expiredDocs }: { title: string, validDocs: DocumentDTO[], expiredDocs: DocumentDTO[] }) {
     const [isOpen, setIsOpen] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
 
     const hasDocs = validDocs.length > 0 || expiredDocs.length > 0;
 
-    // Ícones para cada categoria
-    const getIcon = () => {
-        switch (title) {
-            case 'Habilitação Jurídica': return <Scale className="text-purple-600" />;
-            case 'Regularidade Fiscal e Trabalhista': return <Landmark className="text-blue-600" />;
-            case 'Qualificação Econômico-Financeira': return <Briefcase className="text-emerald-600" />;
-            case 'Qualificação Técnica': return <HardHat className="text-orange-600" />;
-            case 'Declarações': return <FileSignature className="text-slate-600" />;
-            default: return <FolderOpen className="text-slate-400" />;
-        }
-    };
-
-    async function handleDownload(doc: DocumentDTO) {
-        try {
-            toast.info("Iniciando download...");
-            await documentService.downloadDocument(doc.id, doc.filename);
-        } catch {
-            toast.error("Erro ao baixar documento.");
-        }
-    }
+    if (!hasDocs) return null;
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all">
-            {/* Header Clicável */}
-            <button
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+            {/* Header */}
+            <div
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-100 transition-colors"
             >
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm">
-                        {getIcon()}
+                    {isOpen ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
+
+                    {/* Ícone Genérico: Como as categorias são dinâmicas, usamos a pasta genérica */}
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                        <FolderOpen size={18} />
                     </div>
-                    <div className="text-left">
-                        <h3 className="font-bold text-slate-800 text-sm md:text-base">{title}</h3>
-                        <p className="text-xs text-slate-500">
-                            {validDocs.length} vigentes {expiredDocs.length > 0 && `• ${expiredDocs.length} no histórico`}
-                        </p>
+
+                    <div>
+                        <h3 className="font-semibold text-slate-800">{title}</h3>
+                        <p className="text-xs text-slate-500">{validDocs.length} documentos vigentes</p>
                     </div>
                 </div>
-                {isOpen ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
-            </button>
+            </div>
 
-            {/* Corpo da Seção */}
+            {/* Content */}
             {isOpen && (
-                <div className="p-4 border-t border-slate-100 animate-in slide-in-from-top-1 duration-200">
-
-                    {!hasDocs && (
-                        <div className="text-center py-4 text-slate-400 text-xs italic bg-slate-50/30 rounded-lg border border-dashed border-slate-100">
-                            Nenhum documento cadastrado nesta categoria.
-                        </div>
+                <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
+                    {validDocs.length === 0 ? (
+                        <p className="text-sm text-slate-500 text-center py-4">Nenhum documento vigente nesta categoria.</p>
+                    ) : (
+                        validDocs.map(doc => <DocumentRow key={doc.id} doc={doc} />)
                     )}
 
-                    {/* Lista de Vigentes */}
-                    <div className="space-y-2">
-                        {validDocs.map(doc => (
-                            <DocRow key={doc.id} doc={doc} onDownload={() => handleDownload(doc)} />
-                        ))}
-                    </div>
-
-                    {/* Histórico de Vencidos */}
                     {expiredDocs.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-slate-100">
+                        <div className="pt-2">
                             <button
                                 onClick={() => setShowHistory(!showHistory)}
-                                className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors mb-3"
+                                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors py-2"
                             >
-                                <History size={14} />
-                                {showHistory ? 'Ocultar Histórico' : `Ver Histórico (${expiredDocs.length} vencidos)`}
+                                <History size={16} />
+                                {showHistory ? 'Ocultar Histórico Vencido' : `Ver Histórico (${expiredDocs.length})`}
                             </button>
 
                             {showHistory && (
-                                <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    {expiredDocs.map(doc => (
-                                        <DocRow key={doc.id} doc={doc} isHistory onDownload={() => handleDownload(doc)} />
-                                    ))}
+                                <div className="mt-3 space-y-3 pl-4 border-l-2 border-slate-200">
+                                    {expiredDocs.map(doc => <DocumentRow key={doc.id} doc={doc} isHistory />)}
                                 </div>
                             )}
                         </div>
@@ -125,42 +134,65 @@ function VaultSection({ title, validDocs, expiredDocs }: { title: VaultCategory,
     );
 }
 
-// --- Componente de Linha (Documento Individual) ---
-function DocRow({ doc, isHistory = false, onDownload }: { doc: DocumentDTO, isHistory?: boolean, onDownload: () => void }) {
+// --- Sub-componente de Linha (Documento) ---
+function DocumentRow({ doc, isHistory = false }: { doc: DocumentDTO, isHistory?: boolean }) {
     const isWarning = doc.status === 'warning';
 
+    const onDownload = async () => {
+        try {
+            toast.info("Iniciando download...");
+            await documentService.downloadDocument(doc.id, doc.filename);
+        } catch (error) {
+            toast.error("Erro ao baixar o arquivo.");
+        }
+    };
+
     return (
-        <div className={`flex items-center justify-between p-3 rounded-lg border transition-all group ${isHistory
-            ? 'border-slate-200 bg-white opacity-75'
-            : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
-            }`}>
-            <div className="flex items-center gap-3 overflow-hidden">
-                <div className={`${isHistory ? 'text-slate-400' : 'text-blue-600'}`}>
+        <div className={`flex items-center justify-between p-3 rounded-lg border bg-white ${isHistory ? 'border-slate-200 opacity-75 grayscale' : 'border-slate-200 shadow-sm'} hover:border-blue-300 transition-colors group`}>
+            <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
+                <div className={`p-2 rounded-lg shrink-0 ${isHistory ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
                     <FileText size={20} />
                 </div>
+
                 <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isHistory ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-900'}`}>
-                        {doc.title || doc.filename}
+                    <p className={`text-sm font-medium truncate ${isHistory ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                        {doc.title}
                     </p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-0.5">
-                        <span title={doc.filename} className="truncate max-w-[200px] text-slate-400 hidden md:block">
-                            {doc.filename}
-                        </span>
-                        {doc.expiration_date ? (
-                            <span className={`flex items-center gap-1 font-medium ${isHistory ? 'text-red-400' : isWarning ? 'text-amber-600' : 'text-green-600'
-                                }`}>
-                                {isHistory ? 'Venceu: ' : 'Vence: '}
-                                {format(new Date(doc.expiration_date), 'dd/MM/yyyy')}
-                            </span>
-                        ) : (
-                            <span className="text-slate-400">Validade indeterminada</span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
+                        <span className="truncate max-w-[120px] md:max-w-none" title={doc.filename}>{doc.filename}</span>
+                        <span>•</span>
+                        <span>Enviado: {format(new Date(doc.created_at), 'dd/MM/yyyy')}</span>
+                        {doc.expiration_date && (
+                            <>
+                                <span>•</span>
+                                <span className={isWarning && !isHistory ? "text-amber-600 font-medium" : ""}>
+                                    Validade: {format(new Date(doc.expiration_date), 'dd/MM/yyyy')}
+                                </span>
+                            </>
+                        )}
+
+                        {/* NOVO: Tags visuais do Cofre Inteligente */}
+                        {doc.is_structured && (
+                            <>
+                                <span>•</span>
+                                <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider">
+                                    INTELIGENTE
+                                </span>
+                            </>
+                        )}
+                        {doc.authentication_code && (
+                            <>
+                                <span className="hidden sm:inline">•</span>
+                                <span className="flex items-center gap-1 text-slate-400" title="Código de Autenticação">
+                                    <Key size={12} /> {doc.authentication_code}
+                                </span>
+                            </>
                         )}
                     </div>
                 </div>
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 pl-2 shrink-0">
-                {/* Badge de Status (Só aparece em telas maiores ou se for importante) */}
                 <div className="hidden md:block">
                     {isHistory ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
@@ -169,6 +201,10 @@ function DocRow({ doc, isHistory = false, onDownload }: { doc: DocumentDTO, isHi
                     ) : isWarning ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                             <AlertTriangle size={10} /> Vencendo
+                        </span>
+                    ) : doc.status === 'processing' ? ( // Tratamento para o novo status
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            <CheckCircle2 size={10} /> Processando
                         </span>
                     ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">

@@ -1,36 +1,64 @@
 """
-Modelo de Certidões (Extension Table).
-Especialização da tabela 'documents' para armazenar metadados de validade e fiscalização.
+Modelagem de Certificados (Core).
+Representa o documento estruturado e validado, vinculado a um Tipo específico.
 """
-from sqlalchemy import Column, String, Date, ForeignKey, Enum
-from sqlalchemy.orm import relationship
 import enum
+from sqlalchemy import Column, String, Date, ForeignKey, DateTime, JSON
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from app.core.database import Base, generate_uuid
 
-class CertificateType(str, enum.Enum):
-    FEDERAL = "federal"
-    ESTADUAL = "estadual"
-    MUNICIPAL = "municipal"
-    TRABALHISTA = "trabalhista"
-    FALENCIA = "falencia"
-    OUTROS = "outros"
+class CertificateStatus(str, enum.Enum):
+    VALID = "valid"       # ✅ Em dia
+    WARNING = "warning"   # ⚠️ Vence em breve (ex: < 30 dias)
+    EXPIRED = "expired"   # ❌ Vencido
+    PROCESSING = "processing" # ⏳ Sendo lido pelo Robô
+    ERROR = "error"       # 🚫 Falha na leitura/validação
 
 class Certificate(Base):
     __tablename__ = "certificates"
 
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     
-    # Vínculo com o Documento pai (Um documento genérico PODE SER uma certidão)
-    document_id = Column(String, ForeignKey("documents.id"), unique=True, nullable=False)
+    # =================================================================
+    # Vínculos (Quem é o dono e O que é esse documento)
+    # =================================================================
+    company_id = Column(String, ForeignKey("companies.id"), nullable=False, index=True)
+    type_id = Column(String, ForeignKey("document_types.id"), nullable=False, index=True)
+    document_id = Column(String, ForeignKey("documents.id"), nullable=True, unique=True)
     
-    # Dados Específicos da Certidão
-    certificate_type = Column(String, nullable=False, doc="Tipo fiscal/jurídico da certidão")
-    control_code = Column(String, nullable=True, doc="Código de autenticidade para validação web")
-    issuing_body = Column(String, nullable=True, doc="Órgão emissor (ex: Receita Federal)")
+    # =================================================================
+    # Arquivo Físico
+    # =================================================================
+    file_path = Column(String, nullable=False) # Caminho no Storage (S3/Local)
+    filename = Column(String, nullable=False)  # Nome original do arquivo (ex: 'CND_Federal_2024.pdf')
     
-    # Datas Críticas
-    emission_date = Column(Date, nullable=False)
-    expiration_date = Column(Date, nullable=False, index=True, doc="Usado para calcular vencimento")
+    # =================================================================
+    # Dados Extraídos das Certidões
+    # =================================================================
+    authentication_code = Column(String, nullable=True, index=True)
+    issue_date = Column(Date, nullable=True) # Data de Emissão
+    expiration_date = Column(Date, nullable=True, index=True) # Data de Validade
+    
+    # =================================================================
+    # Controle de Estado (Performance)
+    # =================================================================
+    status = Column(
+        String, 
+        default=CertificateStatus.VALID.value,
+        index=True
+    )
+    
+    # Metadados Flexíveis (JSON)
+    metadata_info = Column(JSON, nullable=True) 
 
-    # Relacionamento Reverso
-    document = relationship("Document", back_populates="certificate_info")
+    # =================================================================
+    # Auditoria
+    # =================================================================
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relacionamentos
+    company = relationship("app.models.company_model.Company") 
+    document_type = relationship("app.models.document_type_model.DocumentType", back_populates="certificates")
+    document = relationship("app.models.document_model.Document", back_populates="certificate_info")
