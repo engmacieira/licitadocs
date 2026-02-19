@@ -49,3 +49,27 @@ class DocumentResponse(BaseModel):
     authentication_code: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
+class DocumentTypeCreate(BaseModel):
+    name: str = Field(..., description="Nome de exibição. Ex: CND Federal")
+    slug: str = Field(..., description="Identificador único sem espaços. Ex: cnd_federal")
+    validity_days_default: int = Field(0, description="Dias padrão de validade (0 para permanente)")
+    description: Optional[str] = None
+    category_id: str = Field(..., description="UUID da Categoria pai")
+
+class DocumentTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    validity_days_default: Optional[int] = None
+    description: Optional[str] = None
+    category_id: Optional[str] = None
+
+class DocumentCategoryCreate(BaseModel):
+    name: str = Field(..., description="Ex: Habilitação Jurídica")
+    slug: str = Field(..., description="Ex: juridica")
+    order: int = Field(0, description="Ordem de exibição na tela")
+
+class DocumentCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    order: Optional[int] = None

@@ -100,7 +100,7 @@ export function Sidebar({ className = "" }: SidebarProps) {
                         <NavItem to="/admin/dashboard" icon={LayoutDashboard} label="Visão Geral" activeColor="bg-purple-600" />
                         <NavItem to="/admin/companies" icon={Building2} label="Gestão de Empresas" activeColor="bg-purple-600" />
                         <NavItem to="/admin/upload" icon={UploadCloud} label="Upload Centralizado" activeColor="bg-purple-600" />
-                        <NavItem to="/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
+                        <NavItem to="/admin/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
                     </>
                 ) : (
                     <>

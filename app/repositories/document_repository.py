@@ -3,7 +3,7 @@ Repositório de Documentos e Certificados.
 Responsável pela persistência e leitura unificada (Cofre).
 """
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from typing import Optional, List
 from datetime import date
 
@@ -11,6 +11,11 @@ from app.models.document_model import Document, DocumentStatus
 from app.models.certificate_model import Certificate, CertificateStatus
 from app.models.document_category_model import DocumentCategory
 from app.models.document_type_model import DocumentType
+
+from app.schemas.document_schemas import (
+    DocumentCategoryCreate, DocumentCategoryUpdate,
+    DocumentTypeCreate, DocumentTypeUpdate
+)
 
 class DocumentRepository:
     
@@ -129,3 +134,95 @@ class DocumentRepository:
         if cert: return cert.file_path
         
         return None
+    
+    # =================================================================
+    # CRUD DE CATEGORIAS (Admin)
+    # =================================================================
+    @staticmethod
+    def create_category(db: Session, cat_in: DocumentCategoryCreate) -> DocumentCategory:
+        db_cat = DocumentCategory(**cat_in.model_dump())
+        try:
+            db.add(db_cat)
+            db.commit()
+            db.refresh(db_cat)
+            return db_cat
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Já existe uma categoria com este slug (identificador).")
+
+    @staticmethod
+    def update_category(db: Session, cat_id: str, cat_in: DocumentCategoryUpdate) -> DocumentCategory:
+        db_cat = db.query(DocumentCategory).filter(DocumentCategory.id == cat_id).first()
+        if not db_cat:
+            raise ValueError("Categoria não encontrada.")
+        
+        update_data = cat_in.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_cat, key, value)
+            
+        try:
+            db.commit()
+            db.refresh(db_cat)
+            return db_cat
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Erro de integridade ao atualizar a categoria.")
+
+    @staticmethod
+    def delete_category(db: Session, cat_id: str):
+        db_cat = db.query(DocumentCategory).filter(DocumentCategory.id == cat_id).first()
+        if not db_cat:
+            raise ValueError("Categoria não encontrada.")
+        
+        # Regra de Negócio: Não apagar se existirem Tipos vinculados a ela!
+        if db.query(DocumentType).filter(DocumentType.category_id == cat_id).first():
+            raise ValueError("Não é possível eliminar uma categoria que ainda possui Tipos de Documentos vinculados.")
+            
+        db.delete(db_cat)
+        db.commit()
+
+    # =================================================================
+    # CRUD DE TIPOS DE DOCUMENTOS (Admin)
+    # =================================================================
+    @staticmethod
+    def create_type(db: Session, type_in: DocumentTypeCreate) -> DocumentType:
+        db_type = DocumentType(**type_in.model_dump())
+        try:
+            db.add(db_type)
+            db.commit()
+            db.refresh(db_type)
+            return db_type
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Erro de integridade. Verifique se o slug já existe ou se a Categoria é válida.")
+
+    @staticmethod
+    def update_type(db: Session, type_id: str, type_in: DocumentTypeUpdate) -> DocumentType:
+        db_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+        if not db_type:
+            raise ValueError("Tipo de documento não encontrado.")
+            
+        update_data = type_in.model_dump(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_type, key, value)
+            
+        try:
+            db.commit()
+            db.refresh(db_type)
+            return db_type
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("Erro de integridade ao atualizar o tipo de documento.")
+
+    @staticmethod
+    def delete_type(db: Session, type_id: str):
+        db_type = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+        if not db_type:
+            raise ValueError("Tipo de documento não encontrado.")
+            
+        # Regra de Negócio Crítica: Não apagar se já existirem PDFs de clientes!
+        if db.query(Certificate).filter(Certificate.type_id == type_id).first():
+            raise ValueError("Não é possível eliminar este Tipo. Já existem certidões de clientes vinculadas a ele no Cofre.")
+            
+        db.delete(db_type)
+        db.commit()

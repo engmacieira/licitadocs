@@ -31,6 +31,7 @@ import { AdminDashboard } from './pages/Admin/Dashboard';
 import { AdminCompaniesPage } from './pages/Admin/Companies';
 import { AdminCompanyDetails } from './pages/Admin/CompanyDetails';
 import { AdminUploadPage } from './pages/Admin/Upload';
+import { SettingsPage } from './pages/Admin/Settings';
 
 function App() {
   return (
@@ -72,6 +73,7 @@ function App() {
             {/* Dica: Futuramente você pode criar um wrapper <AdminRoute> aqui */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route path="/admin/upload" element={<AdminUploadPage />} />
+            <Route path="/admin/settings" element={<SettingsPage />} />
 
             {/* Gestão de Empresas */}
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />

@@ -7,10 +7,15 @@ import os
 
 from app.core.database import get_db
 from app.dependencies import get_current_user, get_current_active_user
-from app.schemas.document_schemas import DocumentResponse, DocumentCategoryResponse
 from app.core.storage import save_file_locally
 from app.models.user_model import User, UserRole
 from app.repositories.document_repository import DocumentRepository
+
+from app.schemas.document_schemas import (
+    DocumentResponse, DocumentCategoryResponse, DocumentTypeResponse,
+    DocumentCategoryCreate, DocumentCategoryUpdate,
+    DocumentTypeCreate, DocumentTypeUpdate
+)
 
 router = APIRouter(prefix="/documents", tags=["Gestão de Documentos"])
 
@@ -131,3 +136,90 @@ def download_document(
         filename=filename,
         media_type='application/pdf'
     )
+    
+# =================================================================
+# GESTÃO DO CATÁLOGO (CRUD Admin - Sprint 18)
+# =================================================================
+
+def verify_admin_access(current_user: User):
+    """Função auxiliar para garantir que apenas Admins mexem no catálogo."""
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores podem modificar o catálogo.")
+
+# --- CATEGORIAS ---
+
+@router.post("/categories", response_model=DocumentCategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_category(
+    cat_in: DocumentCategoryCreate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        return DocumentRepository.create_category(db, cat_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/categories/{cat_id}", response_model=DocumentCategoryResponse)
+def update_category(
+    cat_id: str, 
+    cat_in: DocumentCategoryUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        return DocumentRepository.update_category(db, cat_id, cat_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/categories/{cat_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_category(
+    cat_id: str, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        DocumentRepository.delete_category(db, cat_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# --- TIPOS DE DOCUMENTOS ---
+
+@router.post("/types", response_model=DocumentTypeResponse, status_code=status.HTTP_201_CREATED)
+def create_document_type(
+    type_in: DocumentTypeCreate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        return DocumentRepository.create_type(db, type_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/types/{type_id}", response_model=DocumentTypeResponse)
+def update_document_type(
+    type_id: str, 
+    type_in: DocumentTypeUpdate, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        return DocumentRepository.update_type(db, type_id, type_in)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/types/{type_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document_type(
+    type_id: str, 
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_active_user)
+):
+    verify_admin_access(current_user)
+    try:
+        DocumentRepository.delete_type(db, type_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

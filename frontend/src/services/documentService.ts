@@ -39,6 +39,34 @@ export interface DocumentDTO {
     authentication_code?: string;
 }
 
+export interface DocumentCategoryCreateDTO {
+    name: string;
+    slug: string;
+    order: number;
+}
+
+export interface DocumentCategoryUpdateDTO {
+    name?: string;
+    slug?: string;
+    order?: number;
+}
+
+export interface DocumentTypeCreateDTO {
+    name: string;
+    slug: string;
+    validity_days_default: number;
+    description?: string;
+    category_id: string;
+}
+
+export interface DocumentTypeUpdateDTO {
+    name?: string;
+    slug?: string;
+    validity_days_default?: number;
+    description?: string;
+    category_id?: string;
+}
+
 // ============================================================================
 // 2. SERVIÇO (API Calls)
 // ============================================================================
@@ -116,5 +144,34 @@ export const documentService = {
 
         link.remove();
         window.URL.revokeObjectURL(url);
+    },
+
+    createCategory: async (payload: DocumentCategoryCreateDTO): Promise<DocumentCategoryDTO> => {
+        const { data } = await api.post<DocumentCategoryDTO>('/documents/categories', payload);
+        return data;
+    },
+
+    updateCategory: async (id: string, payload: DocumentCategoryUpdateDTO): Promise<DocumentCategoryDTO> => {
+        const { data } = await api.put<DocumentCategoryDTO>(`/documents/categories/${id}`, payload);
+        return data;
+    },
+
+    deleteCategory: async (id: string): Promise<void> => {
+        await api.delete(`/documents/categories/${id}`);
+    },
+
+    // Tipos de Documentos
+    createType: async (payload: DocumentTypeCreateDTO): Promise<DocumentTypeDTO> => {
+        const { data } = await api.post<DocumentTypeDTO>('/documents/types', payload);
+        return data;
+    },
+
+    updateType: async (id: string, payload: DocumentTypeUpdateDTO): Promise<DocumentTypeDTO> => {
+        const { data } = await api.put<DocumentTypeDTO>(`/documents/types/${id}`, payload);
+        return data;
+    },
+
+    deleteType: async (id: string): Promise<void> => {
+        await api.delete(`/documents/types/${id}`);
     }
 };
