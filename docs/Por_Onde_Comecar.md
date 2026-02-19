@@ -1,54 +1,33 @@
-# 🚀 Por Onde Começar (Guia de Contexto)
+# 🧭 Por Onde Começar (Save State - Sprint 19)
 
-**Última Atualização:** [Data Atual]
-**Sprint Atual:** Sprint 17 - Arquitetura de Dados & Cofre Inteligente
-**Status:** 🟡 Iniciando
-
----
-
-## CONTEXTO IMEDIATO
-Acabamos de finalizar a **Sprint 16**, onde refatoramos todo o Frontend para exibir documentos em um formato de "Cofre Digital" (Habilitação Jurídica, Fiscal, Técnica, etc.).
-
-⚠️ **Atenção:** Atualmente, essa categorização é feita por uma "gambiarra" lógica no Frontend (`frontend/src/utils/documentCategorizer.ts`) que adivinha a categoria pelo nome do arquivo.
-
-**O Objetivo da Sprint 17** é mover essa inteligência para o Banco de Dados, criando tabelas estruturadas para suportar automação e validação de documentos.
+**Projeto:** Sistema de Gestão de Documentos (Cofre Digital Inteligente)
+**Stack:** FastAPI (Python), PostgreSQL, React (TypeScript), Tailwind CSS.
+**Momento Atual:** Início da **Sprint 19** (Fortaleza Digital - QA Senior & Hardening).
 
 ---
 
-## 📋 PLANO DE AÇÃO (Sprint 17)
-
-O próximo agente deve seguir esta ordem de execução, baseada no arquivo `docs/Sprints/SPRINT_17_BACKLOG.md`:
-
-### 1. Modelagem de Dados (Backend)
-- [ ] Criar modelos SQLAlchemy em `app/models/`:
-    - `DocumentCategory` (Domínio macro: Jurídico, Fiscal...)
-    - `DocumentType` (Catálogo: Contrato Social, CND Federal...)
-    - `Certificate` (O documento em si, com validade e metadados JSONB).
-- [ ] Gerar a migration do Alembic: `alembic revision --autogenerate -m "create_certificate_structure"`.
-
-### 2. Seeding (Dados Iniciais)
-- [ ] Criar script `app/scripts/seed_document_types.py`.
-- [ ] Popular o banco com as categorias e tipos padrões de licitação (essencial para o frontend funcionar).
-
-### 3. Integração (Backend <-> Frontend)
-- [ ] Atualizar `DocumentRepository` para buscar da nova tabela `certificates` (fazendo merge com a tabela legada `documents` se necessário).
-- [ ] Criar rota `GET /document-types` para o frontend popular o dropdown de upload.
-- [ ] Atualizar o componente `UploadModal` no Frontend para usar IDs reais em vez de strings.
+## 📍 Onde Paramos (Status do Sistema)
+Acabamos de concluir a **Sprint 18**, entregando a autonomia total do sistema.
+* **O que funciona hoje:** * Autenticação e Autorização (JWT com Roles Admin/Client).
+  * Upload de Documentos para a AWS S3 (via SDK no Backend).
+  * O **Cofre Inteligente**, que unifica arquivos legados e certidões estruturadas usando o padrão *Unified DTO*.
+  * O painel de **Configurações (Settings)**, onde o Administrador faz o CRUD completo de Categorias e Tipos de Documentos, totalmente protegido por regras de Integridade Relacional no banco de dados.
+* **Qualidade Atual:** O backend possui testes de integração básicos (auth, uploads e settings) passando em 100%, mas a cobertura geral ainda precisa subir. O frontend não possui testes automatizados ainda.
 
 ---
 
-## 📂 ARQUIVOS CHAVE
+## 🎯 Nossa Missão Agora (Sprint 19)
+O sistema tem uma base funcional excelente. A missão desta Sprint é **Endurecer (Hardening) o produto e agir como um QA Senior**. Vamos validar exaustivamente a segurança, estabilidade e resiliência de ambas as camadas (Backend e Frontend).
 
-### Documentação
-- `docs/Sprints/SPRINT_17_BACKLOG.md` (📜 **Fonte da Verdade desta Sprint**)
-- `docs/DividasTecnicas.md` (Entenda o problema do `documentCategorizer.ts`)
-
-### Código Legado (Para Refatorar/Consultar)
-- `frontend/src/utils/documentCategorizer.ts` -> **Deve ser obsoleto ao fim da sprint.**
-- `app/models/document_model.py` -> Tabela antiga (será mantida para legado/genéricos).
-
-### Novos Arquivos (Para Criar)
-- `app/models/certificate_model.py`
-- `app/models/document_category_model.py`
+**O Backlog da Sprint 19 está dividido em duas fases (conforme `SPRINT_19_BACKLOG.md`):**
+1. **A Fundação:** Expandir a cobertura de Testes Unitários e de Integração (Pytest no Backend e configurar Vitest/RTL no Frontend) para os caminhos felizes e erros esperados.
+2. **O Estresse (QA Senior):** Tentar invadir rotas Admin com usuário comum (ACL Bypass), testar vazamento de dados entre empresas (Multi-tenancy bypass), testar arquivos maliciosos/vazios e validar a resiliência do Frontend (prevenção de double-clicks e quedas de internet).
 
 ---
+
+## 🚀 Próximo Passo Imediato (Call to Action para a IA)
+
+Você, como meu Tech Lead (Mark), deve me guiar na **Fase 1 do Backend**. 
+
+Gostaria de começar estruturando a nossa suíte de testes do Backend para atingir uma alta cobertura. 
+**Qual deve ser o nosso primeiro passo prático em código?** Devemos refinar o nosso `conftest.py` para facilitar os mocks de segurança, ou já criar o `test_backend_security.py` para testarmos o bypass de permissões das rotas de admin?
