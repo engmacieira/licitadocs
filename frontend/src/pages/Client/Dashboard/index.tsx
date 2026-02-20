@@ -26,6 +26,7 @@ export function Dashboard() {
 
     const [stats, setStats] = useState<ClientStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Estado local para armazenar os dados FRESCOS da empresa
     const [companyStatus, setCompanyStatus] = useState({
@@ -76,11 +77,20 @@ export function Dashboard() {
     }, [loadData]);
 
     async function handleDownload(docId: string, filename: string) {
+        // 🛡️ TRAVA: Se já houver um download em curso, ignora cliques extras
+        if (isDownloading) return;
+
         try {
+            setIsDownloading(true); // Ativa o bloqueio 
             toast.info("Iniciando download...");
+
+            // Aguarda a resposta do servidor (que pode estar lenta) 
             await documentService.downloadDocument(docId, filename);
         } catch (error) {
             toast.error("Erro ao baixar o arquivo.");
+        } finally {
+            // 🔓 LIBERA: Volta ao estado normal independente de sucesso ou erro 
+            setIsDownloading(false);
         }
     }
 
