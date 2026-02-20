@@ -1,86 +1,59 @@
-from fastapi.testclient import TestClient
+"""
+Testes de Integração de Rotas: AI Router.
+Valida o endpoint do chatbot, garantindo segurança e 
+ensinando o conceito vital de MOCKING em testes externos.
+"""
+from fastapi import status
 from unittest.mock import patch
-from app.main import app
-from app.models.user_model import User, UserRole, UserCompanyLink, UserCompanyRole
-from app.models.company_model import Company
-from app.dependencies import get_current_user 
 
-def test_chat_consultant_success(client, db_session):
+# ==========================================
+# 🛡️ 1. TESTES DE SEGURANÇA (ACL BYPASS)
+# ==========================================
+
+def test_chat_unauthorized_public_user(client):
     """
-    Cenário: Teste com Override de Autenticação e Vínculo correto.
+    Cenário QA [Hardening]: Tentar conversar com a IA sem enviar token.
+    Resultado Esperado: 401 Unauthorized.
     """
-    # 1. Setup Dados
-    company = Company(razao_social="IA Test Ltd", cnpj="111")
-    db_session.add(company)
-    db_session.commit()
+    payload = {"message": "Quais são meus documentos vencidos?"}
+    response = client.post("/ai/chat", json=payload)
     
-    user = User(
-        email="ia@test.com", 
-        password_hash="pw", 
-        is_active=True,
-        role=UserRole.CLIENT.value
-    )
-    db_session.add(user)
-    db_session.commit()
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+# ==========================================
+# 🤖 2. TESTES DE FUNCIONAMENTO (COM MOCK)
+# ==========================================
+
+# O @patch substitui temporariamente a função original por uma "falsa" (Mock)
+@patch("app.routers.ai_router.AIService.generate_concierge_response")
+def test_chat_success_with_mock(mock_ai_service, authorized_client):
+    """
+    Cenário: Usuário válido faz uma pergunta para a IA.
+    Resultado Esperado: Retornar a resposta simulada (Mock) sem gastar API real.
+    """
+    # 1. Setup: Ensinamos o nosso "dublê" a responder o que quisermos
+    mock_ai_service.return_value = "Olá! Você tem 2 documentos vencidos, segundo nosso Cofre."
     
-    link = UserCompanyLink(
-        user_id=user.id, 
-        company_id=company.id, 
-        role=UserCompanyRole.MASTER.value,
-        is_active=True
-    )
-    db_session.add(link)    
-    db_session.commit()
-
-    # 2. Override da Dependência de Usuário Logado
-    # Em vez de ler Token, a API vai receber este objeto user direto.
-    def mock_get_current_user():
-        db_session.refresh(user)
-        return user
-
-    app.dependency_overrides[get_current_user] = mock_get_current_user
-
-    try:
-        # 3. Mock da IA
-        with patch("app.core.ai_client.AIClient.generate_chat_response") as mock_method:
-            mock_method.return_value = "Resposta Mockada com Sucesso!"
-
-            # Chamada sem Header de Auth (o override cuida disso)
-            response = client.post("/ai/chat", json={"message": "Olá"})
-
-        assert response.status_code == 200
-        assert response.json()["response"] == "Resposta Mockada com Sucesso!"
+    # 2. Ação: Fazemos a requisição HTTP normalmente
+    payload = {"message": "Como estão meus documentos?"}
+    response = authorized_client.post("/ai/chat", json=payload)
     
-    finally:
-        # Importante: Limpar o override para não afetar outros testes
-        del app.dependency_overrides[get_current_user]
-
-def test_chat_empty_message(client, db_session):
-    # 1. Setup
-    company = Company(razao_social="IA Test 2", cnpj="222")
-    db_session.add(company)
-    db_session.commit()
-    user = User(email="ia2@test.com", password_hash="pw", is_active=True)
-    db_session.add(user)
-    db_session.commit()
+    # 3. Validação: A resposta HTTP foi 200 OK?
+    assert response.status_code == status.HTTP_200_OK
     
-    link = UserCompanyLink(
-        user_id=user.id, 
-        company_id=company.id, 
-        role=UserCompanyRole.MASTER.value,
-        is_active=True
-    )
-    db_session.add(link)    
-    db_session.commit()
+    # 4. Validação: O JSON devolveu a nossa resposta mockada?
+    data = response.json()
+    assert data["response"] == "Olá! Você tem 2 documentos vencidos, segundo nosso Cofre."
+    
+    # QA Bônus: Garante que o código do Router realmente tentou chamar o Service por baixo dos panos!
+    mock_ai_service.assert_called_once()
 
-    # 2. Override
-    def mock_get_current_user():
-        db_session.refresh(user)
-        return user
-    app.dependency_overrides[get_current_user] = mock_get_current_user
-
-    try:
-        response = client.post("/ai/chat", json={"message": ""})
-        assert response.status_code in [200, 422]
-    finally:
-        del app.dependency_overrides[get_current_user]
+def test_chat_empty_message(authorized_client):
+    """
+    Cenário: Tentar enviar um payload vazio ou sem a chave 'message'.
+    Resultado Esperado: 422 Unprocessable Entity (O Pydantic tem que bloquear).
+    """
+    payload = {} # Sem a chave requerida
+    response = authorized_client.post("/ai/chat", json=payload)
+    
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

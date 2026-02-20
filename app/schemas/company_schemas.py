@@ -10,7 +10,7 @@ from app.models.user_model import UserCompanyRole
 
 class CompanyBase(BaseModel):
     # --- Identificação ---
-    cnpj: str = Field(..., description="CNPJ apenas números", min_length=14, max_length=14)
+    cnpj: str = Field(..., description="CNPJ apenas números")
     name: str = Field(..., alias="razao_social", description="Razão Social da empresa")
     nome_fantasia: Optional[str] = Field(None, description="Nome Fantasia")
     inscricao_estadual: Optional[str] = None
@@ -36,7 +36,7 @@ class CompanyBase(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
-    @field_validator('cnpj')
+    @field_validator('cnpj', mode='before')
     @classmethod
     def validate_cnpj(cls, v: str) -> str:
         # Remove caracteres não numéricos para garantir sanidade

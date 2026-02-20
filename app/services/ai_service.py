@@ -32,7 +32,7 @@ class AIService:
              return "Não consegui identificar sua empresa para consultar os documentos. Contate o suporte."
 
         # 3. Busca documentos dessa empresa para dar contexto à IA
-        documents = DocumentRepository.get_by_company(db, company_id=company_id)
+        documents = DocumentRepository.get_unified_by_company(db, company_id)
         
         # Cria um mini-resumo dos docs para a IA saber o que existe
         doc_context = "\n".join([f"- {d.filename} (Status: {d.status})" for d in documents])

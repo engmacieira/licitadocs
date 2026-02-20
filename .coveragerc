@@ -1,13 +1,15 @@
 [run]
-# Onde ele deve medir? Apenas dentro da pasta app
+# Diz ao coverage qual pasta mapear
 source = app
 
-# O que ele deve ignorar?
+# Diz ao coverage o que IGNORAR
 omit =
-    app/tests/* # Não quero medir cobertura de arquivos de teste
-    app/core/* # Configurações costumam ser boilerplate
-    */__init__.py  # Arquivos vazios
+    app/tests/*
+    app/scripts/*
+    *__init__.py
 
 [report]
-# Mostra linhas que não foram testadas no terminal
+# Mostra as linhas exatas que faltam testar no terminal
 show_missing = True
+# Ignora arquivos que já estão 100% testados para limpar o log
+skip_covered = False
