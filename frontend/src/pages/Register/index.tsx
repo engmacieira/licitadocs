@@ -166,6 +166,7 @@ export function RegisterPage() {
                         {step === 1 && (
                             <div className="space-y-5 animate-in slide-in-from-right fade-in duration-300">
                                 <Input
+                                    id="cnpj"
                                     label="CNPJ"
                                     placeholder="00.000.000/0000-00"
                                     icon={<Building2 className="h-5 w-5 text-slate-400" />}
@@ -176,6 +177,7 @@ export function RegisterPage() {
                                     autoFocus
                                 />
                                 <Input
+                                    id="legalName"
                                     label="Razão Social"
                                     placeholder="Nome Legal da Empresa Ltda"
                                     icon={<Briefcase className="h-5 w-5 text-slate-400" />}
@@ -183,6 +185,7 @@ export function RegisterPage() {
                                     registration={register('legalName')}
                                 />
                                 <Input
+                                    id="tradeName"
                                     label="Nome Fantasia (Opcional)"
                                     placeholder="Como a empresa é conhecida"
                                     icon={<Building2 className="h-5 w-5 text-slate-400" />}
@@ -206,6 +209,7 @@ export function RegisterPage() {
                                 </div>
 
                                 <Input
+                                    id="responsibleName"
                                     label="Nome Completo"
                                     placeholder="Ex: João da Silva"
                                     icon={<User className="h-5 w-5 text-slate-400" />}
@@ -214,6 +218,7 @@ export function RegisterPage() {
                                     autoFocus
                                 />
                                 <Input
+                                    id="cpf"
                                     label="CPF"
                                     placeholder="000.000.000-00"
                                     icon={<User className="h-5 w-5 text-slate-400" />}
@@ -230,6 +235,7 @@ export function RegisterPage() {
                         {step === 3 && (
                             <div className="space-y-5 animate-in slide-in-from-right fade-in duration-300">
                                 <Input
+                                    id="email"
                                     label="E-mail Corporativo"
                                     type="email"
                                     placeholder="seu@email.com"
@@ -239,6 +245,7 @@ export function RegisterPage() {
                                     autoFocus
                                 />
                                 <Input
+                                    id="password"
                                     label="Criar Senha"
                                     type="password"
                                     placeholder="Mínimo 6 caracteres"
@@ -247,6 +254,7 @@ export function RegisterPage() {
                                     registration={register('password')}
                                 />
                                 <Input
+                                    id="confirmPassword"
                                     label="Confirmar Senha"
                                     type="password"
                                     placeholder="Repita a senha"

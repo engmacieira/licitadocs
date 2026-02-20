@@ -160,6 +160,7 @@ export function PaymentPage() {
                     {/* Simulação de Formulário (Visual Only) */}
                     <div className="space-y-5 opacity-70 pointer-events-none select-none grayscale-[0.5]">
                         <Input
+                            id="cardNumber"
                             label="Número do Cartão"
                             icon={<CreditCard className="text-slate-400 h-5 w-5" />}
                             placeholder="0000 0000 0000 0000"
@@ -168,11 +169,13 @@ export function PaymentPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <Input
+                                id="expiry"
                                 label="Validade"
                                 placeholder="MM/AA"
                                 defaultValue="12/28"
                             />
                             <Input
+                                id="cvv"
                                 label="CVV"
                                 placeholder="123"
                                 defaultValue="***"
@@ -181,6 +184,7 @@ export function PaymentPage() {
                         </div>
 
                         <Input
+                            id="cardHolder"
                             label="Nome no Cartão"
                             placeholder="Nome Completo"
                             defaultValue={responsibleName?.toUpperCase() || "SEU NOME"}

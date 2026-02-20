@@ -235,7 +235,7 @@ export function CompanySettings() {
                                     <Input label="Razão Social" {...companyForm.register("razao_social")} />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input label="Nome Fantasia" {...companyForm.register("nome_fantasia")} />
+                                    <Input id="nome_fantasia" label="Nome Fantasia" {...companyForm.register("nome_fantasia")} />
                                     <Input label="E-mail Corporativo" type="email" {...companyForm.register("email_corporativo")} />
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -341,6 +341,7 @@ export function CompanySettings() {
                         <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
                             <div className="space-y-4">
                                 <Input
+                                    id="password"
                                     type="password"
                                     label="Nova Senha"
                                     placeholder="Mínimo 8 caracteres"
@@ -348,6 +349,7 @@ export function CompanySettings() {
                                     {...passwordForm.register("password", { required: true })}
                                 />
                                 <Input
+                                    id="confirmPassword"
                                     type="password"
                                     label="Confirmar Nova Senha"
                                     placeholder="Repita a nova senha"

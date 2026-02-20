@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import { StatsCard } from '../components/ui/StatsCard'; // Ajuste o caminho conforme sua estrutura
+import { StatsCard } from './StatsCard'; // Ajuste o caminho conforme sua estrutura
 import { FileText } from 'lucide-react';
 
 describe('StatsCard Component', () => {

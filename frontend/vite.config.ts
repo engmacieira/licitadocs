@@ -22,5 +22,13 @@ export default defineConfig({
     environment: 'jsdom',    // Simula navegador (DOM)
     setupFiles: './src/test/setup.ts', // Arquivo de setup que vamos criar
     css: false,              // Ignora processamento de CSS nos testes (mais rápido)
+    coverage: {
+      provider: 'v8', // ou 'istanbul'
+      reporter: ['text', 'json', 'html'], // 👈 Garante que o 'html' está aqui
+      reportsDirectory: './coverage',    // 👈 Garante o caminho da pasta
+      clean: false,                      // 👈 Diz ao Vitest para NÃO apagar a pasta
+    },
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
 } as any)

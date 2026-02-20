@@ -10,8 +10,9 @@ import { Input } from '../../../components/ui/Input';
 import { companyService } from '../../../services/companyService';
 import type { Company } from '../../../services/companyService';
 
+// 1. Mudamos de 'name' para 'razao_social' para bater com o Backend
 const companySchema = z.object({
-    name: z.string().min(3, "A razão social deve ter pelo menos 3 caracteres"),
+    razao_social: z.string().min(3, "A razão social deve ter pelo menos 3 caracteres"),
     cnpj: z.string().length(14, "O CNPJ deve ter exatamente 14 números (sem pontuação)"),
 });
 
@@ -35,14 +36,14 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
         resolver: zodResolver(companySchema)
     });
 
-    // Resetar ou Preencher formulário ao abrir
+    // 2. Usamos 'razao_social' do objeto da API
     useEffect(() => {
         if (isOpen) {
             if (companyToEdit) {
-                setValue('name', companyToEdit.name); // ou razao_social dependendo do backend
+                setValue('razao_social', companyToEdit.razao_social);
                 setValue('cnpj', companyToEdit.cnpj);
             } else {
-                reset({ name: '', cnpj: '' });
+                reset({ razao_social: '', cnpj: '' });
             }
         }
     }, [isOpen, companyToEdit, setValue, reset]);
@@ -50,12 +51,17 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
     async function handleSave(data: CompanySchema) {
         try {
             if (companyToEdit) {
-                // Modo Edição
-                await companyService.update(companyToEdit.id, data);
+                // Modo Edição: Traduzimos 'razao_social' para 'name' que o serviço espera
+                await companyService.update(companyToEdit.id, {
+                    razao_social: data.razao_social
+                });
                 toast.success("Empresa atualizada com sucesso!");
             } else {
-                // Modo Criação
-                await companyService.create(data);
+                // Modo Criação: Traduzimos 'razao_social' para 'name'
+                await companyService.create({
+                    name: data.razao_social,
+                    cnpj: data.cnpj
+                });
                 toast.success("Empresa cadastrada com sucesso!");
             }
             onSuccess();
@@ -73,7 +79,6 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-in zoom-in-95 duration-200">
 
-                {/* Header do Modal */}
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
@@ -91,25 +96,25 @@ export function CreateCompanyModal({ isOpen, onClose, onSuccess, companyToEdit }
                     </p>
                 </div>
 
-                {/* Formulário */}
                 <form onSubmit={handleSubmit(handleSave)} className="space-y-4">
-
                     <Input
+                        id="name"
                         label="Razão Social / Nome"
                         placeholder="Ex: Construtora Silva LTDA"
                         icon={<Building2 size={18} />}
-                        error={errors.name?.message}
-                        {...register('name')}
+                        error={errors.razao_social?.message}
+                        {...register('razao_social')} // 👈 Atualizado aqui
                     />
 
                     <Input
+                        id="cnpj"
                         label="CNPJ (Apenas números)"
                         placeholder="Ex: 12345678000199"
                         maxLength={14}
                         icon={<FileText size={18} />}
                         error={errors.cnpj?.message}
                         {...register('cnpj')}
-                        disabled={!!companyToEdit} // Bloqueia edição de CNPJ (boa prática)
+                        disabled={!!companyToEdit}
                         helperText={companyToEdit ? "O CNPJ não pode ser alterado." : "Digite apenas os números."}
                     />
 

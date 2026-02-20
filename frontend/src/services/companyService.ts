@@ -97,8 +97,14 @@ export const companyService = {
         const { data } = await api.get<Company[]>('/companies');
         return data;
     },
+
     getById: async (id: string): Promise<Company> => {
         const { data } = await api.get<Company>(`/companies/${id}`);
         return data;
+    },
+
+    create: async (payload: { name: string; cnpj: string }) => {
+        const response = await api.post('/companies', payload);
+        return response.data;
     }
 };

@@ -100,11 +100,15 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                 <form onSubmit={handleSubmit(handleUpload)} className="p-6 flex flex-col gap-5 overflow-y-auto">
                     {/* File Input */}
                     <div className="space-y-1">
-                        <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                        <label
+                            htmlFor="file-upload"
+                            className="text-sm font-medium text-slate-700 flex items-center gap-2"
+                        >
                             <FileText className="h-4 w-4 text-slate-400" />
                             Arquivo PDF
                         </label>
                         <input
+                            id="file-upload"
                             type="file"
                             accept=".pdf,image/*"
                             className="w-full text-sm text-slate-500
@@ -155,6 +159,23 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                         />
 
                         <Input
+                            type="text"
+                            label="Cód. Autenticação"
+                            placeholder="Ex: ABCD-1234"
+                            icon={<Key className="h-4 w-4 text-slate-400" />}
+                            {...register('authenticationCode')}
+                        />
+
+                        <Input
+                            id="expiration_date"      // 👈 ADICIONADO AQUI
+                            type="date"
+                            label="Data de Validade"
+                            icon={<Calendar className="h-4 w-4 text-slate-400" />}
+                            {...register('expiration_date')}
+                        />
+
+                        <Input
+                            id="authenticationCode"   // 👈 ADICIONADO AQUI
                             type="text"
                             label="Cód. Autenticação"
                             placeholder="Ex: ABCD-1234"
