@@ -1,51 +1,76 @@
-# LicitaDoc
+# LicitaDoc: Cofre Digital Inteligente 🚀
 
-Sistema para gestão de documentos de licitação com suporte a Inteligência Artificial.
+> Sistema de alta performance para gestão de documentos de licitação, unificando inteligência artificial, segurança relacional e uma experiência de usuário fluida.
 
-## 🚀 Tecnologias
+---
 
-O projeto é desenvolvido utilizando uma arquitetura moderna Full Stack:
+## 📍 Estado Atual: Sprint 19 (Fortaleza Digital)
+O sistema encontra-se em fase de **Hardening (Endurecimento)**. Após a conclusão da Sprint 18, alcançamos autonomia total na gestão do catálogo administrativo e integração com armazenamento em nuvem.
 
-### Backend (API)
-- **Linguagem**: Python
-- **Framework**: FastAPI
-- **ORM**: SQLAlchemy
-- **Banco de Dados**: SQLite
+## 🌟 Funcionalidades Principais
 
-### Frontend (Interface)
-- **Framework**: React (Vite)
-- **Linguagem**: TypeScript
-- **Estilização**: TailwindCSS
-- **Gerenciamento de Estado/Rotas**: React Router, React Hook Form
-- **Validação**: Zod
-- **Ícones**: Lucide React
+### 🛡️ Cofre Inteligente (Digital Vault)
+- **Unificação de Dados:** Interface única para arquivos legados e certidões estruturadas via *Unified DTO*.
+- **Storage Escalável:** Integração direta com **AWS S3** para armazenamento e recuperação segura de documentos.
 
-## 💻 Funcionalidades
+### ⚙️ Gestão de Catálogo (Admin Settings)
+- **Controle Total:** CRUD completo de Categorias e Tipos de Documentos sem necessidade de acesso manual ao banco de dados.
+- **Integridade Relacional:** Travas de segurança avançadas que impedem a exclusão de categorias com tipos vinculados ou tipos com certidões ativas.
 
-- **Autenticação**: Sistema de login e controle de acesso.
-- **Gestão de Documentos**: Criação, edição e visualização de documentos de licitação.
-- **Inteligência Artificial**: Módulo de IA integrado para auxílio na gestão documental.
-- **Painel Administrativo**: Ferramentas para administração do sistema.
+### 🤖 Inteligência Artificial & Segurança
+- **IA Consultant:** Módulo integrado para auxílio na análise e extração de dados documentais.
+- **ACL (Access Control List):** Proteção de rotas e interface baseada em perfis de acesso (Admin/Client) via JWT.
 
-## 📦 Como Rodar o Projeto
+---
 
-### Pré-requisitos
-- Python 3.8+
-- Node.js 18+
+## 🛠️ Stack Tecnológica
 
-### 1. Configuração do Backend
+### Backend (A Fundação)
+- **Core:** Python 3.8+ com **FastAPI**.
+- **Banco de Dados:** SQLAlchemy ORM com suporte a PostgreSQL/SQLite.
+- **Migrações:** Gestão de esquema e versionamento via **Alembic**.
+
+### Frontend (A Experiência)
+- **Interface:** React (Vite) + TypeScript.
+- **Estilização:** TailwindCSS para um design responsivo, limpo e moderno.
+- **Formulários:** React Hook Form + Zod para validações rigorosas e performáticas no client-side.
+- **Feedback:** Notificações em tempo real com **Sonner**.
+
+---
+
+## 📦 Estrutura do Ecossistema
+
+```text
+├── app/                # Backend (FastAPI)
+│   ├── core/           # Configurações, Segurança (JWT) e S3
+│   ├── models/         # Definições de Tabelas (SQLAlchemy)
+│   ├── repositories/   # Lógica de persistência e Integridade
+│   ├── routers/        # Endpoints da API (Auth, Doc, Admin, AI)
+│   └── schemas/        # DTOs e Validação Pydantic
+├── frontend/           # Frontend (React)
+│   ├── src/services/   # Integração com API (Axios)
+│   └── src/pages/      # Interfaces (Dashboard, Settings, Vault)
+└── docs/               # Documentação técnica e histórico de Sprints
+```
+
+---
+
+## 🚀 Como Executar o Projeto
+
+### 1. Preparando o Backend
 
 ```bash
-# Clone o repositório
+# Clone o repositório e acesse a pasta
 git clone <seu-repo>
 cd licitadocs
 
-# Crie e ative um ambiente virtual (Recomendado)
+# Crie e ative um ambiente virtual
 python -m venv venv
-# Windows:
-.\venv\Scripts\activate
+
 # Linux/Mac:
-source venv/bin/activate
+source venv/bin/activate  
+# Windows:
+.\venv\Scripts\activate   
 
 # Instale as dependências
 pip install -r requirements.txt
@@ -53,29 +78,27 @@ pip install -r requirements.txt
 # Execute a API
 uvicorn app.main:app --reload
 ```
+A API estará disponível em `http://localhost:8000`
+A documentação interativa (Swagger) em `http://localhost:8000/docs`
 
-O backend estará rodando em: `http://localhost:8000`
-Documentação da API (Swagger): `http://localhost:8000/docs`
-
-### 2. Configuração do Frontend
+### 2. Preparando o Frontend
 
 ```bash
-# Abra um novo terminal e entre na pasta do frontend
+# Abra um novo terminal, acesse a pasta do frontend e instale as dependências
 cd frontend
-
-# Instale as dependências
 npm install
 
 # Execute o servidor de desenvolvimento
 npm run dev
 ```
+A interface do usuário estará acessível em `http://localhost:5173`
 
-O frontend estará rodando em: `http://localhost:5173`
+---
 
-## 🛠 Estrutura do Projeto
+## 📈 Próximos Passos (Roadmap)
+- [ ] **Dashboard de Métricas:** Visualização gráfica de documentos a vencer.
+- [ ] **Sistema de Notificações:** Alertas preventivos para usuários sobre vencimentos.
+- [ ] **QA Senior:** Expansão da cobertura de testes com Vitest (Frontend) e testes de estresse para validação de segurança (Backend).
 
-- `app/`: Código fonte do Backend (FastAPI)
-  - `routers/`: Rotas da API (Auth, Documents, Admin, AI)
-  - `models/`: Modelos de banco de dados
-  - `schemas/`: Schemas Pydantic para validação
-- `frontend/`: Código fonte do Frontend (React/Vite)
+---
+**Desenvolvido por:** Matheus & Equipe LicitaDoc (Sprint 18/19)
