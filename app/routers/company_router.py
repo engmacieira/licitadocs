@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, DatabaseError
 import secrets
 from uuid import UUID
 
@@ -155,11 +156,9 @@ def add_member(
     db: Session = Depends(get_db)
 ):
     """
-    Convida um usuário para a empresa.
-    - Se não existir: Cria usuário, gera senha provisória e vincula.
-    - Se existir: Apenas vincula.
+    Convida um usuário para a empresa com blindagem usando SAVEPOINTS (begin_nested).
     """
-    # 1. Segurança (Usa o helper local para passar no teste específico)
+    # 1. Segurança
     check_is_master(current_user, company_id)
 
     # 2. Valida Empresa
@@ -167,23 +166,31 @@ def add_member(
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    # 3. Busca ou Cria Usuário
+    # 3. Busca ou Cria Usuário com SAVEPOINT
     user = db.query(User).filter(User.email == data.email).first()
     is_new = False
     temp_password = None
 
     if not user:
         is_new = True
-        temp_password = secrets.token_urlsafe(8) # Senha de 8 chars
+        temp_password = secrets.token_urlsafe(8)
         user = User(
             email=data.email,
             password_hash=get_password_hash(temp_password),
             role=UserRole.CLIENT.value,
             is_active=True,
-            cpf=data.cpf # Opcional
+            cpf=data.cpf
         )
-        db.add(user)
-        db.flush()
+        try:
+            # 🛡️ BLINDAGEM 1: Cria um Checkpoint. Se falhar, volta apenas até aqui!
+            with db.begin_nested():
+                db.add(user)
+                db.flush()
+        except (IntegrityError, DatabaseError):
+            # Outra requisição foi milissegundos mais rápida! 
+            # O SQLAlchemy já recuperou automaticamente do erro graças ao Checkpoint.
+            user = db.query(User).filter(User.email == data.email).first()
+            is_new = False
 
     # 4. Verifica Vínculo Existente
     link_existente = db.query(UserCompanyLink).filter(
@@ -194,15 +201,26 @@ def add_member(
     if link_existente:
         raise HTTPException(status_code=400, detail="Usuário já faz parte da equipe.")
 
-    # 5. Cria Vínculo
+    # 5. Cria Vínculo com SAVEPOINT
     new_link = UserCompanyLink(
         user_id=user.id,
         company_id=company.id,
-        role=data.role.value, # Extrai string do Enum
+        role=data.role.value,
         is_active=True
     )
-    db.add(new_link)
-    db.commit()
+    
+    try:
+        # 🛡️ BLINDAGEM 2: Novo Checkpoint para o vínculo
+        with db.begin_nested():
+            db.add(new_link)
+            db.flush()
+            
+        # Se sobrevivemos a todos os checkpoints, fazemos o Commit real!
+        db.commit()
+    except IntegrityError:
+        # Outra requisição vinculou a pessoa milissegundos antes
+        db.rollback() # Aborta a transação final
+        raise HTTPException(status_code=400, detail="Usuário já faz parte da equipe.")
 
     # 6. Prepara Resposta
     msg = "Usuário adicionado à equipe com sucesso."

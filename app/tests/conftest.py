@@ -15,13 +15,9 @@ from app.core.security import create_access_token, get_password_hash
 from app.models.user_model import User, UserRole
 
 # 1. Configura Banco em Memória (SQLite Memory)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -39,7 +35,7 @@ def db_session():
     finally:
         db.close()
         Base.metadata.drop_all(bind=engine)
-
+        
 # 3. Fixture do Cliente API (Público/Sem Autenticação)
 @pytest.fixture(scope="function")
 def client(db_session):

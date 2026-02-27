@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # Banco de Dados Exclusivo para Testes Automatizados
+  db-test:
+    image: postgres:15-alpine
+    container_name: licitadocs_db_test
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=licitadocs_test
+    ports:
+      # Mapeamos para a porta 5435 no seu PC para NÃO dar conflito 
+      # caso você já tenha um banco de desenvolvimento rodando na 5432
+      - "5435:5432"
+    # O Pulo do Gato: Roda o banco inteiro na Memória RAM para os testes voarem!
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d licitadocs_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
