@@ -56,9 +56,9 @@ def list_documents(
 # --- 2. UPLOAD INTELIGENTE ---
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 def upload_document(
-    title: Optional[str] = Form(None), # Agora opcional, pois certificados usam type_id
-    type_id: Optional[str] = Form(None), # NOVO (Sprint 17)
-    authentication_code: Optional[str] = Form(None), # NOVO (Sprint 17)
+    title: Optional[str] = Form(None),
+    type_id: Optional[str] = Form(None),
+    authentication_code: Optional[str] = Form(None),
     file: UploadFile = File(...),
     expiration_date: Optional[date] = Form(None), 
     target_company_id: Optional[str] = Form(None),
@@ -69,7 +69,23 @@ def upload_document(
         raise HTTPException(status_code=403, detail="Apenas admins podem enviar documentos.")
     
     if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Apenas PDFs.")
+        raise HTTPException(status_code=400, detail="Apenas PDFs são permitidos.")
+
+    # 🛡️ NOVA BLINDAGEM: Verifica o tamanho do arquivo (Limite de 5MB)
+    MAX_FILE_SIZE = 5 * 1024 * 1024 # 5 Megabytes
+    
+    # Move o cursor para o final do arquivo para descobrir o tamanho real
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    # Volta o cursor para o início para que o arquivo possa ser lido/salvo normalmente depois
+    file.file.seek(0)
+    
+    if file_size > MAX_FILE_SIZE:
+        # Usamos o status 413 Payload Too Large (ou Content Too Large)
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"O arquivo é muito grande. O limite máximo é de 5MB."
+        )
 
     if not target_company_id:
         raise HTTPException(status_code=400, detail="ID da empresa destino é obrigatório.")
