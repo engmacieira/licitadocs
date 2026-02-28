@@ -14,13 +14,13 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_USER: licita_user
-          POSTGRES_PASSWORD: licita_pass
-          POSTGRES_DB: licitadocs
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: licitadocs_test
         ports:
           # Mapeia a porta 5433 do runner (que seu código espera) 
           # para a porta 5432 do container
-          - 5433:5432
+          - 5435:5432
         # Healthcheck para garantir que o banco subiu antes de rodar os testes
         options: >-
           --health-cmd pg_isready
@@ -44,7 +44,7 @@ jobs:
       
       - name: Run Migrations
         env:
-          DATABASE_URL: postgresql://licita_user:licita_pass@localhost:5433/licitadocs
+          DATABASE_URL: postgresql://licita_user:licita_pass@localhost:5435/licitadocs_test
         run: alembic upgrade head
 
       - name: Run Backend Tests
