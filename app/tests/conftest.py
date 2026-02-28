@@ -4,6 +4,7 @@ Cria o ambiente isolado de banco em memória e fornece
 clientes da API já autenticados para testes de segurança e ACL.
 """
 import pytest
+import os
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -15,7 +16,10 @@ from app.core.security import create_access_token, get_password_hash
 from app.models.user_model import User, UserRole
 
 # 1. Configura Banco em Memória (SQLite Memory)
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL", 
+    "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
+)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
