@@ -44,14 +44,14 @@ jobs:
       
       - name: Run Migrations
         env:
-          DATABASE_URL: postgresql://licita_user:licita_pass@localhost:5435/licitadocs_test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5435/licitadocs_test
         run: alembic upgrade head
 
       - name: Run Backend Tests
         run: pytest --cov=app
         env:
           GOOGLE_API_KEY: ${ secrets.GOOGLE_API_KEY }
-          TEST_DATABASE_URL: postgresql://licita_user:licita_pass@localhost:5435/licitadocs_test  
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5435/licitadocs_test  
 
   frontend-tests:
     runs-on: ubuntu-latest
