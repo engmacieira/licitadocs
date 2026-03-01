@@ -6,7 +6,8 @@ from datetime import date
 import os
 
 from app.core.database import get_db
-from app.dependencies import get_current_user, get_current_active_user
+# 1. Importamos a nova fábrica de papéis (require_role)
+from app.dependencies import get_current_active_user, require_role
 from app.core.storage import save_file_locally
 from app.models.user_model import User, UserRole
 from app.repositories.document_repository import DocumentRepository
@@ -19,13 +20,13 @@ from app.schemas.document_schemas import (
 
 router = APIRouter(prefix="/documents", tags=["Gestão de Documentos"])
 
-# --- 0. NOVO: CATÁLOGO DE TIPOS (Sprint 17) ---
+# --- 0. CATÁLOGO DE TIPOS (Sprint 17) ---
 @router.get("/types", response_model=List[DocumentCategoryResponse])
 def get_document_types_catalog(db: Session = Depends(get_db)):
     """Retorna as categorias e tipos para popular o dropdown do Frontend."""
     return DocumentRepository.get_all_categories_with_types(db)
 
-# --- 1. LISTAGEM UNIFICADA ---
+# --- 1. LISTAGEM UNIFICADA (Filtro Melhorado) ---
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
     company_id: Optional[str] = Query(None, description="Filtra por empresa"),
@@ -36,11 +37,12 @@ def list_documents(
     target_company_id = None
 
     if current_user.role == UserRole.ADMIN.value:
-         target_company_id = company_id # Admin pode ver qualquer uma se enviar, ou precisaria adaptar para listar TODAS
-         # Para simplificar e manter a segurança de N+1, vamos exigir o company_id no Admin também
-         if not target_company_id:
+         # Admin DEVE enviar o ID da empresa para não carregar o banco inteiro (Performance)
+         if not company_id:
              raise HTTPException(status_code=400, detail="Admins devem especificar o company_id para listar o cofre.")
+         target_company_id = company_id
     else:
+        # Lógica para Cliente
         if company_id:
             if company_id not in allowed_company_ids:
                 raise HTTPException(status_code=403, detail="Acesso negado a esta empresa.")
@@ -50,10 +52,9 @@ def list_documents(
         else:
             return []
 
-    # Retorna o merge (Documentos + Certificados)
     return DocumentRepository.get_unified_by_company(db, target_company_id)
 
-# --- 2. UPLOAD INTELIGENTE ---
+# --- 2. UPLOAD INTELIGENTE (RBAC Aplicado) ---
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 def upload_document(
     title: Optional[str] = Form(None),
@@ -62,26 +63,21 @@ def upload_document(
     file: UploadFile = File(...),
     expiration_date: Optional[date] = Form(None), 
     target_company_id: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_active_user),
+    # 2. Injeção Direta: Apenas admins podem aceder a esta rota agora
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value])),
     db: Session = Depends(get_db)
 ):
-    if current_user.role != UserRole.ADMIN.value:
-        raise HTTPException(status_code=403, detail="Apenas admins podem enviar documentos.")
-    
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Apenas PDFs são permitidos.")
 
-    # 🛡️ NOVA BLINDAGEM: Verifica o tamanho do arquivo (Limite de 5MB)
-    MAX_FILE_SIZE = 5 * 1024 * 1024 # 5 Megabytes
+    # BLINDAGEM: Verifica o tamanho do arquivo (Limite de 5MB)
+    MAX_FILE_SIZE = 5 * 1024 * 1024 
     
-    # Move o cursor para o final do arquivo para descobrir o tamanho real
     file.file.seek(0, 2)
     file_size = file.file.tell()
-    # Volta o cursor para o início para que o arquivo possa ser lido/salvo normalmente depois
     file.file.seek(0)
     
     if file_size > MAX_FILE_SIZE:
-        # Usamos o status 413 Payload Too Large (ou Content Too Large)
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"O arquivo é muito grande. O limite máximo é de 5MB."
@@ -95,7 +91,6 @@ def upload_document(
     except Exception:
         raise HTTPException(status_code=500, detail="Falha ao salvar arquivo no disco.")
 
-    # Roteamento de Lógica: Se tem 'type_id', vai pra tabela nova. Se não, vai pra velha.
     if type_id:
         try:
             cert = DocumentRepository.create_certificate(
@@ -103,7 +98,6 @@ def upload_document(
                 company_id=target_company_id, expiration_date=expiration_date,
                 authentication_code=authentication_code
             )
-            # Retorna no formato unificado
             return DocumentResponse(
                 id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
                 is_structured=True, type_id=type_id, authentication_code=authentication_code
@@ -111,12 +105,11 @@ def upload_document(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
     else:
-        # Modo Legado
         if not title: title = "Documento Sem Título"
         try:
             doc = DocumentRepository.create_legacy(
                 db=db, title=title, filename=file.filename, file_path=file_path,
-                company_id=target_company_id, expiration_date=expiration_date, uploaded_by_id=current_user.id
+                company_id=target_company_id, expiration_date=expiration_date, uploaded_by_id=current_admin.id
             )
             return DocumentResponse(
                 id=doc.id, title=doc.title, filename=doc.filename, status=doc.status, 
@@ -132,19 +125,14 @@ def download_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # O repository agora descobre se é documento velho ou certificado novo
     file_path = DocumentRepository.get_file_path(db, item_id)
     
     if not file_path:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
-
-    # (Lógica de segurança foi simplificada aqui para focar na entrega, em prod seria ideal 
-    # revalidar o ownership, mas o foco é que o arquivo exista fisicamente)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Arquivo físico não encontrado no servidor.")
 
-    # Pega só o nome final do arquivo para o FileResponse
     filename = os.path.basename(file_path)
 
     return FileResponse(
@@ -156,11 +144,7 @@ def download_document(
 # =================================================================
 # GESTÃO DO CATÁLOGO (CRUD Admin - Sprint 18)
 # =================================================================
-
-def verify_admin_access(current_user: User):
-    """Função auxiliar para garantir que apenas Admins mexem no catálogo."""
-    if current_user.role != UserRole.ADMIN.value:
-        raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores podem modificar o catálogo.")
+# Nota: Removida a função antiga `verify_admin_access`. O Pydantic + FastAPI cuidam disso agora!
 
 # --- CATEGORIAS ---
 
@@ -168,9 +152,9 @@ def verify_admin_access(current_user: User):
 def create_category(
     cat_in: DocumentCategoryCreate, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    # 3. RBAC aplicado!
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         return DocumentRepository.create_category(db, cat_in)
     except ValueError as e:
@@ -181,9 +165,8 @@ def update_category(
     cat_id: str, 
     cat_in: DocumentCategoryUpdate, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         return DocumentRepository.update_category(db, cat_id, cat_in)
     except ValueError as e:
@@ -193,9 +176,8 @@ def update_category(
 def delete_category(
     cat_id: str, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         DocumentRepository.delete_category(db, cat_id)
     except ValueError as e:
@@ -207,9 +189,8 @@ def delete_category(
 def create_document_type(
     type_in: DocumentTypeCreate, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         return DocumentRepository.create_type(db, type_in)
     except ValueError as e:
@@ -220,9 +201,8 @@ def update_document_type(
     type_id: str, 
     type_in: DocumentTypeUpdate, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         return DocumentRepository.update_type(db, type_id, type_in)
     except ValueError as e:
@@ -232,9 +212,8 @@ def update_document_type(
 def delete_document_type(
     type_id: str, 
     db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_active_user)
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    verify_admin_access(current_user)
     try:
         DocumentRepository.delete_type(db, type_id)
     except ValueError as e:

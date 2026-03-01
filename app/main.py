@@ -2,10 +2,13 @@
 Ponto de Entrada da Aplicação (Entrypoint).
 Inicializa o FastAPI, configura Middlewares e registra as Rotas.
 """
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# A importação desses módulos já acionará o Fail Fast (sys.exit) se faltarem as envs
 from app.core.database import engine, Base
+from app.core.security import SECRET_KEY
 from app.routers import (
     auth_router, 
     document_router, 
@@ -17,9 +20,7 @@ from app.routers import (
 )
 from app.models import certificate_model
 
-# Inicialização do Banco de Dados (Modo Dev)
-# Cria as tabelas se não existirem. Em produção, use Alembic migrations.
-# Base.metadata.create_all(bind=engine)
+ENV = os.getenv("ENV", "development").lower()
 
 # Configuração da Aplicação
 app = FastAPI(
@@ -34,27 +35,25 @@ app = FastAPI(
     * **AI:** Concierge Jurídico (RAG) para análise de editais.
     * **Admin:** Gestão de Multi-Tenancy (Empresas).
     """,
-    docs_url="/docs", # URL do Swagger UI
-    redoc_url="/redoc" # URL da documentação alternativa
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# --- Configuração de CORS (Cross-Origin Resource Sharing) ---
-# Permite que o Frontend (React) rodando em outra porta acesse a API.
+# --- Configuração de CORS ---
 origins = [
-    "http://localhost:5173",  # Vite Localhost
-    "http://127.0.0.1:5173",  # Vite Localhost (IP)
-    # Adicionar domínio de produção aqui futuramente
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
-    allow_headers=["*"], # Permite Authorization e outros headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# --- Registro de Rotas (Routers) ---
+# --- Registro de Rotas ---
 app.include_router(auth_router.router)
 app.include_router(user_router.router)
 app.include_router(document_router.router)
@@ -63,7 +62,7 @@ app.include_router(admin_router.router)
 app.include_router(company_router.router)
 app.include_router(dashboard_router.router)
 
-# Rota de Health Check (útil para monitoramento)
+# Rota de Health Check
 @app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok", "version": "1.0.3", "system": "LicitaDoc API"}
+    return {"status": "ok", "version": "1.0.3", "system": "LicitaDoc API", "environment": ENV}

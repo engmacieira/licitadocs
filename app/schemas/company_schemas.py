@@ -8,6 +8,26 @@ from datetime import datetime
 import re
 from app.models.user_model import UserCompanyRole
 
+def validar_matematica_cpf(v: str) -> str:
+    numeros = re.sub(r'\D', '', v)
+    if len(numeros) != 11:
+        raise ValueError('CPF deve conter 11 dígitos')
+    if numeros == numeros[0] * 11:
+        raise ValueError('CPF inválido (sequência repetida)')
+
+    soma = sum(int(numeros[i]) * (10 - i) for i in range(9))
+    resto = (soma * 10) % 11
+    if resto == 10: resto = 0
+    if resto != int(numeros[9]):
+        raise ValueError('CPF inválido')
+
+    soma = sum(int(numeros[i]) * (11 - i) for i in range(10))
+    resto = (soma * 10) % 11
+    if resto == 10: resto = 0
+    if resto != int(numeros[10]):
+        raise ValueError('CPF inválido')
+    return numeros
+
 class CompanyBase(BaseModel):
     # --- Identificação ---
     cnpj: str = Field(..., description="CNPJ apenas números")
@@ -39,10 +59,32 @@ class CompanyBase(BaseModel):
     @field_validator('cnpj', mode='before')
     @classmethod
     def validate_cnpj(cls, v: str) -> str:
-        # Remove caracteres não numéricos para garantir sanidade
+        if not v:
+            raise ValueError('CNPJ é obrigatório')
+            
         numeros = re.sub(r'\D', '', v)
         if len(numeros) != 14:
-            raise ValueError('CNPJ deve conter 14 dígitos')
+            raise ValueError('CNPJ deve conter exatamente 14 dígitos')
+            
+        if numeros == numeros[0] * 14:
+            raise ValueError('CNPJ inválido (sequência repetida)')
+
+        # Cálculo do 1º DV
+        pesos_1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        soma = sum(int(numeros[i]) * pesos_1[i] for i in range(12))
+        resto = soma % 11
+        digito_1 = 0 if resto < 2 else 11 - resto
+        if digito_1 != int(numeros[12]):
+            raise ValueError('CNPJ inválido (1º dígito verificador falhou)')
+
+        # Cálculo do 2º DV
+        pesos_2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+        soma = sum(int(numeros[i]) * pesos_2[i] for i in range(13))
+        resto = soma % 11
+        digito_2 = 0 if resto < 2 else 11 - resto
+        if digito_2 != int(numeros[13]):
+            raise ValueError('CNPJ inválido (2º dígito verificador falhou)')
+
         return numeros
 
 class CompanyCreate(CompanyBase):

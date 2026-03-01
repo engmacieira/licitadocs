@@ -16,7 +16,7 @@ from app.core.security import get_password_hash, create_access_token
 def setup_company_and_user(db_session, role=UserCompanyRole.MASTER.value):
     """Cria uma empresa e vincula um utilizador com a permissão desejada."""
     user = User(email=f"{role}_user@teste.com", password_hash=get_password_hash("123"), role=UserRole.CLIENT.value, is_active=True)
-    company = Company(cnpj="11222333000144", razao_social="Minha Empresa S.A.")
+    company = Company(cnpj="00000001000136", razao_social="Minha Empresa S.A.")
     
     db_session.add(user)
     db_session.add(company)

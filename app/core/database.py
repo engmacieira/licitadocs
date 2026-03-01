@@ -3,51 +3,36 @@ Configuração do Banco de Dados (SQLAlchemy).
 Gerencia a conexão e a sessão (SessionLocal) usada em cada requisição.
 """
 import os
+import sys
 import uuid
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# 1. Definição da URL de Conexão
-# Prioridade: Variável de Ambiente (Prod) > Hardcode Docker (Fix Windows) > SQLite Local (Dev)
-
-# Tenta ler a variável padrão do sistema
+load_dotenv()
+# 1. Definição da URL de Conexão (Exclusivo via Variável de Ambiente)
 DATABASE_URL_ENV = os.getenv("DATABASE_URL")
 
-# Lógica de Seleção de Banco
-if DATABASE_URL_ENV:
-    # Cenário Ideal: Leu do .env corretamente
-    SQLALCHEMY_DATABASE_URL = DATABASE_URL_ENV
-else:
-    # Cenário de Correção (Windows/Encoding):
-    # Se não conseguiu ler o .env, força a conexão no Docker local (Porta 5433)
-    # TODO: Remover este hardcode quando o problema de variáveis de ambiente for resolvido (Ver DividasTecnicas.md)
-    SQLALCHEMY_DATABASE_URL = "postgresql://licita_user:licita_pass@localhost:5433/licitadocs"
+# Trava de Segurança: Sem PostgreSQL, sem inicialização. (Fail Fast)
+if not DATABASE_URL_ENV:
+    print("🚨 ERRO CRÍTICO [DATABASE]: Variável DATABASE_URL não encontrada no ambiente.")
+    print("O LicitaDoc não utiliza mais SQLite local. É obrigatório fornecer a string de conexão do PostgreSQL.")
+    print("Verifique o seu arquivo .env ou as variáveis injetadas no docker-compose.")
+    sys.exit(1)
 
-# 2. Configurações Específicas do Driver
-connect_args = {}
-if "sqlite" in SQLALCHEMY_DATABASE_URL:
-    # SQLite precisa dessa flag para permitir acesso de múltiplas threads (FastAPI é async)
-    connect_args = {"check_same_thread": False}
-else:
-    # PostgreSQL e outros bancos profissionais não precisam de args adicionais por enquanto
-    connect_args = {}
+# 2. Engine (O Motor)
+# Como agora somos 100% PostgreSQL, não precisamos mais do argumento 'check_same_thread=False'
+engine = create_engine(DATABASE_URL_ENV)
 
-# 3. Engine (O Motor)
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, 
-    connect_args=connect_args,
-    # echo=True  # Descomente para ver SQL bruto no terminal (Debug)
-)
-
-# 4. SessionFactory (Fábrica de Sessões)
-# autocommit=False: Controle transacional manual (nós damos o commit)
+# 3. SessionFactory (Fábrica de Sessões)
+# autocommit=False: Controle transacional manual para garantir o ACID
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 5. Base Model
+# 4. Base Model
 # Todas as classes (User, Company, Document) herdarão daqui
 Base = declarative_base()
 
-# 6. Funções Utilitárias de Banco
+# 5. Funções Utilitárias de Banco
 
 def generate_uuid():
     """
@@ -59,7 +44,7 @@ def generate_uuid():
 def get_db():
     """
     Gera uma nova sessão de banco para cada requisição HTTP e a fecha no final.
-    Garante que não deixaremos conexões penduradas (Memory Leak).
+    Garante que não deixaremos conexões penduradas (Memory Leak) ou esgotaremos o Pool.
     """
     db = SessionLocal()
     try:

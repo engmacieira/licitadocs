@@ -5,6 +5,19 @@ clientes da API já autenticados para testes de segurança e ACL.
 """
 import pytest
 import os
+import sys
+from dotenv import load_dotenv
+
+
+env_test_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env.test")
+
+if not os.path.exists(env_test_path):
+    print("🚨 ERRO CRÍTICO [TESTES]: Arquivo .env.test não encontrado!")
+    print("Você precisa criar um .env.test na raiz do projeto com credenciais seguras para rodar o pytest.")
+    sys.exit(1)
+    
+load_dotenv(dotenv_path=env_test_path, override=True)
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -16,10 +29,7 @@ from app.core.security import create_access_token, get_password_hash
 from app.models.user_model import User, UserRole
 
 # 1. Configura Banco em Memória (SQLite Memory)
-SQLALCHEMY_DATABASE_URL = os.getenv(
-    "TEST_DATABASE_URL", 
-    "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
-)
+SQLALCHEMY_DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 

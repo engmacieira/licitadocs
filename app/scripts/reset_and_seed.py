@@ -59,14 +59,14 @@ def seed_data():
             password_hash=admin_pass,
             role=UserRole.ADMIN.value,
             is_active=True,
-            cpf="00000000000"
+            cpf="10572379650"
         )
         db.add(admin)
         db.flush() 
 
         # 2. Criar uma Empresa de Teste
         demo_company = Company(
-            cnpj="12345678000199",
+            cnpj="18307389000188",
             razao_social="Construtora Demo Ltda",
             nome_fantasia="ConstruDemo",
             owner_id=admin.id,

@@ -63,7 +63,7 @@ def test_get_my_companies_success(db_session, client):
     """
     # 1. Setup Cirúrgico no Banco
     user = User(email="trabalhador@teste.com", password_hash=get_password_hash("123"), role=UserRole.CLIENT.value, is_active=True)
-    company = Company(cnpj="11222333000144", razao_social="Firma LTDA")
+    company = Company(cnpj="00000001000136", razao_social="Firma LTDA")
     db_session.add(user)
     db_session.add(company)
     db_session.commit()

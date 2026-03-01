@@ -3,16 +3,24 @@ Núcleo de Segurança.
 Responsável por Criptografia (Hash de Senha) e Tokenização (JWT).
 """
 import os
+import sys
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 
-# Configurações Críticas
-# AVISO: Em produção, o sistema DEVE ter a SECRET_KEY no .env
-SECRET_KEY = os.getenv("SECRET_KEY", "troque_isso_por_uma_hash_bem_segura_no_env")
-if SECRET_KEY == "troque_isso_por_uma_hash_bem_segura_no_env":
-    print("[SEGURANCA] AVISO: Usando SECRET_KEY padrao insegura! Configure o .env em producao.")
+# --- Configurações Críticas ---
+# Lendo exclusivamente das variáveis de ambiente
+load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# Trava de Segurança: Sem chave, sem inicialização. (Fail Fast)
+if not SECRET_KEY:
+    print("🚨 ERRO CRÍTICO [SEGURANÇA]: Variável SECRET_KEY não encontrada.")
+    print("O sistema não pode iniciar sem uma chave criptográfica segura para gerar os tokens JWT.")
+    print("Verifique seu arquivo .env ou as variáveis de ambiente do contêiner/servidor.")
+    sys.exit(1)
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30

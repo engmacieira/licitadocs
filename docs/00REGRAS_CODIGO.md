@@ -1,3 +1,4 @@
+
 # 🚫 PROTOCOLO DE TOLERÂNCIA ZERO PARA ADIVINHAÇÃO (ZERO GUESSING POLICY)
 
 > **DIRETRIZ SUPREMA:** É estritamente PROIBIDO supor, adivinhar ou inventar nomes de arquivos, variáveis, funções, classes ou rotas que não estejam explicitamente visíveis no contexto atual ou nos arquivos fornecidos.

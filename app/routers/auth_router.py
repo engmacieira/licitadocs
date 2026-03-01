@@ -3,6 +3,7 @@ Router de Autenticação.
 Controla as rotas relacionadas a cadastro, login e gestão de acesso.
 Versão Definitiva: Suporta Upload (Form), JSON Legado e Login via /token.
 """
+import os
 from datetime import timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
@@ -24,8 +25,6 @@ from app.schemas.user_schemas import Token
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 # --- ROTA PRINCIPAL: CADASTRO COM UPLOAD (Multipart/Form) ---
-# app/routers/auth_router.py
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(
     email: EmailStr = Form(..., description="Email do usuário"),
@@ -40,11 +39,10 @@ def register(
     responsible_doc: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação Inicial (Antes de tentar salvar qualquer coisa)
+    # 1. Validação Inicial
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="Email já cadastrado.")
 
-    # Início da Transação Atômica
     try:
         # 2. Cria Usuário
         new_user = User(
@@ -55,7 +53,7 @@ def register(
             cpf=cpf
         )
         db.add(new_user)
-        db.flush() # Gera o ID, mas não confirma ainda
+        db.flush() 
         
         # 3. Cria Empresa
         new_company = Company(
@@ -67,7 +65,7 @@ def register(
             responsavel_cpf=cpf 
         )
         db.add(new_company)
-        db.flush() # Gera o ID da empresa
+        db.flush() 
 
         # 4. Cria Vínculo
         link = UserCompanyLink(
@@ -78,41 +76,35 @@ def register(
         )
         db.add(link)
 
-        # 5. Processamento de Arquivos (Aqui estava o erro)
+        # 5. Processamento de Arquivos
         def process_file(upload_file: UploadFile, title: str):
             if not upload_file: 
                 return
             
             try:
-                # O save_upload_file retorna (caminho, tamanho)
-                # Certifique-se que sua função save_upload_file retorna dois valores!
                 path, size = save_upload_file(upload_file, "companies")
                 
                 doc = Document(
                     title=title,
                     filename=upload_file.filename,
                     file_path=path,
-                    # Se seu Model Document tiver campo file_size, use a variável 'size' aqui
-                    # file_size=size, <--- Se não tiver o campo no model, remova essa linha
                     company_id=new_company.id,
                     uploaded_by_id=new_user.id,
                     status=DocumentStatus.VALID.value
                 )
                 db.add(doc)
             except Exception as e:
-                # Se der erro no upload, lançamos exceção para cancelar TUDO
                 print(f"Erro crítico no upload {title}: {e}")
                 raise ValueError(f"Falha ao salvar {title}: {str(e)}")
 
-        # Processa os arquivos
         if social_contract: process_file(social_contract, "Contrato Social")
         if cnpj_card: process_file(cnpj_card, "Cartão CNPJ")
         if responsible_doc: process_file(responsible_doc, "Documento Identidade")
 
-        # 6. Se chegou até aqui sem erros, SALVA TUDO
+        # 6. Finaliza a Transação Atômica
         db.commit()
         
-        # 7. Auto-Login (Retorna token para o frontend já logar)
+        # 7. Auto-Login
         access_token = create_access_token(
             data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -128,20 +120,16 @@ def register(
         }
 
     except Exception as e:
-        db.rollback() # DESFAZ TUDO (Remove usuário e empresa se der erro no arquivo)
+        db.rollback() 
         print(f"Erro no registro: {e}")
-        # Retorna erro amigável
         if "Email já cadastrado" in str(e):
             raise HTTPException(status_code=400, detail="Email já cadastrado.")
         raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro: {str(e)}")
 
-# --- ROTA DE LOGIN (Token padrão OAuth2) ---
-# [CORREÇÃO CRÍTICA] Mudado de "/login" para "/token" para bater com os testes
+# --- ROTA DE LOGIN ---
 @router.post("/token", response_model=Token)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """
-    Login padrão OAuth2. Retorna Access Token.
-    """
+    """Login padrão OAuth2. Retorna Access Token."""
     user = UserRepository.get_by_email(db, form_data.username)
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
@@ -165,9 +153,7 @@ class UserSimpleCreate(BaseModel):
 
 @router.post("/register-simple", status_code=status.HTTP_201_CREATED)
 def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
-    """
-    Cadastro simplificado (JSON) apenas para testes legados ou criação rápida de Admin.
-    """
+    """Cadastro simplificado (JSON) apenas para testes legados ou criação rápida de Admin."""
     if UserRepository.get_by_email(db, user_in.email):
         raise HTTPException(status_code=400, detail="Email já cadastrado")
     
@@ -182,15 +168,29 @@ def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     return user
 
-# --- ROTA AUXILIAR DE PAGAMENTO (Mantida) ---
+# --- ROTA AUXILIAR DE PAGAMENTO (BLINDADA) ---
 class PaymentSimulationRequest(BaseModel):
     email: str
 
 @router.post("/simulate-payment", status_code=status.HTTP_200_OK)
 def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_db)):
+    """
+    Simula um webhook de pagamento ativando utilizadores instantaneamente.
+    [SEGURANÇA]: Bloqueada em ambiente de produção (Feature Flag).
+    """
+    env = os.getenv("ENV", "development").lower()
+    
+    # Trava (Feature Flag) baseada no ambiente
+    if env == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Operação não permitida em produção. Utilize o Webhook oficial do parceiro de pagamentos."
+        )
+        
     user = UserRepository.get_by_email(db, email=data.email)
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+    
     user.is_active = True
     db.commit()
-    return {"message": f"Pagamento confirmado! Usuário {user.email} ativado."}
+    return {"message": f"Pagamento simulado com sucesso em modo '{env}'! Utilizador {user.email} ativado."}
