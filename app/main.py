@@ -19,6 +19,7 @@ from app.routers import (
     company_router
 )
 from app.models import certificate_model
+from app.models.document_automation_model import DocumentAutomationConfig
 
 ENV = os.getenv("ENV", "development").lower()
 

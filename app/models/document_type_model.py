@@ -28,3 +28,10 @@ class DocumentType(Base):
     # Relacionamentos
     category = relationship("DocumentCategory", back_populates="types")
     certificates = relationship("app.models.certificate_model.Certificate", back_populates="document_type")
+    
+    automation_config = relationship(
+        "app.models.document_automation_model.DocumentAutomationConfig", 
+        back_populates="document_type", 
+        uselist=False, 
+        cascade="all, delete-orphan"
+    )

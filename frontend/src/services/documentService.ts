@@ -4,6 +4,16 @@ import api from './api';
 // 1. TIPAGENS (Interfaces)
 // ============================================================================
 
+// --- Configuração de Automação (Sprint 21) ---
+export interface DocumentAutomationConfigDTO {
+    is_automatable: boolean;
+    strategy_name?: string | null;
+    source_url?: string | null;
+    requires_captcha: boolean;
+    cron_schedule?: string | null;
+    extra_params?: Record<string, any> | null;
+}
+
 // --- Novo Catálogo (Sprint 17) ---
 export interface DocumentTypeDTO {
     id: string;
@@ -11,6 +21,8 @@ export interface DocumentTypeDTO {
     slug: string;
     validity_days_default: number;
     description?: string;
+    // 🔥 Agora o Frontend reconhece o motor de automação
+    automation_config?: DocumentAutomationConfigDTO; 
 }
 
 export interface DocumentCategoryDTO {
@@ -57,6 +69,7 @@ export interface DocumentTypeCreateDTO {
     validity_days_default: number;
     description?: string;
     category_id: string;
+    automation_config?: DocumentAutomationConfigDTO;
 }
 
 export interface DocumentTypeUpdateDTO {
@@ -65,6 +78,7 @@ export interface DocumentTypeUpdateDTO {
     validity_days_default?: number;
     description?: string;
     category_id?: string;
+    automation_config?: DocumentAutomationConfigDTO;
 }
 
 // ============================================================================

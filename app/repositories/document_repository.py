@@ -11,6 +11,7 @@ from app.models.document_model import Document, DocumentStatus
 from app.models.certificate_model import Certificate, CertificateStatus
 from app.models.document_category_model import DocumentCategory
 from app.models.document_type_model import DocumentType
+from app.models.document_automation_model import DocumentAutomationConfig # 🔥 Novo Import
 
 from app.schemas.document_schemas import (
     DocumentCategoryCreate, DocumentCategoryUpdate,
@@ -19,14 +20,14 @@ from app.schemas.document_schemas import (
 
 class DocumentRepository:
     
-    # --- CATÁLOGO (Sprint 17) ---
+    # --- CATÁLOGO (Sprint 17 + 21) ---
     @staticmethod
     def get_all_categories_with_types(db: Session) -> List[DocumentCategory]:
         """
-        Traz as categorias e seus tipos em uma única query otimizada (Eager Loading).
+        Traz as categorias, tipos e regras de automação em uma única query otimizada (Eager Loading).
         """
         return db.query(DocumentCategory)\
-            .options(joinedload(DocumentCategory.types))\
+            .options(joinedload(DocumentCategory.types).joinedload(DocumentType.automation_config))\
             .order_by(DocumentCategory.order)\
             .all()
 
@@ -50,7 +51,7 @@ class DocumentRepository:
             db.rollback()
             raise ValueError(f"Erro ao registrar documento legado: {str(e)}")
 
-    # --- UPLOAD ESTRUTURADO (Sprint 17) ---
+    # --- UPLOAD ESTRUTURADO ---
     @staticmethod
     def create_certificate(
         db: Session, type_id: str, filename: str, file_path: str, company_id: str,
@@ -74,13 +75,8 @@ class DocumentRepository:
     # --- BUSCA UNIFICADA (MERGE) ---
     @staticmethod
     def get_unified_by_company(db: Session, company_id: str) -> List[dict]:
-        """
-        Faz a fusão da tabela antiga 'documents' com a nova 'certificates'.
-        Retorna uma lista de dicionários mapeados para o UnifiedDocumentResponse.
-        """
         unified_list = []
         
-        # 1. Busca Legados
         legacies = db.query(Document).filter(Document.company_id == company_id).all()
         for doc in legacies:
             unified_list.append({
@@ -91,7 +87,6 @@ class DocumentRepository:
                 "status": doc.status,
                 "created_at": doc.created_at,
                 "is_structured": False,
-                # 👇 CORREÇÃO: Garantindo que as chaves existam mesmo sendo nulas 👇
                 "type_id": None,
                 "category_id": None,
                 "type_name": None,
@@ -99,7 +94,6 @@ class DocumentRepository:
                 "authentication_code": None
             })
 
-        # 2. Busca Certificados Novos (Com JOIN para pegar nomes da Categoria e Tipo)
         certificates = db.query(Certificate)\
             .options(joinedload(Certificate.document_type).joinedload(DocumentType.category))\
             .filter(Certificate.company_id == company_id).all()
@@ -120,19 +114,15 @@ class DocumentRepository:
                 "authentication_code": cert.authentication_code
             })
 
-        # Ordena tudo por data de criação (Mais recentes primeiro)
         unified_list.sort(key=lambda x: x["created_at"], reverse=True)
         return unified_list
         
     @staticmethod
     def get_file_path(db: Session, item_id: str) -> Optional[str]:
-        """Busca o caminho físico do arquivo, seja ele legado ou certificado"""
         doc = db.query(Document).filter(Document.id == item_id).first()
         if doc: return doc.file_path
-        
         cert = db.query(Certificate).filter(Certificate.id == item_id).first()
         if cert: return cert.file_path
-        
         return None
     
     # =================================================================
@@ -174,7 +164,6 @@ class DocumentRepository:
         if not db_cat:
             raise ValueError("Categoria não encontrada.")
         
-        # Regra de Negócio: Não apagar se existirem Tipos vinculados a ela!
         if db.query(DocumentType).filter(DocumentType.category_id == cat_id).first():
             raise ValueError("Não é possível eliminar uma categoria que ainda possui Tipos de Documentos vinculados.")
             
@@ -182,16 +171,33 @@ class DocumentRepository:
         db.commit()
 
     # =================================================================
-    # CRUD DE TIPOS DE DOCUMENTOS (Admin)
+    # CRUD DE TIPOS DE DOCUMENTOS E AUTOMAÇÃO (Admin)
     # =================================================================
     @staticmethod
     def create_type(db: Session, type_in: DocumentTypeCreate) -> DocumentType:
-        db_type = DocumentType(**type_in.model_dump())
+        # 1. Separa os dados do Tipo dos dados de Automação
+        type_data = type_in.model_dump(exclude={"automation_config"})
+        db_type = DocumentType(**type_data)
+        
         try:
             db.add(db_type)
+            db.flush() # Salva no banco para gerar o ID, mas não commita ainda
+            
+            # 2. Cria a configuração de automação vinculada
+            if type_in.automation_config:
+                auto_config = DocumentAutomationConfig(
+                    document_type_id=db_type.id,
+                    **type_in.automation_config.model_dump()
+                )
+            else:
+                # Se não mandou nada, cria uma configuração vazia (default False)
+                auto_config = DocumentAutomationConfig(document_type_id=db_type.id)
+                
+            db.add(auto_config)
             db.commit()
             db.refresh(db_type)
             return db_type
+            
         except IntegrityError:
             db.rollback()
             raise ValueError("Erro de integridade. Verifique se o slug já existe ou se a Categoria é válida.")
@@ -202,9 +208,23 @@ class DocumentRepository:
         if not db_type:
             raise ValueError("Tipo de documento não encontrado.")
             
-        update_data = type_in.model_dump(exclude_unset=True)
+        # 1. Atualiza os dados básicos do Tipo
+        update_data = type_in.model_dump(exclude_unset=True, exclude={"automation_config"})
         for key, value in update_data.items():
             setattr(db_type, key, value)
+            
+        # 2. Atualiza a configuração de automação se ela for enviada
+        if type_in.automation_config is not None:
+            if not db_type.automation_config:
+                new_auto = DocumentAutomationConfig(
+                    document_type_id=db_type.id,
+                    **type_in.automation_config.model_dump(exclude_unset=True)
+                )
+                db.add(new_auto)
+            else:
+                auto_data = type_in.automation_config.model_dump(exclude_unset=True)
+                for key, value in auto_data.items():
+                    setattr(db_type.automation_config, key, value)
             
         try:
             db.commit()
@@ -220,7 +240,6 @@ class DocumentRepository:
         if not db_type:
             raise ValueError("Tipo de documento não encontrado.")
             
-        # Regra de Negócio Crítica: Não apagar se já existirem PDFs de clientes!
         if db.query(Certificate).filter(Certificate.type_id == type_id).first():
             raise ValueError("Não é possível eliminar este Tipo. Já existem certidões de clientes vinculadas a ele no Cofre.")
             

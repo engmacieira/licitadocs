@@ -263,14 +263,27 @@ function CategoryModal({ isOpen, onClose, onSuccess, initialData }: any) {
 }
 
 // ============================================================================
-// MODAL DE TIPO DE DOCUMENTO (Interno)
+// MODAL DE TIPO DE DOCUMENTO (Atualizado com Automação)
 // ============================================================================
 function TypeModal({ isOpen, onClose, onSuccess, categoryId, initialData }: any) {
-    const { register, handleSubmit, formState: { errors } } = useForm<DocumentTypeCreateDTO>({
-        defaultValues: initialData ? { ...initialData } : { category_id: categoryId, validity_days_default: 30 }
+    const { register, handleSubmit, watch, formState: { errors } } = useForm<DocumentTypeCreateDTO>({
+        defaultValues: initialData 
+            ? { 
+                ...initialData,
+                automation_config: initialData.automation_config || { is_automatable: false, requires_captcha: false }
+              } 
+            : { 
+                category_id: categoryId, 
+                validity_days_default: 30,
+                automation_config: { is_automatable: false, requires_captcha: false }
+              }
     });
+    
     const [isSaving, setIsSaving] = useState(false);
     const isEdit = !!initialData;
+
+    // Observa se o checkbox foi marcado para exibir os campos extras
+    const isAutomatable = watch('automation_config.is_automatable');
 
     const onSubmit = async (data: DocumentTypeCreateDTO) => {
         setIsSaving(true);
@@ -295,12 +308,13 @@ function TypeModal({ isOpen, onClose, onSuccess, categoryId, initialData }: any)
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                     <h2 className="text-lg font-semibold text-slate-800">{isEdit ? 'Editar Documento' : 'Novo Documento'}</h2>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
                 </div>
-                <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+                
+                <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4 overflow-y-auto">
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Documento</label>
                         <input {...register('name', { required: true })} placeholder="Ex: CND Federal" className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
@@ -320,7 +334,60 @@ function TypeModal({ isOpen, onClose, onSuccess, categoryId, initialData }: any)
                         <textarea {...register('description')} rows={3} placeholder="Instruções para o uploader..." className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
                     </div>
 
-                    <div className="pt-4 flex gap-3">
+                    {/* 🔥 Bloco de Automação (Motor Strategy) 🔥 */}
+                    <div className="pt-4 border-t border-slate-100">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                {...register('automation_config.is_automatable')} 
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                            />
+                            <span className="text-sm font-medium text-slate-800">É Automatizável? (Buscar via Robô)</span>
+                        </label>
+                    </div>
+
+                    {/* Campos dinâmicos (Só abrem se o checkbox estiver ativo) */}
+                    {isAutomatable && (
+                        <div className="space-y-4 pt-2 pl-4 border-l-2 border-blue-200 mt-2 bg-slate-50 p-4 rounded-r-lg">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Nome da Estratégia (Robô)</label>
+                                <input 
+                                    {...register('automation_config.strategy_name')} 
+                                    placeholder="Ex: TST_CRAWLER_V1" 
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1">O nome exato da classe na CrawlerFactory do backend.</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">URL Fonte do Órgão (Opcional)</label>
+                                <input 
+                                    {...register('automation_config.source_url')} 
+                                    placeholder="Ex: https://www.tst.jus.br/..." 
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
+                                />
+                            </div>
+                            <div className="flex gap-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        {...register('automation_config.requires_captcha')} 
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500" 
+                                    />
+                                    <span className="text-sm text-slate-700">Requer Quebra de Captcha</span>
+                                </label>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Frequência de Busca (Cron)</label>
+                                <input 
+                                    {...register('automation_config.cron_schedule')} 
+                                    placeholder="Ex: 0 0 * * * (Diário)" 
+                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" 
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="pt-4 flex gap-3 pb-2">
                         <button type="button" onClick={onClose} className="flex-1 px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50">Cancelar</button>
                         <button type="submit" disabled={isSaving} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">{isSaving ? 'A salvar...' : 'Salvar'}</button>
                     </div>

@@ -31,7 +31,8 @@ from app.models import (
     document_model, 
     document_category_model,
     document_type_model,
-    certificate_model
+    certificate_model,
+    document_automation_model
 ) 
 
 # ------------------------------------------------------------------
