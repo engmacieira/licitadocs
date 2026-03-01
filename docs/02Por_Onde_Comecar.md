@@ -4,12 +4,14 @@
 > Este arquivo é o seu Ponto de Restauração. Leia-o antes de iniciar qualquer nova funcionalidade.
 
 ## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Escalada (Automação de Tarefas).
-* **Sprint Atual:** **Aguardando Planejamento da Sprint 22**.
-* **Última Ação Realizada:** Finalização da Sprint 21 (Motor de Automação). Temos o Strategy Pattern configurado no backend, o Frontend pronto para cadastrar as estratégias e um PoC (TSTCrawlerPoC) funcional.
-* **PRÓXIMO PASSO IMEDIATO:** O desenvolvedor deve escolher qual será o foco da Sprint 22. As opções sugeridas são:
-  1. Desenvolver o robô **Real** de uma certidão (Ex: Substituir o PoC do TST pelo código real que acede à API do Governo).
-  2. Desenvolver o **Orquestrador/Cron Job** (Celery ou APScheduler) que vai ler a base de dados de madrugada e disparar a *CrawlerFactory* para cada empresa.
+* **Fase do Projeto:** O Cofre Digital Inteligente atingiu a sua maturidade funcional (MVP Core Completo). O sistema cadastra empresas, aceita uploads, lê OCR (fase inicial), possui RBAC, e busca certidões de forma autônoma via Background Jobs.
+* **Sprint Atual:** **Aguardando Planejamento da Sprint 23**.
+* **Última Ação Realizada:** Finalização da Sprint 22. Orquestrador (`APScheduler`) e primeiro Robô HTTP (`TSTCrawlerV1`) construídos e validados com download real de PDFs.
+* **PRÓXIMO PASSO IMEDIATO:** O desenvolvedor deve escolher o rumo da próxima fase do SaaS. Opções sugeridas:
+  1. **Monetização/Billing:** Integração real com Stripe ou Pagar.me para cobrar assinaturas dos clientes.
+  2. **Notificações:** Envio de e-mails (ex: AWS SES, SendGrid) avisando o cliente que uma certidão expirou ou foi atualizada.
+  3. **Dashboards Reais:** Substituir os dados "mockados" do Painel Inicial do Frontend por gráficos reais baseados no banco de dados.
 
 ## 🏗️ Definições Arquiteturais (Não Quebrar)
-* **Automação:** Deve sempre seguir o Padrão Strategy. Para adicionar um robô, crie a classe em `app/services/crawlers/`, herde de `BaseCrawler` e mapeie no `CrawlerFactory`. NUNCA use `if/else` no router para decidir o tipo de busca.
+* **Background Jobs:** Gerenciados pelo `APScheduler`. Não bloqueie a thread principal do FastAPI.
+* **Crawlers:** Qualquer novo robô (ex: Receita Federal, FGTS) deve ser criado na pasta `app/services/crawlers/` herdando de `BaseCrawler` e registrado na `CrawlerFactory`.

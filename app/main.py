@@ -5,6 +5,7 @@ Inicializa o FastAPI, configura Middlewares e registra as Rotas.
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # A importação desses módulos já acionará o Fail Fast (sys.exit) se faltarem as envs
 from app.core.database import engine, Base
@@ -20,6 +21,8 @@ from app.routers import (
 )
 from app.models import certificate_model
 from app.models.document_automation_model import DocumentAutomationConfig
+
+from app.services.orchestrator_service import OrchestratorService
 
 ENV = os.getenv("ENV", "development").lower()
 
@@ -39,6 +42,23 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# --- CONFIGURAÇÃO DO BACKGROUND JOBS (APScheduler) ---
+scheduler = BackgroundScheduler()
+
+@app.on_event("startup")
+def start_scheduler():
+    # Adicionamos a nossa tarefa ao agendador. 
+    # Para testes (agora), vamos colocar para rodar a cada 30 segundos!
+    # Em produção mudaremos para: trigger="cron", hour=2, minute=0 (Todos os dias às 02:00)
+    scheduler.add_job(OrchestratorService.run_daily_scan, trigger="interval", seconds=30)
+    scheduler.start()
+    print("⏰ APScheduler iniciado! Orquestrador em background a rodar.")
+
+@app.on_event("shutdown")
+def stop_scheduler():
+    scheduler.shutdown()
+    print("⏰ APScheduler desligado.")
 
 # --- Configuração de CORS ---
 origins = [
