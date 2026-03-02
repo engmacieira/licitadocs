@@ -4,7 +4,7 @@ Garante que a Fábrica consegue instanciar os robôs corretos e lidar com erros.
 """
 import pytest
 from app.services.crawlers.crawler_factory import CrawlerFactory
-from app.services.crawlers.tst_crawler_poc import TSTCrawlerPoC
+from app.services.crawlers.tst_crawler_v1 import TSTCrawlerV1 # 🔥 Importamos o Robô Real
 
 def test_crawler_factory_valid_strategy():
     """Cenário: A fábrica deve devolver a classe correta quando o nome for válido."""
@@ -14,17 +14,23 @@ def test_crawler_factory_valid_strategy():
     # Invocamos a fábrica
     crawler = CrawlerFactory.get_crawler("TST_CRAWLER_V1", execution_params=params)
     
-    # 1. Validamos se a classe devolvida é realmente o robô do TST
-    assert isinstance(crawler, TSTCrawlerPoC)
+    # 1. Validamos se a classe devolvida é realmente o robô do TST (Agora o Real!)
+    assert isinstance(crawler, TSTCrawlerV1)
     
     # 2. Validamos se os parâmetros foram injetados corretamente no construtor
     assert crawler.execution_params["cnpj"] == "12345678000190"
     
-    # 3. Validamos se a execução (mock) retorna a estrutura de dados exigida
+    # 3. Validamos se a execução retorna a estrutura de dados exigida
+    # Nota: Como este robô agora faz uma requisição HTTP real, o teste vai 
+    # demorar cerca de 1 a 2 segundos a executar.
     result = crawler.fetch()
     assert result["success"] is True
     assert result["file_metadata"]["is_structured"] is True
     assert "12345678000190" in result["file_metadata"]["filename"]
+    
+    # 4. Validamos se o robô devolveu os bytes do PDF prontos para o Cofre
+    assert "file_content" in result
+    assert isinstance(result["file_content"], bytes)
 
 def test_crawler_factory_invalid_strategy():
     """Cenário: A fábrica deve dar um erro claro se o banco pedir um robô que não existe."""
