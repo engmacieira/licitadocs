@@ -5,7 +5,7 @@ Inicializa o FastAPI, configura Middlewares e registra as Rotas.
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
+#from apscheduler.schedulers.background import BackgroundScheduler
 
 # A importação desses módulos já acionará o Fail Fast (sys.exit) se faltarem as envs
 from app.core.database import engine, Base
@@ -43,6 +43,7 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+'''
 # --- CONFIGURAÇÃO DO BACKGROUND JOBS (APScheduler) ---
 scheduler = BackgroundScheduler()
 
@@ -59,6 +60,7 @@ def start_scheduler():
 def stop_scheduler():
     scheduler.shutdown()
     print("⏰ APScheduler desligado.")
+'''
 
 # --- Configuração de CORS ---
 origins = [

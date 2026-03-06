@@ -1,0 +1,53 @@
+- Atualizar página contract-sing:
+Modificar ela para aceite dos termos da plataforma, 
+Fazer os textos completos do termo de uso,
+Vamos retirar a ideia de assinatura de contrato e da procuração dessa tela, essa função vai para dentro da plataforma.
+
+- Dashboard cliente
+Vamos acrescentar mais duas flags para a regularidade,
+- 1. Aceite dos termos de uso (cadastro)
+- 2. Pagamento (cadastro)
+- 3. Preencher os dados completos da empresa company-settings
+- 4. Assinatura do Contrato e da Procuração, vamos criar um layout dentro do sistema, a empresa baixa o documento (documento vai ser preenchido com as informações do banco de dados da empresa), a empresa assina via gov.br e faz o upload do contrato e da procuração assinada.
+- 5. Validação da Equipe, na tela do administrador do sistema admin/companies para aprovar a documentação vamos inserir um campo para informar caso tenha pendencias o que precisa ser corrigido.
+
+- Documentação enviada pelo cliente
+Os documentos enviados pelos usuários não devem misturar com os documentos dos cofres que são inseridos pelo administrador, elas devem ficar apenas no perfil da empresa sem misturar com o cofre pois gera confusão.
+
+- Endereço informado pelo cliente
+Vamos utilizar bibliotecas para informar as cidades e estados da empresa, ao invés do usuário digitar e digitar os dois juntos, cada um tempo seu campo, e ele não precisa digitar, apenas localizar.
+
+- Função do administrador
+- Tela de Novo Upload
+Campos Data de Validade e Código de Autenticação estão repetidos
+Opção para editar as informações de documentos enviados, data de validade, código, para poder corrigir em caso de erro humano.
+Criar um hiperlink ou botão para clicar e abrir uma nova aba com o site para emissão daquele certidão, poupa muito tempo, o link vai ser inserido no cadastro da certidão.
+Nesse hiperlink no novo upload, é necessário bolar uma estratégia para ele buscar o hiperlink referente ao estado e município sede da empresa.
+No caso de CND Municipal vamos ter que ter um layout a parte, para os casos que a prefeitura não tenha o portal, nesse portal vamos armazenar os dados da divisão responsável da prefeitura, como email telefone whatsapp, para a gente solicitar as certidão manualmente pelos canais oficiais, junto com a procuração.
+- caso na busca da certidão seja constatada irregularidade precisamos criar um meio fácil para informar a empresa das irregularidades, para ela tomar as medidas necessárias.
+
+- Nova função de caixa de mensagem
+essa caixa vai ser tanto para avisos automáticos do sistema, como para conversa entre administrador da plataforma e clientes
+
+- Dashboard Administrador
+Retira o rodo de captura, por enquanto não tem uso,
+Habilitar as opções do atalho rápido
+
+- Tela de Monitoramento da Validade das Certidões
+Criar essa tela para que o administrador do sistema consiga ver as próximas certidões vencendo e consiga se programar bem
+
+- Chat IA
+Corrigir chat com a ia para ter quebra de texto e não ser direto, que fica visualmente feio 
+Corrigir integração da ia que tá com erro
+Reforçar mecanismos da ia só responder sobre o cofre e documentos
+
+- Corrigir tela demonstração
+Tela ser fiel as funções do sistema
+Informar sobre o valor, contratação de 12 meses, 12x 14,90
+Não é necessário falar sobre alerta de vencimento para a empresa, porq a empresa vai estar e encontrar a certidão válida (caso de irregularidades encontradas, a empresa é informada pelos meios oficiais)
+Não existe consultoria via ia não, ela não serve para analisar edital, serve para ajudar a empresa a localizar determinada certidão no cofre.
+
+
+
+
+

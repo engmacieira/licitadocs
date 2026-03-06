@@ -61,6 +61,7 @@ A pasta frontend foi criada. Para iniciar o projeto React nela:
     - Rodar Testes exibindo erros: pytest -vv
     - Gerar requirements.txt atualizado: pip freeze > requirements.txt
     - Gerar os logs do teste > txt/log_pytest.txt 2>&1  
+    - $env:Path += ";E:\projetos\node"
     
 2. ERROS COMUNS
     - O "Pegadinha" do VS Code (Interpretador). 
