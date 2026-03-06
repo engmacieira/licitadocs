@@ -4,14 +4,18 @@ Mapeia os nomes das estratégias (do Banco de Dados) para as classes Python corr
 """
 from typing import Type, Dict, Any
 from app.services.crawlers.base_crawler import BaseCrawler
-# Removemos o PoC e importamos o Real
-from app.services.crawlers.tst_crawler_v1 import TSTCrawlerV1 
+from app.services.crawlers.tst_crawler_v1 import TSTCrawlerV1
+from app.services.crawlers.cartao_cnpj_crawler import CartaoCNPJCrawler 
+# 🔥 Importamos o robô do FGTS
+from app.services.crawlers.fgts_crawler_v1 import FGTSCrawlerV1
 
 class CrawlerFactory:
     
-    # O "Dicionário de De-Para". O banco pede a string, a fábrica devolve a classe!
     _strategies: Dict[str, Type[BaseCrawler]] = {
         "TST_CRAWLER_V1": TSTCrawlerV1,
+        "CARTAO_CNPJ_BRASIL_API": CartaoCNPJCrawler,
+        # 🔥 Registamos a estratégia
+        "FGTS_CRAWLER_V1": FGTSCrawlerV1, 
     }
 
     @classmethod

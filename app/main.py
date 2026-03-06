@@ -51,7 +51,7 @@ def start_scheduler():
     # Adicionamos a nossa tarefa ao agendador. 
     # Para testes (agora), vamos colocar para rodar a cada 30 segundos!
     # Em produção mudaremos para: trigger="cron", hour=2, minute=0 (Todos os dias às 02:00)
-    scheduler.add_job(OrchestratorService.run_daily_scan, trigger="interval", seconds=30)
+    scheduler.add_job(OrchestratorService.run_daily_scan, trigger="interval", seconds=120)
     scheduler.start()
     print("⏰ APScheduler iniciado! Orquestrador em background a rodar.")
 
