@@ -52,9 +52,15 @@ class Company(Base):
     # Controle Geral
     is_active = Column(Boolean, default=True)
     
-    is_contract_signed = Column(Boolean, default=False)   # Contrato
-    is_payment_active = Column(Boolean, default=False)    # Pagamento
-    is_admin_verified = Column(Boolean, default=False)    # Aprovação Equipe
+    # --- Flags de Regularidade (Onboarding) ---
+    is_terms_accepted = Column(Boolean, default=False)    # 1. Aceite dos termos de uso
+    is_payment_active = Column(Boolean, default=False)    # 2. Pagamento 
+    is_data_completed = Column(Boolean, default=False)    # 3. Dados completos da empresa
+    is_contract_signed = Column(Boolean, default=False)   # 4. Assinatura do Contrato/Procuração 
+    is_admin_verified = Column(Boolean, default=False)    # 5. Aprovação da Equipa Admin
+    
+    # --- Validação da Equipa Admin ---
+    admin_pendencies = Column(String, nullable=True)      # Caso tenha pendências, o admin informa aqui
     
     @property
     def is_regular(self):

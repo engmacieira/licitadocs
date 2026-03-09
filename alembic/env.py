@@ -32,7 +32,9 @@ from app.models import (
     document_category_model,
     document_type_model,
     certificate_model,
-    document_automation_model
+    document_automation_model,
+    message_model,
+    prefecture_model
 ) 
 
 # ------------------------------------------------------------------

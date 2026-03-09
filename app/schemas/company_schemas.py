@@ -108,11 +108,24 @@ class CompanyUpdate(BaseModel):
     cidade: Optional[str] = None
     estado: Optional[str] = None
 
-    is_contract_signed: Optional[bool] = None
+    # --- Flags de Regularidade ---
+    is_terms_accepted: Optional[bool] = None
     is_payment_active: Optional[bool] = None
+    is_data_completed: Optional[bool] = None
+    is_contract_signed: Optional[bool] = None
     is_admin_verified: Optional[bool] = None
     
-    @field_validator('is_contract_signed', 'is_payment_active', 'is_admin_verified', mode='before')
+    # --- Validação da Equipa Admin ---
+    admin_pendencies: Optional[str] = None
+    
+    @field_validator(
+        'is_contract_signed', 
+        'is_payment_active', 
+        'is_admin_verified', 
+        'is_terms_accepted', 
+        'is_data_completed', 
+        mode='before'
+    )
     @classmethod
     def convert_none_to_false(cls, v):
         return v if v is not None else False
@@ -125,13 +138,26 @@ class CompanyResponse(CompanyBase):
     owner_id: Optional[str] = None
     created_at: datetime
     
-    is_contract_signed: bool = False
+    # --- Flags de Regularidade ---
+    is_terms_accepted: bool = False
     is_payment_active: bool = False
+    is_data_completed: bool = False
+    is_contract_signed: bool = False
     is_admin_verified: bool = False
+    
+    # --- Validação da Equipa Admin ---
+    admin_pendencies: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
     
-    @field_validator('is_contract_signed', 'is_payment_active', 'is_admin_verified', mode='before')
+    @field_validator(
+        'is_contract_signed', 
+        'is_payment_active', 
+        'is_admin_verified',
+        'is_terms_accepted',
+        'is_data_completed',
+        mode='before'
+    )
     @classmethod
     def convert_none_to_false(cls, v):
         return v if v is not None else False

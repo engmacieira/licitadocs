@@ -21,7 +21,7 @@ from app.schemas.company_schemas import (
 
 router = APIRouter(prefix="/companies", tags=["Gestão de Empresas"])
 
-# --- 1. ATUALIZAR EMPRESA (Rota Existente Preservada) ---
+# --- 1. ATUALIZAR EMPRESA ---
 @router.put("/{company_id}", response_model=CompanyResponse)
 def update_company(
     company_in: CompanyUpdate,
@@ -41,13 +41,14 @@ def update_company(
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada")
 
-    update_data = company_in.model_dump(exclude_unset=True)
+    update_data = company_in.model_dump(exclude_unset=True, by_alias=True)
     
-    # Exclusivo de ADMIN
+    # Exclusivo de ADMIN (Cliente não pode auto-aprovar ou apagar as pendências impostas)
     if current_user.role != "admin":
         update_data.pop("is_admin_verified", None)
         update_data.pop("is_contract_signed", None)
         update_data.pop("is_payment_active", None)
+        update_data.pop("admin_pendencies", None) 
         
     for field, value in update_data.items():
         setattr(company, field, value)
@@ -237,7 +238,7 @@ def add_member(
 @router.patch("/{company_id}/onboarding-step")
 def update_onboarding_step(
     company_id: str,
-    step: str = Query(..., description="contract | payment"), # Qual passo foi concluído
+    step: str = Query(..., description="terms | payment | data | contract"), # <-- ATUALIZADO SPRINT 24
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -245,11 +246,18 @@ def update_onboarding_step(
     verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
     
     company = db.query(Company).filter(Company.id == company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
     
-    if step == "contract":
-        company.is_contract_signed = True
+    # Atualiza a flag correspondente ao passo concluído
+    if step == "terms":
+        company.is_terms_accepted = True
     elif step == "payment":
         company.is_payment_active = True
+    elif step == "data":
+        company.is_data_completed = True
+    elif step == "contract":
+        company.is_contract_signed = True
     else:
         raise HTTPException(status_code=400, detail="Passo inválido")
         

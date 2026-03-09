@@ -14,3 +14,11 @@
 
 ## 🏗️ Definições Arquiteturais (Não Quebrar)
 * **Automação:** Mantida no `APScheduler`. Não perca tempo a criar novos robôs de *scraping* sem autorização explícita do Tech Lead. O foco agora é comercial.
+
+# 🤖 Contexto de Continuidade: LicitaDocs
+
+## 📍 Estado Atual da Missão
+* **Fase do Projeto:** Refinamento de UX e Separação de Contextos (Cliente vs Admin).
+* **Sprint Atual:** Sprint 24 - Refinamento de Fluxos, Assinaturas e Painel Administrativo.
+* **Última Ação Realizada:** Planejamento da Sprint 24 aprovado e Backlog gerado.
+* **PRÓXIMO PASSO IMEDIATO:** Atualizar os Models do SQLAlchemy (`Company`, `Message` e configurações de `Certificate`) para gerar as novas migrations via Alembic.
