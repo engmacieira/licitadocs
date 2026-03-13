@@ -6,7 +6,8 @@ import { jwtDecode } from 'jwt-decode';
 import { authService } from '../services/authService';
 import type { SignInCredentials } from '../services/authService';
 import { userService } from '../services/userService';
-import type { UserCompany } from '../services/userService';
+// IMPORTANTE: Importamos o UserProfile aqui também!
+import type { UserCompany, UserProfile } from '../services/userService';
 
 // Interface do Token Decodificado (Payload do JWT)
 interface User {
@@ -18,6 +19,7 @@ interface User {
 
 interface AuthContextData {
     user: User | null;
+    userProfile: UserProfile | null; // <-- NOVO: Guardará os dados completos do banco!
     isAuthenticated: boolean;
     signIn: (credentials: SignInCredentials) => Promise<void>;
     signOut: () => void;
@@ -33,34 +35,34 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // <-- NOVO ESTADO
     const [companies, setCompanies] = useState<UserCompany[]>([]);
     const [currentCompany, setCurrentCompany] = useState<UserCompany | null>(null);
     const [loading, setLoading] = useState(true);
 
     /**
-     * Carrega as empresas do usuário e define a empresa ativa.
-     * Usamos useCallback para garantir estabilidade nas dependências do useEffect.
+     * Carrega as empresas do usuário e o PERFIL COMPLETO.
      */
     const loadUserContext = useCallback(async () => {
         try {
+            // 1. Busca os dados completos da pessoa (CPF, RG, Nacionalidade, etc)
+            const profile = await userService.getMe();
+            setUserProfile(profile);
+
+            // 2. Busca as empresas
             const myCompanies = await userService.getMyCompanies();
             setCompanies(myCompanies);
 
             // Lógica de Seleção Automática de Empresa
             if (myCompanies.length > 0) {
-                // Tenta recuperar a última usada do storage ou pega a primeira da lista
                 const lastCompanyId = localStorage.getItem('@LicitaDoc:companyId');
                 const target = myCompanies.find(c => c.id === lastCompanyId) || myCompanies[0];
 
-                // Só atualiza se for diferente da atual para evitar renders desnecessários
                 setCurrentCompany(prev => (prev?.id === target.id ? prev : target));
-
-                // Garante que o storage esteja sincronizado
                 localStorage.setItem('@LicitaDoc:companyId', target.id);
             }
         } catch (error) {
             console.error("AuthContext: Falha ao carregar contexto do usuário", error);
-            // Nota: Não chamamos signOut() aqui para evitar loop de logout em caso de erro temporário de rede
         }
     }, []);
 
@@ -75,40 +77,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const decoded = jwtDecode<User>(loadedToken);
                 const currentTime = Date.now() / 1000;
 
-                // Verifica se o token ainda é válido
                 if (decoded.exp && decoded.exp < currentTime) {
                     signOut();
                 } else {
                     setUser(decoded);
-                    // O Interceptor do api.ts já vai pegar o token do localStorage,
-                    // então podemos chamar loadUserContext direto.
                     loadUserContext();
                 }
             } catch (error) {
-                // Token inválido ou corrompido
                 signOut();
             }
+        } else {
+            setLoading(false);
         }
-
-        setLoading(false);
     }, [loadUserContext]);
+
+    // O useEffect acima precisa garantir que o loading termine após o fluxo
+    useEffect(() => {
+        if (user || !localStorage.getItem('@LicitaDoc:token')) {
+            setLoading(false);
+        }
+    }, [user]);
 
     /**
      * Realiza o Login delegando para o authService.
      */
     async function signIn(credentials: SignInCredentials) {
-        // 1. Chama o serviço (ele lança erro se falhar, o componente trata)
         const response = await authService.signIn(credentials);
         const { access_token } = response;
 
-        // 2. Salva o token
         localStorage.setItem('@LicitaDoc:token', access_token);
 
-        // 3. Decodifica e atualiza estado do usuário
         const decoded = jwtDecode<User>(access_token);
         setUser(decoded);
 
-        // 4. Carrega o contexto (Empresas)
         await loadUserContext();
     }
 
@@ -119,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('@LicitaDoc:token');
         localStorage.removeItem('@LicitaDoc:companyId');
         setUser(null);
+        setUserProfile(null); // <-- Limpa o perfil na saída
         setCompanies([]);
         setCurrentCompany(null);
     }
@@ -131,14 +133,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (target) {
             setCurrentCompany(target);
             localStorage.setItem('@LicitaDoc:companyId', target.id);
-            // Opcional: Recarregar a página ou navegar para dashboard se necessário
-            // window.location.href = '/dashboard'; 
         }
     }
 
     return (
         <AuthContext.Provider value={{
             user,
+            userProfile, // <-- Exportando para usar nas telas!
             isAuthenticated: !!user,
             signIn,
             signOut,

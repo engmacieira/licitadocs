@@ -42,6 +42,10 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
+    nome = Column(String, nullable=True)
+    nacionalidade = Column(String, nullable=True)
+    estado_civil = Column(String, nullable=True)
+    profissao = Column(String, nullable=True)
     
     # Papel Global (Sistema)
     role = Column(String, default=UserRole.CLIENT.value, nullable=False)

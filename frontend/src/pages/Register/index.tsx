@@ -98,6 +98,7 @@ export function RegisterPage() {
 
             formData.append('cnpj', cnpjClean);
             formData.append('responsible_name', data.responsibleName); // De responsibleName para responsible_name
+            formData.append('nome', data.responsibleName);
             formData.append('cpf', cpfClean); // De responsavel_cpf para cpf
 
             // Arquivos

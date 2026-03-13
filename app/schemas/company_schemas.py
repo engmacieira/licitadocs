@@ -200,4 +200,8 @@ class MemberAddResponse(BaseModel):
     email: str
     role: str
     message: str
+
+class MemberUpdateRole(BaseModel):
+    """Payload para atualizar a permissão de um membro na empresa."""
+    role: UserCompanyRole = Field(..., description="MASTER ou VIEWER")
     

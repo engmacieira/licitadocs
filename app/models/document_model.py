@@ -4,7 +4,7 @@ Responsável por mapear a tabela 'documents' e suas regras de negócio.
 """
 import uuid
 import enum
-from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Text, Enum
+from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Text, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -49,6 +49,11 @@ class Document(Base):
         String, 
         nullable=False,
         doc="Caminho relativo ou absoluto onde o arquivo foi salvo no disco/bucket"
+    )
+    is_client_upload = Column(
+        Boolean, 
+        default=False,
+        doc="True se enviado pelo cliente na área de Configurações/Assinatura. False se emitido pelo sistema/admin."
     )
 
     # =================================================================

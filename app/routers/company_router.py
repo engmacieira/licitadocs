@@ -16,7 +16,8 @@ from app.schemas.company_schemas import (
     CompanyResponse, 
     CompanyMemberInvite, 
     MemberResponse, 
-    MemberAddResponse
+    MemberAddResponse,
+    MemberUpdateRole
 )
 
 router = APIRouter(prefix="/companies", tags=["Gestão de Empresas"])
@@ -264,3 +265,82 @@ def update_onboarding_step(
     db.commit()
     db.refresh(company)
     return company
+
+# --- 4. GESTÃO DE EQUIPA (EDITAR E REMOVER) ---
+
+@router.put("/{company_id}/members/{user_id}", response_model=MemberResponse)
+def update_member_role(
+    company_id: str,
+    user_id: str,
+    data: MemberUpdateRole,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Atualiza a permissão de um membro da equipa (MASTER ou VIEWER).
+    """
+    # 1. Segurança: Quem faz o pedido tem que ser MASTER
+    check_is_master(current_user, company_id)
+
+    # 2. Busca o vínculo do utilizador alvo
+    link = db.query(UserCompanyLink).filter(
+        UserCompanyLink.company_id == company_id,
+        UserCompanyLink.user_id == user_id
+    ).first()
+
+    if not link:
+        raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
+
+    # 3. Regra de Negócio: Não se pode despromover a si mesmo
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Não pode alterar a sua própria permissão por aqui.")
+
+    # 4. Atualiza e Salva
+    link.role = data.role.value
+    db.commit()
+    db.refresh(link)
+
+    user_alvo = link.user
+    return {
+        "user_id": user_alvo.id,
+        "name": getattr(user_alvo, "nome", None) or user_alvo.email.split("@")[0],
+        "email": user_alvo.email,
+        "role": link.role,
+        "status": link.is_active,
+        "joined_at": link.created_at
+    }
+
+@router.delete("/{company_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_member(
+    company_id: str,
+    user_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove um membro da equipa.
+    """
+    # 1. Segurança: Quem faz o pedido tem que ser MASTER
+    check_is_master(current_user, company_id)
+
+    # 2. Busca o vínculo
+    link = db.query(UserCompanyLink).filter(
+        UserCompanyLink.company_id == company_id,
+        UserCompanyLink.user_id == user_id
+    ).first()
+
+    if not link:
+        raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
+
+    # 3. Regras de Negócio de Remoção
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Não pode remover-se a si mesmo.")
+        
+    if link.role == UserCompanyRole.MASTER.value:
+        raise HTTPException(status_code=400, detail="Um gestor principal (MASTER) não pode ser removido.")
+
+    # 4. Deleta o vínculo
+    db.delete(link)
+    db.commit()
+
+    return None

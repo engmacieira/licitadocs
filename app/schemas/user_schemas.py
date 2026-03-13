@@ -15,6 +15,7 @@ class UserRoleEnum(str, Enum):
 
 class UserBase(BaseModel):
     email: EmailStr = Field(..., description="E-mail único do usuário")
+    nome: Optional[str] = Field(None, description="Nome completo do usuário")
     is_active: Optional[bool] = True
     
     # --- Dados Pessoais (Sprint 15) ---
@@ -22,6 +23,10 @@ class UserBase(BaseModel):
     rg: Optional[str] = None
     celular: Optional[str] = None
     genero: Optional[str] = None
+
+    nacionalidade: Optional[str] = None
+    estado_civil: Optional[str] = None
+    profissao: Optional[str] = None
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
@@ -66,11 +71,15 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Permite atualizar dados do perfil."""
+    nome: Optional[str] = None
     is_active: Optional[bool] = None
     cpf: Optional[str] = None
     rg: Optional[str] = None
     celular: Optional[str] = None
     genero: Optional[str] = None
+    nacionalidade: Optional[str] = None 
+    estado_civil: Optional[str] = None  
+    profissao: Optional[str] = None
     password: Optional[str] = None # Caso queira trocar senha
 
 class Token(BaseModel):

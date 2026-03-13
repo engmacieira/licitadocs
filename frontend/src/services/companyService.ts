@@ -92,6 +92,17 @@ export const companyService = {
         return data;
     },
 
+    // Editar membro
+    updateMemberRole: async (companyId: string, userId: string, role: string) => {
+        const response = await api.put(`/companies/${companyId}/members/${userId}`, { role });
+        return response.data;
+    },
+
+    // Remover membro
+    removeMember: async (companyId: string, userId: string) => {
+        await api.delete(`/companies/${companyId}/members/${userId}`);
+    },
+
     // (Opcional) Métodos mantidos se você usar em outros lugares
     getAll: async (): Promise<Company[]> => {
         const { data } = await api.get<Company[]>('/companies');

@@ -5,14 +5,15 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
     FileText, Building2, CheckCircle, XCircle, Download,
-    AlertTriangle, ArrowRight, FileSignature, CreditCard, ShieldCheck, RefreshCw
+    AlertTriangle, ArrowRight, FileSignature, CreditCard,
+    ShieldCheck, RefreshCw, ScrollText, AlertOctagon
 } from 'lucide-react';
 
 // Serviços e Contexto
 import { dashboardService } from '../../../services/dashboardService';
 import type { ClientStats } from '../../../services/dashboardService';
 import { documentService } from '../../../services/documentService';
-import { companyService } from '../../../services/companyService'; // Importar companyService
+import { companyService } from '../../../services/companyService';
 import { useAuth } from '../../../contexts/AuthContext';
 
 // Componentes UI
@@ -28,11 +29,14 @@ export function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
 
-    // Estado local para armazenar os dados FRESCOS da empresa
+    // Estado local Expandido (US-2404: 5 Passos + Pendências)
     const [companyStatus, setCompanyStatus] = useState({
-        contract: false,
+        terms: false,
+        data: false,
         payment: false,
-        approval: false
+        contract: false,
+        approval: false,
+        pendencies: null as string | null
     });
 
     // --- CARREGAMENTO DE DADOS ---
@@ -41,23 +45,29 @@ export function Dashboard() {
 
         setLoading(true);
         try {
-            // 1. Busca dados ATUALIZADOS da empresa (fura o cache do AuthContext)
-            // Certifique-se que companyService.getById existe e retorna os campos booleanos
+            // 1. Busca dados ATUALIZADOS da empresa
             const freshCompany = await companyService.getById(currentCompany.id) as any;
 
-            // Atualiza status local com dados reais do banco
+            // Atualiza status local com as 5 flags da Sprint 24
             const currentStatus = {
-                contract: freshCompany.is_contract_signed || false,
+                terms: freshCompany.is_terms_accepted || false,
+                data: freshCompany.is_data_completed || false,
                 payment: freshCompany.is_payment_active || false,
-                // CORREÇÃO: Usar is_admin_verified em vez de is_active
-                approval: freshCompany.is_admin_verified || false
+                contract: freshCompany.is_contract_signed || false,
+                approval: freshCompany.is_admin_verified || false,
+                pendencies: freshCompany.admin_pendencies || null
             };
             setCompanyStatus(currentStatus);
 
-            // Verifica regularidade baseada nos dados novos
-            const isRegular = currentStatus.contract && currentStatus.payment && currentStatus.approval;
+            // Verifica regularidade TOTAL (Os 5 passos precisam ser True)
+            const isRegular =
+                currentStatus.terms &&
+                currentStatus.data &&
+                currentStatus.payment &&
+                currentStatus.contract &&
+                currentStatus.approval;
 
-            // 2. Se for regular, carrega as estatísticas
+            // 2. Se for regular, carrega as estatísticas do Cofre
             if (isRegular) {
                 const data = await dashboardService.getClientStats(currentCompany.id);
                 setStats(data);
@@ -77,24 +87,24 @@ export function Dashboard() {
     }, [loadData]);
 
     async function handleDownload(docId: string, filename: string) {
-        // 🛡️ TRAVA: Se já houver um download em curso, ignora cliques extras
         if (isDownloading) return;
-
         try {
-            setIsDownloading(true); // Ativa o bloqueio 
+            setIsDownloading(true);
             toast.info("Iniciando download...");
-
-            // Aguarda a resposta do servidor (que pode estar lenta) 
             await documentService.downloadDocument(docId, filename);
         } catch (error) {
             toast.error("Erro ao baixar o arquivo.");
         } finally {
-            // 🔓 LIBERA: Volta ao estado normal independente de sucesso ou erro 
             setIsDownloading(false);
         }
     }
 
-    const isRegular = companyStatus.contract && companyStatus.payment && companyStatus.approval;
+    const isRegular =
+        companyStatus.terms &&
+        companyStatus.data &&
+        companyStatus.payment &&
+        companyStatus.contract &&
+        companyStatus.approval;
 
     // --- RENDER 1: LOADING ---
     if (loading) {
@@ -114,7 +124,7 @@ export function Dashboard() {
         );
     }
 
-    // --- RENDER 2: WIZARD DE PENDÊNCIAS (Se não for regular) ---
+    // --- RENDER 2: WIZARD DE PENDÊNCIAS (5 Passos) ---
     if (!isRegular && currentCompany) {
         return (
             <div className="max-w-4xl mx-auto py-8 px-4 animate-in slide-in-from-bottom-4 duration-500">
@@ -126,61 +136,96 @@ export function Dashboard() {
                         Finalize a configuração da <span className="text-blue-600">{currentCompany.razao_social}</span>
                     </h1>
                     <p className="text-slate-600 mt-3 max-w-xl mx-auto leading-relaxed">
-                        Para liberar o acesso completo ao LicitaDoc e iniciar a emissão automática de certidões, precisamos concluir as etapas abaixo.
+                        Para liberar o acesso completo ao LicitaDocs, siga as etapas de regularização abaixo.
                     </p>
                     <Button variant="ghost" size="sm" onClick={loadData} className="mt-4 text-slate-400 hover:text-blue-600">
                         <RefreshCw className="mr-2 h-3 w-3" /> Atualizar Status
                     </Button>
                 </div>
 
-                <div className="grid gap-5">
+                {/* ALERTA DE PENDÊNCIAS DO ADMIN (US-2406) */}
+                {companyStatus.pendencies && (
+                    <div className="mb-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-4 items-start shadow-sm">
+                        <AlertOctagon className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
+                        <div>
+                            <h3 className="font-bold text-red-900">Atenção! Pendências na sua conta:</h3>
+                            <p className="text-red-700 mt-1 whitespace-pre-wrap text-sm">{companyStatus.pendencies}</p>
+                            <p className="text-red-600 mt-3 text-xs font-semibold">Por favor, corrija os itens apontados para que a nossa equipa possa validar a sua empresa.</p>
+                        </div>
+                    </div>
+                )}
 
-                    {/* STEP 1: CONTRATO */}
-                    <div className={`p-6 rounded-xl border-2 transition-all ${companyStatus.contract ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white shadow-lg shadow-blue-100'}`}>
-                        <div className="flex flex-col sm:flex-row items-start gap-5">
-                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.contract ? 'bg-green-200 text-green-700' : 'bg-blue-100 text-blue-600'}`}>
-                                <FileSignature className="h-6 w-6" />
+                <div className="grid gap-4">
+
+                    {/* STEP 1: TERMOS DE USO */}
+                    <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.terms ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white shadow-md shadow-blue-50'}`}>
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.terms ? 'bg-green-200 text-green-700' : 'bg-blue-100 text-blue-600'}`}>
+                                <ScrollText className="h-6 w-6" />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-3">
-                                    1. Assinatura Digital
-                                    {companyStatus.contract ?
+                            <div className="flex-1 text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                    1. Aceite dos Termos
+                                    {companyStatus.terms ?
                                         <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span> :
                                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Pendente</span>
                                     }
                                 </h3>
-                                <p className="text-slate-600 text-sm mt-1">
-                                    Assinatura do contrato de prestação de serviços SaaS e procuração para emissão de certidões.
-                                </p>
+                                <p className="text-slate-600 text-sm mt-1">Concordância com os Termos de Uso e Política de Privacidade da plataforma.</p>
                             </div>
-                            {!companyStatus.contract && (
-                                <Button onClick={() => navigate('/contract-sign')}>
-                                    Assinar Agora <ArrowRight className="ml-2 h-4 w-4" />
+                            {!companyStatus.terms && (
+                                <Button onClick={() => navigate('/contract-sign')} className="w-full sm:w-auto">
+                                    Ler e Aceitar <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             )}
                         </div>
                     </div>
 
-                    {/* STEP 2: PAGAMENTO */}
-                    <div className={`p-6 rounded-xl border-2 transition-all ${companyStatus.payment ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
-                        <div className="flex flex-col sm:flex-row items-start gap-5">
-                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.payment ? 'bg-green-200 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
+                    {/* STEP 2: DADOS DA EMPRESA */}
+                    <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.data ? 'border-green-200 bg-green-50' : (companyStatus.terms ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.data ? 'bg-green-200 text-green-700' : (companyStatus.terms ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                                <Building2 className="h-6 w-6" />
+                            </div>
+                            <div className="flex-1 text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                    2. Dados Cadastrais
+                                    {companyStatus.data && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
+                                </h3>
+                                <p className="text-slate-600 text-sm mt-1">Preenchimento completo dos dados da empresa e responsável legal.</p>
+                            </div>
+                            {!companyStatus.data && (
+                                <Button
+                                    variant={companyStatus.terms ? 'primary' : 'outline'}
+                                    disabled={!companyStatus.terms}
+                                    onClick={() => navigate('/company-settings')}
+                                    className="w-full sm:w-auto"
+                                >
+                                    Completar Dados
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* STEP 3: PAGAMENTO */}
+                    <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.payment ? 'border-green-200 bg-green-50' : (companyStatus.data ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.payment ? 'bg-green-200 text-green-700' : (companyStatus.data ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
                                 <CreditCard className="h-6 w-6" />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-3">
-                                    2. Ativação do Plano
+                            <div className="flex-1 text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                    3. Ativação do Plano
                                     {companyStatus.payment && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
                                 </h3>
-                                <p className="text-slate-600 text-sm mt-1">
-                                    Confirmação do pagamento da primeira mensalidade para liberação do sistema.
-                                </p>
+                                <p className="text-slate-600 text-sm mt-1">Confirmação da assinatura do serviço.</p>
                             </div>
                             {!companyStatus.payment && (
                                 <Button
-                                    variant={companyStatus.contract ? 'primary' : 'outline'}
-                                    disabled={!companyStatus.contract}
+                                    variant={companyStatus.data ? 'primary' : 'outline'}
+                                    disabled={!companyStatus.data}
                                     onClick={() => navigate('/payment')}
+                                    className="w-full sm:w-auto"
                                 >
                                     Realizar Pagamento
                                 </Button>
@@ -188,22 +233,48 @@ export function Dashboard() {
                         </div>
                     </div>
 
-                    {/* STEP 3: VALIDAÇÃO */}
-                    <div className={`p-6 rounded-xl border-2 transition-all ${companyStatus.approval ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
-                        <div className="flex flex-col sm:flex-row items-start gap-5">
+                    {/* STEP 4: CONTRATO E PROCURAÇÃO */}
+                    <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.contract ? 'border-green-200 bg-green-50' : (companyStatus.payment ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
+                            <div className={`p-3 rounded-xl shrink-0 ${companyStatus.contract ? 'bg-green-200 text-green-700' : (companyStatus.payment ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                                <FileSignature className="h-6 w-6" />
+                            </div>
+                            <div className="flex-1 text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                    4. Contrato e Procuração
+                                    {companyStatus.contract && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
+                                </h3>
+                                <p className="text-slate-600 text-sm mt-1">Assinatura digital dos documentos de representação.</p>
+                            </div>
+                            {!companyStatus.contract && (
+                                <Button
+                                    variant={companyStatus.payment ? 'primary' : 'outline'}
+                                    disabled={!companyStatus.payment}
+                                    onClick={() => navigate('/signature')} // <--- ALTERA AQUI DE '/contract-sign' PARA '/signature'
+                                    className="w-full sm:w-auto"
+                                >
+                                    Assinar Documentos
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* STEP 5: VALIDAÇÃO */}
+                    <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.approval ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
+                        <div className="flex flex-col sm:flex-row items-center gap-5">
                             <div className={`p-3 rounded-xl shrink-0 ${companyStatus.approval ? 'bg-green-200 text-green-700' : 'bg-amber-100 text-amber-600'}`}>
                                 <ShieldCheck className="h-6 w-6" />
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-3">
-                                    3. Validação da Equipe
+                            <div className="flex-1 text-center sm:text-left">
+                                <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                    5. Validação da Equipe
                                     {companyStatus.approval ?
                                         <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Aprovado</span> :
                                         <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">Em Análise</span>
                                     }
                                 </h3>
                                 <p className="text-slate-600 text-sm mt-1">
-                                    Nossa equipe está conferindo seus documentos (Contrato Social, CNPJ e Identidade).
+                                    Nossa equipe fará a conferência final dos seus dados e documentos.
                                 </p>
                             </div>
                         </div>

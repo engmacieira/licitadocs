@@ -25,6 +25,7 @@ import { PaymentPage } from './pages/Payment';         // Fluxo de entrada
 import { Dashboard } from './pages/Client/Dashboard';
 import { DocumentsPage } from './pages/Client/Documents';
 import { CompanySettings } from './pages/Client/CompanySettings';
+import { SignaturePage } from './pages/Client/Signature';
 
 // Área do Administrador
 import { AdminDashboard } from './pages/Admin/Dashboard';
@@ -68,6 +69,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/documents" element={<DocumentsPage />} />
             <Route path="/company-settings" element={<CompanySettings />} />
+            <Route path="/signature" element={<SignaturePage />} />
 
             {/* --- ADMINISTRADOR (Backoffice) --- */}
             {/* Dica: Futuramente você pode criar um wrapper <AdminRoute> aqui */}

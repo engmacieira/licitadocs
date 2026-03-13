@@ -48,6 +48,7 @@ def register(
         new_user = User(
             email=email, 
             password_hash=get_password_hash(password),
+            nome=responsible_name,
             role=UserRole.CLIENT.value,
             is_active=True, 
             cpf=cpf
