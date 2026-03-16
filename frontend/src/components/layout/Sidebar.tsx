@@ -9,7 +9,9 @@ import {
     UploadCloud,
     ChevronDown,
     Plus,
-    ShieldCheck
+    ShieldCheck,
+    LifeBuoy,
+    InboxIcon
 } from 'lucide-react';
 
 // Adicionamos a interface para aceitar estilos externos (Responsividade)
@@ -98,6 +100,7 @@ export function Sidebar({ className = "" }: SidebarProps) {
                 {isAdmin ? (
                     <>
                         <NavItem to="/admin/dashboard" icon={LayoutDashboard} label="Visão Geral" activeColor="bg-purple-600" />
+                        <NavItem to="/admin/inbox" icon={InboxIcon} label="Caixa de Entrada" activeColor="bg-purple-600" />
                         <NavItem to="/admin/companies" icon={Building2} label="Gestão de Empresas" activeColor="bg-purple-600" />
                         <NavItem to="/admin/upload" icon={UploadCloud} label="Upload Centralizado" activeColor="bg-purple-600" />
                         <NavItem to="/admin/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
@@ -106,6 +109,7 @@ export function Sidebar({ className = "" }: SidebarProps) {
                     <>
                         <NavItem to="/dashboard" icon={LayoutDashboard} label="Visão Geral" activeColor="bg-blue-600" />
                         <NavItem to="/documents" icon={FileText} label="Meus Documentos" activeColor="bg-blue-600" />
+                        <NavItem to="/help-center" icon={LifeBuoy} label="Ajuda e Suporte" activeColor="bg-blue-600" />
                         {currentCompany?.role === 'MASTER' && (
                             <NavItem to="/company-settings" icon={Settings} label="Minha Empresa" activeColor="bg-blue-600" />
                         )}

@@ -9,7 +9,6 @@ import {
 
 // Serviços e Contexto
 import { useAuth } from '../../../contexts/AuthContext';
-import { documentService } from '../../../services/documentService';
 import api from '../../../services/api';
 
 // Componentes UI
@@ -82,6 +81,7 @@ export function SignaturePage() {
     };
 
     // Função para submeter os arquivos e avançar o Onboarding
+    // Função para submeter os arquivos e avançar o Onboarding (CORRIGIDA)
     const handleComplete = async () => {
         if (!company?.id) return;
         if (!contractFile || !proxyFile) {
@@ -93,9 +93,25 @@ export function SignaturePage() {
         const toastId = toast.loading("Enviando documentos e validando assinatura...");
 
         try {
-            await documentService.upload(contractFile, "Contrato SaaS Assinado");
-            await documentService.upload(proxyFile, "Procuração Assinada");
+            // 1A. Upload do Contrato (Montando o FormData manualmente)
+            const contractData = new FormData();
+            contractData.append("file", contractFile);
+            contractData.append("title", "Contrato SaaS Assinado");
+            contractData.append("company_id", company.id); // <- AQUI GARANTIMOS O ID CERTO
+            await api.post("/documents/upload", contractData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
 
+            // 1B. Upload da Procuração
+            const proxyData = new FormData();
+            proxyData.append("file", proxyFile);
+            proxyData.append("title", "Procuração Assinada");
+            proxyData.append("company_id", company.id);
+            await api.post("/documents/upload", proxyData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            });
+
+            // 2. Dispara a flag do Passo 4 (Contrato)
             await api.patch(`/companies/${company.id}/onboarding-step?step=contract`);
 
             toast.success("Documentos enviados com sucesso!", { id: toastId });

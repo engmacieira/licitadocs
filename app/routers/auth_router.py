@@ -37,6 +37,7 @@ def register(
     social_contract: Optional[UploadFile] = File(None),
     cnpj_card: Optional[UploadFile] = File(None),
     responsible_doc: Optional[UploadFile] = File(None),
+    proxy_doc: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     # 1. Validação Inicial
@@ -91,7 +92,8 @@ def register(
                     file_path=path,
                     company_id=new_company.id,
                     uploaded_by_id=new_user.id,
-                    status=DocumentStatus.VALID.value
+                    status=DocumentStatus.VALID.value,
+                    is_client_upload=True
                 )
                 db.add(doc)
             except Exception as e:
@@ -101,6 +103,7 @@ def register(
         if social_contract: process_file(social_contract, "Contrato Social")
         if cnpj_card: process_file(cnpj_card, "Cartão CNPJ")
         if responsible_doc: process_file(responsible_doc, "Documento Identidade")
+        if proxy_doc: process_file(proxy_doc, "Procuração")
 
         # 6. Finaliza a Transação Atômica
         db.commit()

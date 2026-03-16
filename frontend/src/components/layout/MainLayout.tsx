@@ -13,6 +13,8 @@ export function MainLayout() {
     const pageTitles: Record<string, string> = {
         '/dashboard': 'Visão Geral',
         '/documents': 'Meus Documentos',
+        '/company-settings': 'Configurações da Empresa',
+        '/help-center': 'Ajuda e Suporte',
         '/ai-chat': 'Consultor IA',
         '/admin/dashboard': 'Painel Administrativo',
         '/admin/companies': 'Gestão de Empresas',

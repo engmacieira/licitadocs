@@ -30,6 +30,7 @@ export function RegisterPage() {
     const [socialContract, setSocialContract] = useState<File | null>(null);
     const [cnpjCard, setCnpjCard] = useState<File | null>(null);
     const [responsibleDoc, setResponsibleDoc] = useState<File | null>(null);
+    const [proxyDoc, setProxyDoc] = useState<File | null>(null);
 
     const {
         register,
@@ -105,6 +106,10 @@ export function RegisterPage() {
             formData.append('social_contract', socialContract);
             formData.append('cnpj_card', cnpjCard);
             formData.append('responsible_doc', responsibleDoc); // Requer ajuste no backend conforme Passo 1
+
+            if (proxyDoc) {
+                formData.append('proxy_doc', proxyDoc);
+            }
 
             await authService.register(formData);
 
@@ -280,6 +285,7 @@ export function RegisterPage() {
                                 <FileField label="Contrato Social Atualizado" file={socialContract} setFile={setSocialContract} id="social" />
                                 <FileField label="Cartão CNPJ (Emitido nos últimos 30 dias)" file={cnpjCard} setFile={setCnpjCard} id="cnpj" />
                                 <FileField label="Documento com Foto (RG/CNH do Responsável)" file={responsibleDoc} setFile={setResponsibleDoc} id="doc" />
+                                <FileField label="Procuração (Opcional)" file={proxyDoc} setFile={setProxyDoc} id="proxy" />
 
                                 <div className="flex gap-3 pt-4 border-t border-slate-100">
                                     <Button type="button" variant="outline" onClick={() => setStep(3)} className="w-1/3" disabled={isLoading}>

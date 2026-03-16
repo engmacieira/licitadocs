@@ -35,12 +35,14 @@ class DocumentRepository:
     @staticmethod
     def create_legacy(
         db: Session, title: str, filename: str, file_path: str, company_id: str, 
-        expiration_date: Optional[date] = None, uploaded_by_id: Optional[str] = None
+        expiration_date: Optional[date] = None, uploaded_by_id: Optional[str] = None,
+        is_client_upload: bool = False # <--- NOVO PARÂMETRO AQUI
     ) -> Document:
         db_doc = Document(
             title=title, filename=filename, file_path=file_path,
             company_id=company_id, expiration_date=expiration_date,
-            status=DocumentStatus.VALID.value, uploaded_by_id=uploaded_by_id
+            status=DocumentStatus.VALID.value, uploaded_by_id=uploaded_by_id,
+            is_client_upload=is_client_upload # <--- SALVA A FLAG NO BANCO
         )
         try:
             db.add(db_doc)
@@ -74,10 +76,17 @@ class DocumentRepository:
 
     # --- BUSCA UNIFICADA (MERGE) ---
     @staticmethod
-    def get_unified_by_company(db: Session, company_id: str) -> List[dict]:
+    def get_unified_by_company(db: Session, company_id: str, is_client_upload: Optional[bool] = None) -> List[dict]:
         unified_list = []
         
-        legacies = db.query(Document).filter(Document.company_id == company_id).all()
+        # 1. Busca os Documentos Genéricos (Com Filtro Opcional)
+        legacies_query = db.query(Document).filter(Document.company_id == company_id)
+        
+        if is_client_upload is not None:
+            legacies_query = legacies_query.filter(Document.is_client_upload == is_client_upload)
+            
+        legacies = legacies_query.all()
+        
         for doc in legacies:
             unified_list.append({
                 "id": doc.id,
@@ -91,28 +100,33 @@ class DocumentRepository:
                 "category_id": None,
                 "type_name": None,
                 "category_name": None,
-                "authentication_code": None
+                "authentication_code": None,
+                "is_client_upload": getattr(doc, 'is_client_upload', False) # Adicionado para o Frontend
             })
 
-        certificates = db.query(Certificate)\
-            .options(joinedload(Certificate.document_type).joinedload(DocumentType.category))\
-            .filter(Certificate.company_id == company_id).all()
-            
-        for cert in certificates:
-            unified_list.append({
-                "id": cert.id,
-                "title": cert.document_type.name if cert.document_type else "Certidão",
-                "filename": cert.filename,
-                "expiration_date": cert.expiration_date,
-                "status": cert.status,
-                "created_at": cert.created_at,
-                "is_structured": True,
-                "type_id": cert.type_id,
-                "category_id": cert.document_type.category_id if cert.document_type else None,
-                "type_name": cert.document_type.name if cert.document_type else None,
-                "category_name": cert.document_type.category.name if cert.document_type and cert.document_type.category else None,
-                "authentication_code": cert.authentication_code
-            })
+        # 2. Busca Certidões (Apenas se NÃO estivermos buscando exclusivamente arquivos do cliente)
+        # Pois as certidões estruturadas são sempre do sistema/admin.
+        if is_client_upload is not True:
+            certificates = db.query(Certificate)\
+                .options(joinedload(Certificate.document_type).joinedload(DocumentType.category))\
+                .filter(Certificate.company_id == company_id).all()
+                
+            for cert in certificates:
+                unified_list.append({
+                    "id": cert.id,
+                    "title": cert.document_type.name if cert.document_type else "Certidão",
+                    "filename": cert.filename,
+                    "expiration_date": cert.expiration_date,
+                    "status": cert.status,
+                    "created_at": cert.created_at,
+                    "is_structured": True,
+                    "type_id": cert.type_id,
+                    "category_id": cert.document_type.category_id if cert.document_type else None,
+                    "type_name": cert.document_type.name if cert.document_type else None,
+                    "category_name": cert.document_type.category.name if cert.document_type and cert.document_type.category else None,
+                    "authentication_code": cert.authentication_code,
+                    "is_client_upload": False # Sempre False
+                })
 
         unified_list.sort(key=lambda x: x["created_at"], reverse=True)
         return unified_list

@@ -27,34 +27,33 @@ def get_document_types_catalog(db: Session = Depends(get_db)):
     return DocumentRepository.get_all_categories_with_types(db)
 
 # --- 1. LISTAGEM UNIFICADA (Filtro Melhorado) ---
+# --- 1. LISTAGEM UNIFICADA (Filtro Melhorado) ---
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
     company_id: Optional[str] = Query(None, description="Filtra por empresa"),
+    is_client_upload: Optional[bool] = Query(None, description="Filtra por quem enviou (Cofre vs Cliente)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
+    target_company_id = company_id
     allowed_company_ids = [link.company_id for link in current_user.company_links]
-    target_company_id = None
 
     if current_user.role == UserRole.ADMIN.value:
-         # Admin DEVE enviar o ID da empresa para não carregar o banco inteiro (Performance)
-         if not company_id:
-             raise HTTPException(status_code=400, detail="Admins devem especificar o company_id para listar o cofre.")
-         target_company_id = company_id
+         if not target_company_id:
+             raise HTTPException(status_code=400, detail="Admins devem especificar o company_id para listar os documentos.")
     else:
-        # Lógica para Cliente
-        if company_id:
-            if company_id not in allowed_company_ids:
+        if target_company_id:
+            if target_company_id not in allowed_company_ids:
                 raise HTTPException(status_code=403, detail="Acesso negado a esta empresa.")
-            target_company_id = company_id
         elif allowed_company_ids:
             target_company_id = allowed_company_ids[0]
         else:
             return []
 
-    return DocumentRepository.get_unified_by_company(db, target_company_id)
+    # Chama o repositório passando o novo filtro opcional
+    return DocumentRepository.get_unified_by_company(db, target_company_id, is_client_upload)
 
-# --- 2. UPLOAD INTELIGENTE (RBAC Aplicado) ---
+# --- 2. UPLOAD INTELIGENTE E RASTREADO (Flexível) ---
 @router.post("/upload", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
 def upload_document(
     title: Optional[str] = Form(None),
@@ -63,59 +62,87 @@ def upload_document(
     file: UploadFile = File(...),
     expiration_date: Optional[date] = Form(None), 
     target_company_id: Optional[str] = Form(None),
-    # 2. Injeção Direta: Apenas admins podem aceder a esta rota agora
-    current_admin: User = Depends(require_role([UserRole.ADMIN.value])),
+    company_id: Optional[str] = Form(None), # <-- Aceitamos também o padrão normal do frontend
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    print(f"DEBUG UPLOAD - Iniciando upload. Usuário: {current_user.email} | Role: {current_user.role}")
+    
+    # Unifica o ID da empresa (se o frontend enviar 'company_id' ou 'target_company_id')
+    final_company_id = target_company_id or company_id
+    
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Apenas PDFs são permitidos.")
 
-    # BLINDAGEM: Verifica o tamanho do arquivo (Limite de 5MB)
     MAX_FILE_SIZE = 5 * 1024 * 1024 
-    
     file.file.seek(0, 2)
     file_size = file.file.tell()
     file.file.seek(0)
-    
     if file_size > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-            detail=f"O arquivo é muito grande. O limite máximo é de 5MB."
-        )
+        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Arquivo maior que 5MB.")
 
-    if not target_company_id:
-        raise HTTPException(status_code=400, detail="ID da empresa destino é obrigatório.")
+    # Validação de Acesso rigorosa, mas justa
+    if current_user.role != UserRole.ADMIN.value:
+        active_links = [link.company_id for link in current_user.company_links if link.is_active]
+        print(f"DEBUG UPLOAD - Links ativos do cliente: {active_links}")
+        
+        if not active_links:
+            print("DEBUG UPLOAD - BLOQUEADO 403: Cliente não possui links ativos com nenhuma empresa.")
+            raise HTTPException(status_code=403, detail="O usuário não está vinculado a nenhuma empresa ativa.")
+        
+        # Se o frontend não mandou o ID da empresa, usamos a primeira que o cliente tem acesso
+        if not final_company_id:
+            final_company_id = active_links[0]
+            print(f"DEBUG UPLOAD - Frontend não enviou ID. Assumindo empresa: {final_company_id}")
+        elif final_company_id not in active_links:
+            print(f"DEBUG UPLOAD - BLOQUEADO 403: Tentou enviar para {final_company_id}, mas só tem acesso a {active_links}")
+            raise HTTPException(status_code=403, detail="Acesso negado a esta empresa.")
+            
+    elif not final_company_id:
+        raise HTTPException(status_code=400, detail="Admins devem enviar o ID da empresa destino.")
 
     try:
         file_path = save_file_locally(file)
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG UPLOAD - Erro ao salvar disco: {e}")
         raise HTTPException(status_code=500, detail="Falha ao salvar arquivo no disco.")
+
+    # Flag mágica para a US-2405:
+    is_client = (current_user.role != UserRole.ADMIN.value)
 
     if type_id:
         try:
             cert = DocumentRepository.create_certificate(
                 db=db, type_id=type_id, filename=file.filename, file_path=file_path,
-                company_id=target_company_id, expiration_date=expiration_date,
+                company_id=final_company_id, expiration_date=expiration_date,
                 authentication_code=authentication_code
             )
+            print("DEBUG UPLOAD - Sucesso! Certidão salva.")
             return DocumentResponse(
                 id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
-                is_structured=True, type_id=type_id, authentication_code=authentication_code
+                is_structured=True, type_id=type_id, authentication_code=authentication_code,
+                is_client_upload=False
             )
         except Exception as e:
+            print(f"DEBUG UPLOAD - Erro BD Certidão: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     else:
         if not title: title = "Documento Sem Título"
         try:
             doc = DocumentRepository.create_legacy(
                 db=db, title=title, filename=file.filename, file_path=file_path,
-                company_id=target_company_id, expiration_date=expiration_date, uploaded_by_id=current_admin.id
+                company_id=final_company_id, expiration_date=expiration_date, 
+                uploaded_by_id=current_user.id,
+                is_client_upload=is_client 
             )
+            print("DEBUG UPLOAD - Sucesso! Documento legado salvo. is_client_upload=", is_client)
             return DocumentResponse(
                 id=doc.id, title=doc.title, filename=doc.filename, status=doc.status, 
-                created_at=doc.created_at, is_structured=False
+                created_at=doc.created_at, is_structured=False,
+                is_client_upload=is_client
             )
         except Exception as e:
+            print(f"DEBUG UPLOAD - Erro BD Legado: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
 # --- 3. DOWNLOAD UNIFICADO ---
@@ -218,3 +245,34 @@ def delete_document_type(
         DocumentRepository.delete_type(db, type_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+# --- 4. DELETAR DOCUMENTO ---
+@router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    item_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    from app.models.document_model import Document
+    import os
+    
+    # 1. Busca o documento
+    doc = db.query(Document).filter(Document.id == item_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+        
+    # 2. Segurança: Só Admin ou o próprio dono da empresa pode apagar
+    if current_user.role != UserRole.ADMIN.value:
+        allowed_company_ids = [link.company_id for link in current_user.company_links]
+        if doc.company_id not in allowed_company_ids:
+             raise HTTPException(status_code=403, detail="Acesso negado para apagar este documento.")
+             
+    # 3. Apaga do disco e do banco
+    try:
+        if os.path.exists(doc.file_path):
+            os.remove(doc.file_path)
+    except Exception as e:
+        print(f"Aviso: Erro ao apagar ficheiro físico: {e}")
+        
+    db.delete(doc)
+    db.commit()

@@ -62,7 +62,8 @@ class DocumentResponse(BaseModel):
     type_name: Optional[str] = None
     category_name: Optional[str] = None
     authentication_code: Optional[str] = None
-
+    is_client_upload: Optional[bool] = Field(False, description="True se o documento foi enviado pelo cliente")
+    
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 # --- SCHEMAS DE ENTRADA (Criação/Atualização) ---    
