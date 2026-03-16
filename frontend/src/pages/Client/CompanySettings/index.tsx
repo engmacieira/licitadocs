@@ -278,6 +278,7 @@ export function CompanySettings() {
     };
 
     // --- FUNÇÕES DE DOCUMENTAÇÃO DO CLIENTE ---
+    // --- FUNÇÕES DE DOCUMENTAÇÃO DO CLIENTE ---
     const handleUploadDoc = async (file: File, docTitle: string) => {
         if (!currentCompany?.id) return;
         const toastId = toast.loading("Enviando arquivo...");
@@ -286,6 +287,9 @@ export function CompanySettings() {
             formData.append("file", file);
             formData.append("title", docTitle);
             formData.append("company_id", currentCompany.id); // BLINDADO!
+
+            // ---> AQUI ESTÁ A GARANTIA DA TAG <---
+            formData.append("is_client_upload", "true");
 
             await api.post("/documents/upload", formData, {
                 headers: { "Content-Type": "multipart/form-data" }
@@ -446,10 +450,26 @@ export function CompanySettings() {
                             <UploadCloud className="h-5 w-5 text-blue-600" /> Enviar Novos Documentos
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                            <DocUploadCard title="Contrato Social" onUpload={(f) => handleUploadDoc(f, "Contrato Social")} />
-                            <DocUploadCard title="Cartão CNPJ" onUpload={(f) => handleUploadDoc(f, "Cartão CNPJ")} />
-                            <DocUploadCard title="Balanço Patrimonial" onUpload={(f) => handleUploadDoc(f, "Balanço Patrimonial")} />
-                            <DocUploadCard title="Declaração (Outra)" onUpload={(f) => handleUploadDoc(f, "Declaração de Empresa")} />
+                            <DocUploadCard
+                                title="Atos e Procurações"
+                                description="Contrato Social, Procuração, Docs Pessoais, etc."
+                                onUpload={(f) => handleUploadDoc(f, "Atos Constitutivos")}
+                            />
+                            <DocUploadCard
+                                title="Capacidade Técnica"
+                                description="Declarações Manuais, Atestados Técnicos, etc."
+                                onUpload={(f) => handleUploadDoc(f, "Declarações e Atestados")}
+                            />
+                            <DocUploadCard
+                                title="Econômico-Financeira"
+                                description="Balanço Patrimonial, DRE, etc."
+                                onUpload={(f) => handleUploadDoc(f, "Balanço Patrimonial")}
+                            />
+                            <DocUploadCard
+                                title="Outros"
+                                description="Demais documentos e anexos."
+                                onUpload={(f) => handleUploadDoc(f, "Demais Documentos")}
+                            />
                         </div>
                     </div>
 
@@ -711,7 +731,7 @@ function StatusItem({ label, status, icon: Icon, textTrue, textFalse }: any) {
     );
 }
 
-function DocUploadCard({ title, onUpload }: { title: string, onUpload: (f: File) => void }) {
+function DocUploadCard({ title, description, onUpload }: { title: string, description?: string, onUpload: (f: File) => void }) {
     return (
         <label className="cursor-pointer group">
             <input type="file" className="hidden" accept=".pdf,image/*" onChange={(e) => {
@@ -724,7 +744,12 @@ function DocUploadCard({ title, onUpload }: { title: string, onUpload: (f: File)
                 <div className="p-3 bg-slate-50 text-slate-400 group-hover:bg-blue-100 group-hover:text-blue-600 rounded-full transition-colors">
                     <UploadCloud size={24} />
                 </div>
-                <h3 className="font-semibold text-sm text-slate-700 group-hover:text-blue-700">{title}</h3>
+                <div>
+                    <h3 className="font-semibold text-sm text-slate-700 group-hover:text-blue-700">{title}</h3>
+                    {description && (
+                        <p className="text-[10px] text-slate-500 mt-1.5 leading-tight">{description}</p>
+                    )}
+                </div>
             </div>
         </label>
     );

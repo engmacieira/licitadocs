@@ -13,6 +13,7 @@ from app.models.company_model import Company
 from app.models.message_model import Message
 from app.schemas.message_schemas import MessageCreate, MessageResponse
 from app.repositories.message_repository import MessageRepository
+from app.schemas.message_schemas import MessageBroadcast
 
 router = APIRouter(prefix="/messages", tags=["Caixa de Mensagens (Inbox)"])
 
@@ -119,5 +120,57 @@ def list_all_tickets_admin(
     for msg in messages:
         msg_dict = msg.__dict__.copy()
         msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or (msg.sender.email.split("@")[0] if msg.sender else "Sistema")
+        msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
         results.append(msg_dict)
     return results
+
+@router.get("/admin/alerts", response_model=List[MessageResponse])
+def list_all_alerts_admin(
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value])),
+    db: Session = Depends(get_db)
+):
+    """Retorna todos os avisos do sistema/manuais disparados pela plataforma."""
+    # Busca apenas mensagens do tipo "system"
+    messages = db.query(Message).filter(Message.message_type == "system").order_by(Message.created_at.desc()).all()
+    
+    results = []
+    for msg in messages:
+        msg_dict = msg.__dict__.copy()
+        msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or "Sistema"
+        msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
+        results.append(msg_dict)
+        
+    return results
+
+@router.post("/admin/broadcast", status_code=status.HTTP_201_CREATED)
+def broadcast_alert(
+    payload: MessageBroadcast,
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value])),
+    db: Session = Depends(get_db)
+):
+    """
+    Dispara um aviso para várias empresas selecionadas ou para todas de uma vez.
+    """
+    target_company_ids = []
+    
+    if payload.send_to_all:
+        # Busca todas as empresas ativas na plataforma
+        companies = db.query(Company).all()
+        target_company_ids = [c.id for c in companies]
+    else:
+        target_company_ids = payload.company_ids
+
+    if not target_company_ids:
+        raise HTTPException(status_code=400, detail="Nenhuma empresa selecionada para o envio.")
+
+    # Cria a mensagem para cada empresa
+    for comp_id in target_company_ids:
+        msg_in = MessageCreate(
+            content=payload.content, 
+            message_type="system", 
+            subject=payload.subject
+        )
+        # Reutilizamos a lógica do Repository para garantir consistência
+        MessageRepository.create(db, comp_id, current_admin.id, msg_in)
+
+    return {"status": f"Aviso disparado com sucesso para {len(target_company_ids)} empresa(s)."}

@@ -3,7 +3,7 @@ Schemas de Mensagens (Pydantic).
 Define a estrutura de dados para envio e leitura de mensagens (Inbox/Tickets/Chat).
 """
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class MessageBase(BaseModel):
@@ -38,5 +38,15 @@ class MessageResponse(MessageBase):
     
     # UX Helper: Para o Frontend exibir o nome sem precisar fazer joins complexos na tela
     sender_name: Optional[str] = Field(None, description="Nome amigável de quem enviou a mensagem")
+    company_name: Optional[str] = Field(None, description="Razão social da empresa (UX Frontend)")
 
     model_config = ConfigDict(from_attributes=True)
+
+class MessageBroadcast(BaseModel):
+    """
+    Schema exclusivo para envio de Avisos em massa pelo Administrador.
+    """
+    subject: str = Field(..., description="Assunto do aviso")
+    content: str = Field(..., description="Conteúdo do aviso")
+    send_to_all: bool = Field(default=False, description="Se True, ignora a lista e envia para TODAS as empresas")
+    company_ids: Optional[List[str]] = Field(default_factory=list, description="Lista de IDs das empresas específicas")

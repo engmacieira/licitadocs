@@ -13,6 +13,7 @@ import type { UserCompany, UserProfile } from '../services/userService';
 interface User {
     sub: string;
     role: string;
+    id: string;
     user_id: string;
     exp?: number;
 }

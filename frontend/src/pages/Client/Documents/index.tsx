@@ -45,6 +45,10 @@ export function DocumentsPage() {
 
     // 🚀 MELHORIA SPRINT 17: Filtro Turbinado (Busca também por categoria, tipo e código)
     const filteredDocs = documents.filter(doc => {
+
+        // ---> NOVO: Oculta do Cofre Oficial os documentos enviados pelo próprio cliente <---
+        if (doc.is_client_upload) return false;
+
         if (!searchTerm) return true;
 
         const term = searchTerm.toLowerCase();

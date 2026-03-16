@@ -73,8 +73,16 @@ def verify_company_access(
     company_id: str, 
     user: User, 
     required_role: Optional[str] = None
-) -> UserCompanyLink:
-    """Verifica se o usuário tem acesso à empresa especificada."""
+) -> Optional[UserCompanyLink]:
+    """Verifica se o usuário tem acesso à empresa especificada. Admins têm passe livre."""
+    
+    # ==========================================
+    # 🗝️ CHAVE MESTRA PARA ADMINISTRADORES
+    # ==========================================
+    if user.role == UserRole.ADMIN.value:
+        return None  # Admin tem acesso global, não precisa de link específico.
+    
+    # Verifica o vínculo real para usuários (clientes)
     link = next((l for l in user.company_links if l.company_id == company_id), None)
 
     if not link or not link.is_active:

@@ -22,7 +22,7 @@ export interface DocumentTypeDTO {
     validity_days_default: number;
     description?: string;
     // 🔥 Agora o Frontend reconhece o motor de automação
-    automation_config?: DocumentAutomationConfigDTO; 
+    automation_config?: DocumentAutomationConfigDTO;
 }
 
 export interface DocumentCategoryDTO {
@@ -49,6 +49,7 @@ export interface DocumentDTO {
     type_name?: string;
     category_name?: string;
     authentication_code?: string;
+    is_client_upload?: boolean;
 }
 
 export interface DocumentCategoryCreateDTO {
