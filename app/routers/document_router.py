@@ -15,7 +15,7 @@ from app.repositories.document_repository import DocumentRepository
 from app.schemas.document_schemas import (
     DocumentResponse, DocumentCategoryResponse, DocumentTypeResponse,
     DocumentCategoryCreate, DocumentCategoryUpdate,
-    DocumentTypeCreate, DocumentTypeUpdate
+    DocumentTypeCreate, DocumentTypeUpdate, DocumentUpdate
 )
 
 router = APIRouter(prefix="/documents", tags=["Gestão de Documentos"])
@@ -26,7 +26,6 @@ def get_document_types_catalog(db: Session = Depends(get_db)):
     """Retorna as categorias e tipos para popular o dropdown do Frontend."""
     return DocumentRepository.get_all_categories_with_types(db)
 
-# --- 1. LISTAGEM UNIFICADA (Filtro Melhorado) ---
 # --- 1. LISTAGEM UNIFICADA (Filtro Melhorado) ---
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
@@ -144,6 +143,16 @@ def upload_document(
         except Exception as e:
             print(f"DEBUG UPLOAD - Erro BD Legado: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+# --- 2.5 MONITORAMENTO DE VALIDADE GLOBAL (US-2410) ---
+@router.get("/expiring", response_model=List[DocumentResponse])
+def get_expiring_documents(
+    days: int = Query(30, description="Dias para o vencimento"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
+    """Retorna todos os documentos de todas as empresas que estão vencidos ou a vencer em X dias."""
+    return DocumentRepository.get_expiring_global(db, days_threshold=days)
 
 # --- 3. DOWNLOAD UNIFICADO ---
 @router.get("/{item_id}/download")
@@ -276,3 +285,32 @@ def delete_document(
         
     db.delete(doc)
     db.commit()
+    
+# --- 5. ATUALIZAR METADADOS (US-2407) ---
+@router.patch("/{document_id}")
+def update_document_metadata(
+    document_id: str, 
+    payload: DocumentUpdate, 
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
+    """
+    Atualiza a data de validade e o código de autenticação de um documento.
+    Apenas Administradores podem realizar esta ação.
+    """
+    # 1. Extrai os dados do payload (aceitando que podem ser nulos)
+    expiration_date = payload.expiration_date
+    authentication_code = payload.authentication_code
+
+    # 2. Chama a função que acabámos de criar no Repositório
+    updated_info = DocumentRepository.update_metadata(
+        db=db, 
+        item_id=document_id, 
+        expiration_date=expiration_date, 
+        authentication_code=authentication_code
+    )
+    
+    if not updated_info:
+        raise HTTPException(status_code=404, detail="Documento não encontrado no cofre.")
+        
+    return updated_info

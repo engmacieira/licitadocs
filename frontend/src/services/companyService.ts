@@ -28,6 +28,7 @@ export interface Company {
     is_contract_signed?: boolean;
     is_payment_active?: boolean;
     status?: boolean; // Algumas rotas retornam status ao invés de is_active
+    pending_docs_notes?: string;
 }
 
 // Payload para Atualização (PUT)
@@ -47,6 +48,7 @@ export interface CompanyUpdatePayload {
     is_admin_verified?: boolean;
     is_contract_signed?: boolean;
     is_payment_active?: boolean;
+    pending_docs_notes?: string;
 }
 
 // Resposta da lista de membros (GET /members)

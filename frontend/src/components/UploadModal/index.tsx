@@ -16,10 +16,10 @@ interface UploadModalProps {
 }
 
 interface UploadForm {
-    typeId: string; // Mudou: De 'title' solto para 'typeId' estruturado
+    typeId: string;
     file: FileList;
     expiration_date: string;
-    authenticationCode: string; // Novo campo da Sprint 17
+    authenticationCode: string;
 }
 
 export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: UploadModalProps) {
@@ -29,7 +29,6 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<UploadForm>();
 
-    // NOVO: Busca o catálogo dinâmico quando o modal abre
     useEffect(() => {
         if (isOpen) {
             setIsLoadingTypes(true);
@@ -55,7 +54,6 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
 
         setIsUploading(true);
         try {
-            // NOVO: Chamada usando a nova assinatura estruturada do documentService
             await documentService.upload(
                 data.file[0],
                 targetCompanyId,
@@ -68,7 +66,7 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
 
             toast.success("Documento enviado com sucesso para o Cofre!");
             reset();
-            onSuccess(); // Recarrega a lista lá no pai
+            onSuccess();
             onClose();
         } catch (error: any) {
             toast.error(error.response?.data?.detail || "Erro ao enviar o arquivo. Tente novamente.");
@@ -149,9 +147,10 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                         {errors.typeId && <span className="text-xs text-red-500">Tipo é obrigatório</span>}
                     </div>
 
-                    {/* Campos Opcionais */}
+                    {/* Campos Opcionais (DUPLICAÇÕES REMOVIDAS) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
+                            id="expiration_date"
                             type="date"
                             label="Data de Validade"
                             icon={<Calendar className="h-4 w-4 text-slate-400" />}
@@ -159,23 +158,7 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                         />
 
                         <Input
-                            type="text"
-                            label="Cód. Autenticação"
-                            placeholder="Ex: ABCD-1234"
-                            icon={<Key className="h-4 w-4 text-slate-400" />}
-                            {...register('authenticationCode')}
-                        />
-
-                        <Input
-                            id="expiration_date"      // 👈 ADICIONADO AQUI
-                            type="date"
-                            label="Data de Validade"
-                            icon={<Calendar className="h-4 w-4 text-slate-400" />}
-                            {...register('expiration_date')}
-                        />
-
-                        <Input
-                            id="authenticationCode"   // 👈 ADICIONADO AQUI
+                            id="authenticationCode"
                             type="text"
                             label="Cód. Autenticação"
                             placeholder="Ex: ABCD-1234"

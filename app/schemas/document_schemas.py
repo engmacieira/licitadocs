@@ -56,6 +56,10 @@ class DocumentResponse(BaseModel):
     status: DocumentStatusEnum = Field(DocumentStatusEnum.VALID)
     created_at: datetime
     
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
+    company_cnpj: Optional[str] = None
+    
     is_structured: bool = Field(False, description="True se vier da nova tabela 'certificates'")
     type_id: Optional[str] = None
     category_id: Optional[str] = None
@@ -93,3 +97,7 @@ class DocumentCategoryUpdate(BaseModel):
     name: Optional[str] = None
     slug: Optional[str] = None
     order: Optional[int] = None
+    
+class DocumentUpdate(BaseModel):
+    expiration_date: Optional[date] = None
+    authentication_code: Optional[str] = None

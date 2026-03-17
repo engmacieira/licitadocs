@@ -5,10 +5,11 @@ Responsável pela persistência e leitura unificada (Cofre).
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from typing import Optional, List
-from datetime import date
+from datetime import date, timedelta
 
 from app.models.document_model import Document, DocumentStatus
 from app.models.certificate_model import Certificate, CertificateStatus
+from app.models.company_model import Company 
 from app.models.document_category_model import DocumentCategory
 from app.models.document_type_model import DocumentType
 from app.models.document_automation_model import DocumentAutomationConfig # 🔥 Novo Import
@@ -259,3 +260,127 @@ class DocumentRepository:
             
         db.delete(db_type)
         db.commit()
+        
+    @staticmethod
+    def update_metadata(db: Session, item_id: str, expiration_date: Optional[date] = None, authentication_code: Optional[str] = None):
+        """
+        Atualiza metadados (Validade e Código) de um documento no Cofre.
+        Suporta tanto Documentos Legados quanto Certificados Estruturados.
+        """
+        # Tenta achar primeiro na tabela de Documentos Legados
+        doc = db.query(Document).filter(Document.id == item_id).first()
+        if doc:
+            if expiration_date is not None:
+                doc.expiration_date = expiration_date
+            # Documento Legado não costuma ter authentication_code, mas se no seu model tiver, pode descomentar a linha abaixo:
+            # if authentication_code is not None and hasattr(doc, 'authentication_code'):
+            #     doc.authentication_code = authentication_code
+            
+            try:
+                db.commit()
+                db.refresh(doc)
+                return {"id": doc.id, "type": "legacy", "message": "Documento atualizado com sucesso"}
+            except SQLAlchemyError as e:
+                db.rollback()
+                raise ValueError(f"Erro ao atualizar documento: {str(e)}")
+
+        # Se não achou nos Legados, tenta achar na tabela de Certificados Estruturados
+        cert = db.query(Certificate).filter(Certificate.id == item_id).first()
+        if cert:
+            if expiration_date is not None:
+                cert.expiration_date = expiration_date
+            if authentication_code is not None:
+                cert.authentication_code = authentication_code
+                
+            try:
+                db.commit()
+                db.refresh(cert)
+                return {"id": cert.id, "type": "certificate", "message": "Certificado atualizado com sucesso"}
+            except SQLAlchemyError as e:
+                db.rollback()
+                raise ValueError(f"Erro ao atualizar certificado: {str(e)}")
+
+        # Se não achou em nenhuma das duas tabelas
+        return None
+    
+    @staticmethod
+    @staticmethod
+    def get_expiring_global(db: Session, days_threshold: int = 30) -> List[dict]:        
+        from datetime import date, timedelta
+        target_date = date.today() + timedelta(days=days_threshold)
+        unified_list = []
+        
+        # Cria um dicionário rápido com ID -> Dict(nome, cnpj)
+        companies = {
+            c.id: {
+                "name": c.razao_social or c.name or "Empresa Desconhecida", 
+                "cnpj": getattr(c, 'cnpj', '')
+            } 
+            for c in db.query(Company).all()
+        }
+        
+        default_comp = {"name": "Empresa Desconhecida", "cnpj": ""}
+        
+        # 1. Busca Certidões a vencer ou já vencidas
+        certs = db.query(Certificate).options(
+            joinedload(Certificate.document_type).joinedload(DocumentType.category)
+        ).filter(
+            Certificate.expiration_date != None,
+            Certificate.expiration_date <= target_date
+        ).all()
+        
+        for cert in certs:
+            # Pega as informações da empresa de forma segura
+            comp_info = companies.get(cert.company_id, default_comp)
+            
+            unified_list.append({
+                "id": cert.id,
+                "title": cert.document_type.name if cert.document_type else "Certidão",
+                "filename": cert.filename,
+                "expiration_date": cert.expiration_date,
+                "status": cert.status,
+                "created_at": cert.created_at,
+                "company_id": cert.company_id,
+                "company_name": comp_info["name"], # <-- Agora pega a string correta
+                "company_cnpj": comp_info["cnpj"], # <-- Pega o CNPJ correto
+                "is_structured": True,
+                "type_id": cert.type_id,
+                "category_id": cert.document_type.category_id if cert.document_type else None,
+                "type_name": cert.document_type.name if cert.document_type else None,
+                "category_name": cert.document_type.category.name if cert.document_type and cert.document_type.category else None,
+                "authentication_code": cert.authentication_code,
+                "is_client_upload": False
+            })
+
+        # 2. Busca Documentos Legados (se houver algum com validade)
+        legacies = db.query(Document).filter(
+            Document.expiration_date != None,
+            Document.expiration_date <= target_date
+        ).all()
+        
+        for doc in legacies:
+            # FALTAVA ISTO AQUI! Pegar as informações para os documentos legados também
+            comp_info = companies.get(doc.company_id, default_comp)
+            
+            unified_list.append({
+                "id": doc.id,
+                "title": doc.title or "Documento Legado",
+                "filename": doc.filename,
+                "expiration_date": doc.expiration_date,
+                "status": doc.status,
+                "created_at": doc.created_at,
+                "company_id": doc.company_id,
+                "company_name": comp_info["name"], # <-- Agora pega a string correta
+                "company_cnpj": comp_info["cnpj"], # <-- Pega o CNPJ correto
+                "is_structured": False,
+                "type_id": None,
+                "category_id": None,
+                "type_name": None,
+                "category_name": None,
+                "authentication_code": None,
+                "is_client_upload": getattr(doc, 'is_client_upload', False)
+            })
+
+        # Ordena para mostrar os mais urgentes (vencidos/vencendo primeiro)
+        unified_list.sort(key=lambda x: x["expiration_date"])
+        return unified_list

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
     ChevronDown, ChevronRight, FileText, CheckCircle2,
-    AlertCircle, History, Download, FolderOpen, AlertTriangle, Key
+    AlertCircle, History, Download, FolderOpen, AlertTriangle, Key, Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -11,9 +11,9 @@ import type { DocumentDTO } from '../../services/documentService';
 
 interface CompanyVaultProps {
     documents: DocumentDTO[];
+    onEditClick?: (doc: DocumentDTO) => void; // NOVO: Prop para habilitar a edição
 }
 
-// Interface para o nosso novo agrupamento dinâmico
 interface GroupedVault {
     [categoryName: string]: {
         valid: DocumentDTO[];
@@ -21,20 +21,17 @@ interface GroupedVault {
     }
 }
 
-export function CompanyVault({ documents }: CompanyVaultProps) {
-    // NOVO: O Agrupamento agora é 100% Dinâmico, baseado na base de dados!
+export function CompanyVault({ documents, onEditClick }: CompanyVaultProps) {
     const groupedData = useMemo(() => {
         const groups: GroupedVault = {};
 
         documents.forEach(doc => {
-            // Se o documento não tem categoria (ex: documento legado), vai para "Outros Documentos"
             const catName = doc.category_name || 'Outros Documentos';
 
             if (!groups[catName]) {
                 groups[catName] = { valid: [], expired: [] };
             }
 
-            // Agrupa por status
             if (doc.status === 'expired') {
                 groups[catName].expired.push(doc);
             } else {
@@ -45,7 +42,6 @@ export function CompanyVault({ documents }: CompanyVaultProps) {
         return groups;
     }, [documents]);
 
-    // Ordenamos as chaves para que a renderização fique consistente
     const categories = Object.keys(groupedData).sort();
 
     if (documents.length === 0) {
@@ -65,6 +61,7 @@ export function CompanyVault({ documents }: CompanyVaultProps) {
                     title={cat}
                     validDocs={groupedData[cat].valid}
                     expiredDocs={groupedData[cat].expired}
+                    onEditClick={onEditClick} // Repassando a função
                 />
             ))}
         </div>
@@ -72,7 +69,7 @@ export function CompanyVault({ documents }: CompanyVaultProps) {
 }
 
 // --- Sub-componente de Seção ---
-function VaultSection({ title, validDocs, expiredDocs }: { title: string, validDocs: DocumentDTO[], expiredDocs: DocumentDTO[] }) {
+function VaultSection({ title, validDocs, expiredDocs, onEditClick }: { title: string, validDocs: DocumentDTO[], expiredDocs: DocumentDTO[], onEditClick?: (doc: DocumentDTO) => void }) {
     const [isOpen, setIsOpen] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
 
@@ -82,19 +79,15 @@ function VaultSection({ title, validDocs, expiredDocs }: { title: string, validD
 
     return (
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            {/* Header */}
             <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <div className="flex items-center gap-3">
                     {isOpen ? <ChevronDown size={20} className="text-slate-400" /> : <ChevronRight size={20} className="text-slate-400" />}
-
-                    {/* Ícone Genérico: Como as categorias são dinâmicas, usamos a pasta genérica */}
                     <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
                         <FolderOpen size={18} />
                     </div>
-
                     <div>
                         <h3 className="font-semibold text-slate-800">{title}</h3>
                         <p className="text-xs text-slate-500">{validDocs.length} documentos vigentes</p>
@@ -102,13 +95,12 @@ function VaultSection({ title, validDocs, expiredDocs }: { title: string, validD
                 </div>
             </div>
 
-            {/* Content */}
             {isOpen && (
                 <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
                     {validDocs.length === 0 ? (
                         <p className="text-sm text-slate-500 text-center py-4">Nenhum documento vigente nesta categoria.</p>
                     ) : (
-                        validDocs.map(doc => <DocumentRow key={doc.id} doc={doc} />)
+                        validDocs.map(doc => <DocumentRow key={doc.id} doc={doc} onEditClick={onEditClick} />)
                     )}
 
                     {expiredDocs.length > 0 && (
@@ -123,7 +115,7 @@ function VaultSection({ title, validDocs, expiredDocs }: { title: string, validD
 
                             {showHistory && (
                                 <div className="mt-3 space-y-3 pl-4 border-l-2 border-slate-200">
-                                    {expiredDocs.map(doc => <DocumentRow key={doc.id} doc={doc} isHistory />)}
+                                    {expiredDocs.map(doc => <DocumentRow key={doc.id} doc={doc} isHistory onEditClick={onEditClick} />)}
                                 </div>
                             )}
                         </div>
@@ -135,7 +127,7 @@ function VaultSection({ title, validDocs, expiredDocs }: { title: string, validD
 }
 
 // --- Sub-componente de Linha (Documento) ---
-function DocumentRow({ doc, isHistory = false }: { doc: DocumentDTO, isHistory?: boolean }) {
+function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO, isHistory?: boolean, onEditClick?: (doc: DocumentDTO) => void }) {
     const isWarning = doc.status === 'warning';
 
     const onDownload = async () => {
@@ -170,8 +162,6 @@ function DocumentRow({ doc, isHistory = false }: { doc: DocumentDTO, isHistory?:
                                 </span>
                             </>
                         )}
-
-                        {/* NOVO: Tags visuais do Cofre Inteligente */}
                         {doc.is_structured && (
                             <>
                                 <span>•</span>
@@ -202,7 +192,7 @@ function DocumentRow({ doc, isHistory = false }: { doc: DocumentDTO, isHistory?:
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                             <AlertTriangle size={10} /> Vencendo
                         </span>
-                    ) : doc.status === 'processing' ? ( // Tratamento para o novo status
+                    ) : doc.status === 'processing' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
                             <CheckCircle2 size={10} /> Processando
                         </span>
@@ -213,13 +203,26 @@ function DocumentRow({ doc, isHistory = false }: { doc: DocumentDTO, isHistory?:
                     )}
                 </div>
 
-                <button
-                    onClick={onDownload}
-                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                    title="Baixar Arquivo"
-                >
-                    <Download size={18} />
-                </button>
+                <div className="flex items-center">
+                    {/* NOVO: Botão de Edição (Apenas se a prop for passada) */}
+                    {onEditClick && (
+                        <button
+                            onClick={() => onEditClick(doc)}
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
+                            title="Editar Validade / Código"
+                        >
+                            <Edit size={18} />
+                        </button>
+                    )}
+
+                    <button
+                        onClick={onDownload}
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Baixar Arquivo"
+                    >
+                        <Download size={18} />
+                    </button>
+                </div>
             </div>
         </div>
     )

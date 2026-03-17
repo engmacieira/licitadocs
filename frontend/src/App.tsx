@@ -35,6 +35,7 @@ import { AdminCompanyDetails } from './pages/Admin/CompanyDetails';
 import { AdminUploadPage } from './pages/Admin/Upload';
 import { SettingsPage } from './pages/Admin/Settings';
 import { AdminInbox } from './pages/Admin/Inbox';
+import { ValidityMonitorPage } from './pages/Admin/ValidityMonitor';
 
 function App() {
   return (
@@ -84,6 +85,7 @@ function App() {
             {/* Gestão de Empresas */}
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
             <Route path="/admin/companies/:id" element={<AdminCompanyDetails />} />
+            <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
 
             {/* Fallback: Rota 404 ou Redirecionamento */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

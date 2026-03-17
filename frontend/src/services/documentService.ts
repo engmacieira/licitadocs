@@ -42,6 +42,10 @@ export interface DocumentDTO {
     expiration_date?: string;
     created_at: string;
 
+    company_id?: string;
+    company_name?: string;
+    company_cnpj?: string;
+
     // Flags do Cofre Inteligente (Adicionados na Sprint 17)
     is_structured: boolean;
     type_id?: string;
@@ -140,6 +144,14 @@ export const documentService = {
     },
 
     /**
+     * Atualiza os metadados de um documento (Validade, Código, etc) - US-2407
+     */
+    updateDocument: async (id: string, payload: { expiration_date?: string, authentication_code?: string }): Promise<DocumentDTO> => {
+        const { data } = await api.patch<DocumentDTO>(`/documents/${id}`, payload);
+        return data;
+    },
+
+    /**
      * Baixa o documento forçando o comportamento nativo do navegador.
      * Compatível com documentos legados e certificados estruturados.
      */
@@ -188,5 +200,13 @@ export const documentService = {
 
     deleteType: async (id: string): Promise<void> => {
         await api.delete(`/documents/types/${id}`);
-    }
+    },
+
+    /**
+     * Busca os documentos a vencer ou vencidos de TODAS as empresas (Painel Admin - US-2410)
+     */
+    getExpiring: async (days: number = 30): Promise<DocumentDTO[]> => {
+        const { data } = await api.get<DocumentDTO[]>(`/documents/expiring?days=${days}`);
+        return data;
+    },
 };
