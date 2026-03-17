@@ -11,9 +11,9 @@ import api from '../../services/api';
 // Componentes UI
 import { Button } from '../../components/ui/Button';
 
-// Nossos componentes reaproveitáveis (Ajuste o caminho se necessário)
-import { ContractDocument } from '../../components/signature/ContractDocument';
-import { ProxyDocument } from '../../components/signature/ProxyDocument';
+// Nossos componentes reaproveitáveis
+import { ContractContent } from '../../components/signature/ContractContent';
+import { ProxyContent } from '../../components/signature/ProxyContent';
 
 export function ContractSignPage() {
     const navigate = useNavigate();
@@ -30,7 +30,11 @@ export function ContractSignPage() {
         endereco: `${companyData?.logradouro || ''}, ${companyData?.numero || ''} - ${companyData?.cidade || ''}/${companyData?.estado || ''}`,
         responsavel: companyData?.responsavel_nome || "NOME DO RESPONSÁVEL",
         cpfResponsavel: companyData?.responsavel_cpf || "000.000.000-00",
-        genero: companyData?.responsavel_genero || "outro"
+        genero: companyData?.responsavel_genero || "outro",
+
+        // ---> ADICIONE ESTAS DUAS LINHAS:
+        cidade: companyData?.cidade || "CIDADE",
+        estado: companyData?.estado || "UF"
     };
 
     const [isLoading, setIsLoading] = useState(false);
@@ -293,14 +297,47 @@ export function ContractSignPage() {
                         {/* Área de Scroll do Modal */}
                         <div onScroll={handleModalScroll} className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-200/50 flex flex-col items-center">
 
-                            {/* Injetamos nossos componentes modulares aqui! */}
-                            {activeModal === 'contract' && (
-                                <ContractDocument {...documentProps} />
-                            )}
+                            {/* --- A MÁGICA DE UX ACONTECE AQUI: O LAYOUT DE PRÉVIA --- */}
+                            <div className="bg-white p-10 shadow-md max-w-[21cm] w-full text-sm font-serif leading-relaxed text-slate-900 mx-auto">
 
-                            {activeModal === 'proxy' && (
-                                <ProxyDocument {...documentProps} />
-                            )}
+                                {activeModal === 'contract' && (
+                                    <>
+                                        <h2 className="text-center font-bold text-lg mb-8 uppercase underline decoration-2 underline-offset-4">
+                                            Contrato Prestação de Serviços de Tecnologia – LicitaDocs
+                                        </h2>
+                                        <div className="space-y-4 text-justify">
+                                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-6 text-amber-800 text-xs text-center font-sans">
+                                                <strong>Modo de Leitura:</strong> Esta é uma versão prévia. Os dados sensíveis da CONTRATADA estão protegidos. O documento completo será gerado após a validação do pagamento.
+                                            </div>
+
+                                            <p><strong>CONTRATADA:</strong> LICITADOCS TECNOLOGIA (Dados protegidos nesta prévia).</p>
+                                            <p><strong>CONTRATANTE:</strong> {documentProps.razaoSocial}, inscrita no CNPJ sob o nº {documentProps.cnpj}, com sede em {documentProps.endereco}.</p>
+
+                                            <div className="border-t border-slate-300 my-6"></div>
+                                            <ContractContent />
+                                        </div>
+                                    </>
+                                )}
+
+                                {activeModal === 'proxy' && (
+                                    <>
+                                        <h2 className="text-center font-bold text-lg mb-8 uppercase underline decoration-2 underline-offset-4">
+                                            Instrumento Particular de Procuração
+                                        </h2>
+                                        <div className="space-y-5 text-justify">
+                                            <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-6 text-amber-800 text-xs text-center font-sans">
+                                                <strong>Modo de Leitura:</strong> Esta é uma versão prévia. Os dados sensíveis da OUTORGADA estão protegidos.
+                                            </div>
+
+                                            <p><strong>OUTORGANTE (CONTRATANTE):</strong> {documentProps.razaoSocial}, CNPJ nº {documentProps.cnpj}.</p>
+                                            <p><strong>OUTORGADA (PLATAFORMA LICITADOCS):</strong> Dados protegidos nesta prévia.</p>
+
+                                            <div className="border-t border-slate-300 my-6"></div>
+                                            <ProxyContent />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
 
                             {/* Alerta visual no fim do scroll indicando sucesso */}
                             {((activeModal === 'contract' && hasReadContract) || (activeModal === 'proxy' && hasReadProxy)) && (
