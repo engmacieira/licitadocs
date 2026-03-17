@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Sparkles } from 'lucide-react';
+import { X, Send, Sparkles } from 'lucide-react';
 import { aiService } from '../../services/aiService';
 import { toast } from 'sonner';
 

@@ -13,7 +13,7 @@ import { Input } from '../../../components/ui/Input';
 import { NewTicketModal } from './components/NewTicketModal';
 
 export function HelpCenterPage() {
-    const { currentCompany, user } = useAuth();
+    const { currentCompany } = useAuth();
     const [activeTab, setActiveTab] = useState<'tickets' | 'alerts'>('tickets');
     const [isModalOpen, setIsModalOpen] = useState(false);
 

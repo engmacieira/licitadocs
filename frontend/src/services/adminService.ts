@@ -1,5 +1,4 @@
 import api from './api';
-import type { Company } from './companyService';
 
 export interface AdminStats {
     total_companies: number;

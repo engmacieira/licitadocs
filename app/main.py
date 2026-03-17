@@ -19,7 +19,7 @@ from app.routers import (
     dashboard_router,
     company_router,
     message_router,
-    prefecture_router
+    emission_rule_router
 )
 from app.models import certificate_model
 from app.models.document_automation_model import DocumentAutomationConfig
@@ -87,7 +87,7 @@ app.include_router(admin_router.router)
 app.include_router(company_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(message_router.router)
-app.include_router(prefecture_router.router)
+app.include_router(emission_rule_router.router)
 
 # Rota de Health Check
 @app.get("/", tags=["Health"])

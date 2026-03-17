@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import {
-    Inbox as InboxIcon, MessageSquare, Send, CheckCircle2,
+    Inbox as MessageSquare, Send, CheckCircle2,
     Clock, User, Building2, ExternalLink, Megaphone, Plus
 } from 'lucide-react';
 

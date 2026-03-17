@@ -12,7 +12,8 @@ import {
     ShieldCheck,
     LifeBuoy,
     InboxIcon,
-    Hourglass
+    Hourglass,
+    MapPin
 } from 'lucide-react';
 
 // Adicionamos a interface para aceitar estilos externos (Responsividade)
@@ -106,6 +107,7 @@ export function Sidebar({ className = "" }: SidebarProps) {
                         <NavItem to="/admin/upload" icon={UploadCloud} label="Upload Centralizado" activeColor="bg-purple-600" />
                         <NavItem to="/admin/validity-monitor" icon={Hourglass} label="Monitor de Vencimento" activeColor="bg-purple-600" />
                         <NavItem to="/admin/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
+                        <NavItem to="/admin/emission-rules" icon={MapPin} label="Regras de Emissão" activeColor="bg-purple-600" />
                     </>
                 ) : (
                     <>

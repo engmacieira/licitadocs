@@ -1,23 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Search, Filter, MoreHorizontal, Building2,
-    CheckCircle2, XCircle, AlertCircle, FileText, ShieldCheck
+    Search, Building2,
+    CheckCircle2, XCircle, ShieldCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Serviços
-import { companyService } from '../../../services/companyService'; // Certifique-se que Company tem as flags novas
-import type { Company } from '../../../services/companyService';
+import { companyService } from '../../../services/companyService';
 
 // Componentes UI
 import { Button } from '../../../components/ui/Button';
-import { Input } from '../../../components/ui/Input';
 import { Skeleton } from '../../../components/ui/Skeleton';
 
 export function AdminCompaniesPage() {
     const navigate = useNavigate();
-    const [companies, setCompanies] = useState<any[]>([]); // Usando any por segurança das flags novas
+    const [companies, setCompanies] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState<'all' | 'pending' | 'regular'>('all');

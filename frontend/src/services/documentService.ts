@@ -1,5 +1,7 @@
 import api from './api';
 
+export type DocumentScope = "NATIONAL" | "STATE" | "MUNICIPAL";
+
 // ============================================================================
 // 1. TIPAGENS (Interfaces)
 // ============================================================================
@@ -21,7 +23,7 @@ export interface DocumentTypeDTO {
     slug: string;
     validity_days_default: number;
     description?: string;
-    // 🔥 Agora o Frontend reconhece o motor de automação
+    scope: DocumentScope;
     automation_config?: DocumentAutomationConfigDTO;
 }
 
@@ -74,6 +76,7 @@ export interface DocumentTypeCreateDTO {
     validity_days_default: number;
     description?: string;
     category_id: string;
+    scope: DocumentScope;
     automation_config?: DocumentAutomationConfigDTO;
 }
 
@@ -83,6 +86,7 @@ export interface DocumentTypeUpdateDTO {
     validity_days_default?: number;
     description?: string;
     category_id?: string;
+    scope?: DocumentScope;
     automation_config?: DocumentAutomationConfigDTO;
 }
 

@@ -14,6 +14,11 @@ class DocumentStatusEnum(str, Enum):
     PROCESSING = "processing"
     ERROR = "error"
 
+class DocumentScopeEnum(str, Enum):
+    NATIONAL = "NATIONAL"
+    STATE = "STATE"
+    MUNICIPAL = "MUNICIPAL"
+
 # --- SCHEMAS DE AUTOMAÇÃO (Novo Sprint 21) ---
 class DocumentAutomationConfigBase(BaseModel):
     is_automatable: bool = False
@@ -34,7 +39,7 @@ class DocumentTypeResponse(BaseModel):
     slug: str
     validity_days_default: int
     description: Optional[str] = None
-    # 🔥 A resposta agora inclui os dados de automação
+    scope: DocumentScopeEnum
     automation_config: Optional[DocumentAutomationConfigResponse] = None 
     
     model_config = ConfigDict(from_attributes=True)
@@ -77,7 +82,7 @@ class DocumentTypeCreate(BaseModel):
     validity_days_default: int = Field(0, description="Dias padrão de validade (0 para permanente)")
     description: Optional[str] = None
     category_id: str = Field(..., description="UUID da Categoria pai")
-    # 🔥 Permite enviar a configuração de automação na hora de criar o tipo
+    scope: DocumentScopeEnum = Field(DocumentScopeEnum.NATIONAL, description="Nacional, Estadual ou Municipal") 
     automation_config: Optional[DocumentAutomationConfigBase] = None
 
 class DocumentTypeUpdate(BaseModel):
@@ -86,6 +91,7 @@ class DocumentTypeUpdate(BaseModel):
     validity_days_default: Optional[int] = None
     description: Optional[str] = None
     category_id: Optional[str] = None
+    scope: Optional[DocumentScopeEnum] = None
     automation_config: Optional[DocumentAutomationConfigBase] = None
 
 class DocumentCategoryCreate(BaseModel):

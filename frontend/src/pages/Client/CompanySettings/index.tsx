@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
     Building2, Users, Save, Plus, Mail,
     CheckCircle2, XCircle, AlertTriangle, ShieldCheck,
-    FileSignature, CreditCard, FileText, Lock, KeyRound,
+    FileSignature, CreditCard, FileText, Lock,
     Trash2, Edit, Calendar, UserCircle, UploadCloud, Download
 } from 'lucide-react';
 

@@ -26,15 +26,15 @@ load_dotenv()
 # ------------------------------------------------------------------
 from app.core.database import Base
 from app.models import (
-    user_model, 
-    company_model, 
-    document_model, 
-    document_category_model,
-    document_type_model,
     certificate_model,
+    company_model, 
     document_automation_model,
+    document_category_model,
+    document_model, 
+    document_type_model,
+    emission_rule_model,
     message_model,
-    prefecture_model
+    user_model, 
 ) 
 
 # ------------------------------------------------------------------

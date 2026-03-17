@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
     Building2, Search, UploadCloud,
-    Filter, FolderOpen, AlertCircle, Download,
+    FolderOpen, AlertCircle, Download,
     FileText, Save, ShieldCheck
 } from 'lucide-react';
 

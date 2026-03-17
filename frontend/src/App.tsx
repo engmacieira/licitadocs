@@ -36,6 +36,7 @@ import { AdminUploadPage } from './pages/Admin/Upload';
 import { SettingsPage } from './pages/Admin/Settings';
 import { AdminInbox } from './pages/Admin/Inbox';
 import { ValidityMonitorPage } from './pages/Admin/ValidityMonitor';
+import { AdminEmissionRulesPage } from './pages/Admin/EmissionRules';
 
 function App() {
   return (
@@ -81,6 +82,7 @@ function App() {
             <Route path="/admin/upload" element={<AdminUploadPage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
             <Route path="/admin/inbox" element={<AdminInbox />} />
+            <Route path="/admin/emission-rules" element={<AdminEmissionRulesPage />} />
 
             {/* Gestão de Empresas */}
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
