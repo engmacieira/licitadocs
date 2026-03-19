@@ -32,5 +32,19 @@ export const emissionRuleService = {
     },
     delete: async (id: string): Promise<void> => {
         await api.delete(`/emission-rules/${id}`);
+    },
+    resolveLink: async (documentTypeId: string, companyId: string): Promise<EmissionRuleDTO | null> => {
+        try {
+            const { data } = await api.get<EmissionRuleDTO>(`/emission-rules/resolve`, {
+                params: { document_type_id: documentTypeId, company_id: companyId }
+            });
+            return data;
+        } catch {
+            return null; // Retorna null se não houver regra (404/Erro)
+        }
+    },
+    getById: async (id: string): Promise<EmissionRuleDTO> => {
+        const { data } = await api.get<EmissionRuleDTO>(`/emission-rules/${id}`);
+        return data;
     }
 };

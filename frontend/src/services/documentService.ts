@@ -124,17 +124,24 @@ export const documentService = {
      * @param options - Metadados adicionais do documento (Título, Tipo, Data, etc).
      */
     upload: async (
-        file: File,
+        file: File | null,
         targetCompanyId: string,
         options?: {
             title?: string;
             typeId?: string; // NOVO: Define se vai pra tabela Certificates
             authenticationCode?: string; // NOVO: Código de autenticação
             expirationDate?: string;
+            status?: string; // 🔥 NOVO (US-2411): Status da CND
+            notes?: string;  // 🔥 NOVO (US-2411): Observações da CND
         }
     ): Promise<DocumentDTO> => {
         const formData = new FormData();
-        formData.append('file', file);
+
+        // Só adiciona o ficheiro se ele realmente existir
+        if (file) {
+            formData.append('file', file);
+        }
+
         formData.append('target_company_id', targetCompanyId);
 
         // Preenche os dados opcionais se existirem
@@ -143,15 +150,11 @@ export const documentService = {
         if (options?.authenticationCode) formData.append('authentication_code', options.authenticationCode);
         if (options?.expirationDate) formData.append('expiration_date', options.expirationDate);
 
-        const { data } = await api.post<DocumentDTO>('/documents/upload', formData);
-        return data;
-    },
+        // Anexa os novos campos
+        if (options?.status) formData.append('status', options.status);
+        if (options?.notes) formData.append('notes', options.notes);
 
-    /**
-     * Atualiza os metadados de um documento (Validade, Código, etc) - US-2407
-     */
-    updateDocument: async (id: string, payload: { expiration_date?: string, authentication_code?: string }): Promise<DocumentDTO> => {
-        const { data } = await api.patch<DocumentDTO>(`/documents/${id}`, payload);
+        const { data } = await api.post<DocumentDTO>('/documents/upload', formData);
         return data;
     },
 
@@ -211,6 +214,20 @@ export const documentService = {
      */
     getExpiring: async (days: number = 30): Promise<DocumentDTO[]> => {
         const { data } = await api.get<DocumentDTO[]>(`/documents/expiring?days=${days}`);
+        return data;
+    },
+    deleteDocument: async (id: string): Promise<void> => {
+        await api.delete(`/documents/${id}`);
+    },
+    updateDocument: async (id: string, payload: any): Promise<void> => {
+        await api.patch(`/documents/${id}`, payload);
+    },
+
+    /**
+     * Busca os documentos marcados como irregulares ou com erro (Painel Admin)
+     */
+    getIrregular: async (): Promise<DocumentDTO[]> => {
+        const { data } = await api.get<DocumentDTO[]>('/documents/irregular');
         return data;
     },
 };

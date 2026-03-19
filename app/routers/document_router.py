@@ -6,11 +6,13 @@ from datetime import date
 import os
 
 from app.core.database import get_db
-# 1. Importamos a nova fábrica de papéis (require_role)
 from app.dependencies import get_current_active_user, require_role
 from app.core.storage import save_file_locally
 from app.models.user_model import User, UserRole
 from app.repositories.document_repository import DocumentRepository
+from app.repositories.message_repository import MessageRepository
+from app.schemas.message_schemas import MessageCreate
+from app.models.document_type_model import DocumentType
 
 from app.schemas.document_schemas import (
     DocumentResponse, DocumentCategoryResponse, DocumentTypeResponse,
@@ -58,10 +60,12 @@ def upload_document(
     title: Optional[str] = Form(None),
     type_id: Optional[str] = Form(None),
     authentication_code: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None), # <-- AGORA É OPCIONAL
     expiration_date: Optional[date] = Form(None), 
     target_company_id: Optional[str] = Form(None),
-    company_id: Optional[str] = Form(None), # <-- Aceitamos também o padrão normal do frontend
+    company_id: Optional[str] = Form(None), 
+    status: Optional[str] = Form(None),
+    notes: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -70,41 +74,42 @@ def upload_document(
     # Unifica o ID da empresa (se o frontend enviar 'company_id' ou 'target_company_id')
     final_company_id = target_company_id or company_id
     
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Apenas PDFs são permitidos.")
-
-    MAX_FILE_SIZE = 5 * 1024 * 1024 
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)
-    if file_size > MAX_FILE_SIZE:
-        raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Arquivo maior que 5MB.")
-
     # Validação de Acesso rigorosa, mas justa
     if current_user.role != UserRole.ADMIN.value:
         active_links = [link.company_id for link in current_user.company_links if link.is_active]
-        print(f"DEBUG UPLOAD - Links ativos do cliente: {active_links}")
-        
         if not active_links:
-            print("DEBUG UPLOAD - BLOQUEADO 403: Cliente não possui links ativos com nenhuma empresa.")
             raise HTTPException(status_code=403, detail="O usuário não está vinculado a nenhuma empresa ativa.")
         
-        # Se o frontend não mandou o ID da empresa, usamos a primeira que o cliente tem acesso
         if not final_company_id:
             final_company_id = active_links[0]
-            print(f"DEBUG UPLOAD - Frontend não enviou ID. Assumindo empresa: {final_company_id}")
         elif final_company_id not in active_links:
-            print(f"DEBUG UPLOAD - BLOQUEADO 403: Tentou enviar para {final_company_id}, mas só tem acesso a {active_links}")
             raise HTTPException(status_code=403, detail="Acesso negado a esta empresa.")
             
     elif not final_company_id:
         raise HTTPException(status_code=400, detail="Admins devem enviar o ID da empresa destino.")
 
-    try:
-        file_path = save_file_locally(file)
-    except Exception as e:
-        print(f"DEBUG UPLOAD - Erro ao salvar disco: {e}")
-        raise HTTPException(status_code=500, detail="Falha ao salvar arquivo no disco.")
+    # TRATAMENTO DO ARQUIVO (Ou falta dele)
+    if file:
+        if not file.filename.lower().endswith(".pdf"):
+            raise HTTPException(status_code=400, detail="Apenas PDFs são permitidos.")
+
+        MAX_FILE_SIZE = 5 * 1024 * 1024 
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        file.file.seek(0)
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Arquivo maior que 5MB.")
+
+        try:
+            file_path = save_file_locally(file)
+            filename = file.filename
+        except Exception as e:
+            print(f"DEBUG UPLOAD - Erro ao salvar disco: {e}")
+            raise HTTPException(status_code=500, detail="Falha ao salvar arquivo no disco.")
+    else:
+        # TRUQUE PARA NÃO PRECISAR ALTERAR O BANCO DE DADOS (nullable=False)
+        filename = "Registro de Pendência"
+        file_path = "SEM_ANEXO"
 
     # Flag mágica para a US-2405:
     is_client = (current_user.role != UserRole.ADMIN.value)
@@ -112,11 +117,39 @@ def upload_document(
     if type_id:
         try:
             cert = DocumentRepository.create_certificate(
-                db=db, type_id=type_id, filename=file.filename, file_path=file_path,
+                db=db, type_id=type_id, filename=filename, file_path=file_path,
                 company_id=final_company_id, expiration_date=expiration_date,
                 authentication_code=authentication_code
             )
+            
+            # Atualiza o status caso tenha vindo do frontend
+            if status:
+                cert.status = status
+                db.commit()
+
             print("DEBUG UPLOAD - Sucesso! Certidão salva.")
+            
+            # US-2411: Disparo Automático de Mensagem de Irregularidade
+            if status in ["error", "irregular"]:
+                doc_type_obj = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+                cat_name = doc_type_obj.category.name if doc_type_obj and doc_type_obj.category else "Categoria Geral"
+                doc_name = doc_type_obj.name if doc_type_obj else "Documento"
+
+                msg_content = (
+                    "O documento recém-adicionado ao seu cofre apresentou irregularidades/pendências.\n"
+                    f"Documento: {cat_name} - {doc_name}\n"
+                    f"Observações do Analista: {notes or 'Sem observações adicionais.'}\n\n"
+                    "O documento com a pendência está inserido no cofre de documentos, favor regularizar o mais rápido possível."
+                )
+
+                alert_msg = MessageCreate(
+                    subject=f"⚠️ Alerta de Irregularidade: {doc_name}",
+                    content=msg_content,
+                    message_type="action_required",
+                    related_document_id=cert.id
+                )
+                MessageRepository.create(db, final_company_id, current_user.id, alert_msg)
+
             return DocumentResponse(
                 id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
                 is_structured=True, type_id=type_id, authentication_code=authentication_code,
@@ -129,12 +162,36 @@ def upload_document(
         if not title: title = "Documento Sem Título"
         try:
             doc = DocumentRepository.create_legacy(
-                db=db, title=title, filename=file.filename, file_path=file_path,
+                db=db, title=title, filename=filename, file_path=file_path,
                 company_id=final_company_id, expiration_date=expiration_date, 
                 uploaded_by_id=current_user.id,
                 is_client_upload=is_client 
             )
+            
+            # Atualiza o status caso tenha vindo do frontend
+            if status:
+                doc.status = status
+                db.commit()
+
             print("DEBUG UPLOAD - Sucesso! Documento legado salvo. is_client_upload=", is_client)
+            
+            # US-2411: Disparo Automático de Mensagem de Irregularidade
+            if status in ["error", "irregular"]:
+                msg_content = (
+                    "O documento recém-adicionado ao seu cofre apresentou irregularidades/pendências.\n"
+                    f"Documento: Outros - {title}\n"
+                    f"Observações do Analista: {notes or 'Sem observações adicionais.'}\n\n"
+                    "O documento com a pendência está inserido no cofre de documentos, favor regularizar o mais rápido possível."
+                )
+
+                alert_msg = MessageCreate(
+                    subject=f"⚠️ Alerta de Irregularidade: {title}",
+                    content=msg_content,
+                    message_type="action_required",
+                    related_document_id=doc.id
+                )
+                MessageRepository.create(db, final_company_id, current_user.id, alert_msg)
+
             return DocumentResponse(
                 id=doc.id, title=doc.title, filename=doc.filename, status=doc.status, 
                 created_at=doc.created_at, is_structured=False,
@@ -153,6 +210,15 @@ def get_expiring_documents(
 ):
     """Retorna todos os documentos de todas as empresas que estão vencidos ou a vencer em X dias."""
     return DocumentRepository.get_expiring_global(db, days_threshold=days)
+
+# --- 2.6 MONITORAMENTO DE PENDÊNCIAS GLOBAIS ---
+@router.get("/irregular", response_model=List[DocumentResponse])
+def get_irregular_documents(
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
+    """Retorna todos os documentos com erro ou irregularidade, de todas as empresas."""
+    return DocumentRepository.get_irregular_global(db)
 
 # --- 3. DOWNLOAD UNIFICADO ---
 @router.get("/{item_id}/download")
@@ -256,6 +322,7 @@ def delete_document_type(
         raise HTTPException(status_code=400, detail=str(e))
     
 # --- 4. DELETAR DOCUMENTO ---
+# --- 4. DELETAR DOCUMENTO ---
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     item_id: str,
@@ -263,26 +330,34 @@ def delete_document(
     current_user: User = Depends(get_current_active_user)
 ):
     from app.models.document_model import Document
+    from app.models.certificate_model import Certificate
     import os
     
-    # 1. Busca o documento
+    # 1. Tenta achar na tabela de Documentos Legados
     doc = db.query(Document).filter(Document.id == item_id).first()
+    
+    # 2. Se não achou, tenta achar na tabela de Certificados Estruturados
     if not doc:
-        raise HTTPException(status_code=404, detail="Documento não encontrado")
+        doc = db.query(Certificate).filter(Certificate.id == item_id).first()
         
-    # 2. Segurança: Só Admin ou o próprio dono da empresa pode apagar
+    # Se não achou em nenhuma das duas, devolve 404
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento não encontrado no Cofre.")
+        
+    # 3. Segurança: Só Admin ou o próprio dono da empresa pode apagar
     if current_user.role != UserRole.ADMIN.value:
         allowed_company_ids = [link.company_id for link in current_user.company_links]
         if doc.company_id not in allowed_company_ids:
              raise HTTPException(status_code=403, detail="Acesso negado para apagar este documento.")
              
-    # 3. Apaga do disco e do banco
+    # 4. Apaga o arquivo físico do disco (se existir e não for "SEM_ANEXO")
     try:
-        if os.path.exists(doc.file_path):
+        if doc.file_path and doc.file_path != "SEM_ANEXO" and os.path.exists(doc.file_path):
             os.remove(doc.file_path)
     except Exception as e:
-        print(f"Aviso: Erro ao apagar ficheiro físico: {e}")
+        print(f"Aviso: Erro ao apagar ficheiro físico do disco: {e}")
         
+    # 5. Apaga o registo do banco de dados
     db.delete(doc)
     db.commit()
     
@@ -307,7 +382,8 @@ def update_document_metadata(
         db=db, 
         item_id=document_id, 
         expiration_date=expiration_date, 
-        authentication_code=authentication_code
+        authentication_code=authentication_code,
+        status=payload.status
     )
     
     if not updated_info:

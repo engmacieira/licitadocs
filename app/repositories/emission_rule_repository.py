@@ -122,3 +122,42 @@ class EmissionRuleRepository:
         except DatabaseError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao excluir a regra.")
+
+    @staticmethod
+    def resolve_rule_for_company(db: Session, document_type_id: str, company_id: str) -> EmissionRule:
+        """
+        RESOLUÇÃO MÁGICA: Cruza o Documento com o Endereço da Empresa e Escopo.
+        Devolve a regra exata (Link, Contatos) ou None se não houver regra para aquele endereço.
+        """
+        try:
+            from app.models.company_model import Company
+            from app.models.document_type_model import DocumentType, DocumentScope
+
+            # 1. Busca os dados da Empresa (para ter Estado e Cidade)
+            company = db.query(Company).filter(Company.id == company_id).first()
+            if not company: return None
+            
+            # 2. Busca o Tipo de Documento (para saber o Escopo)
+            doc_type = db.query(DocumentType).filter(DocumentType.id == document_type_id).first()
+            if not doc_type: return None
+
+            # 3. Lógica de Resolução baseada no Escopo
+            query = db.query(EmissionRule).filter(EmissionRule.document_type_id == document_type_id)
+
+            if doc_type.scope == DocumentScope.NATIONAL.value:
+                # Regra Nacional: state e city devem ser NULOS
+                return query.filter(EmissionRule.state == None, EmissionRule.city == None).first()
+
+            elif doc_type.scope == DocumentScope.STATE.value:
+                # Regra Estadual: state deve bater com a empresa, city deve ser NULA
+                if not company.estado: return None
+                return query.filter(EmissionRule.state == company.estado.upper(), EmissionRule.city == None).first()
+
+            elif doc_type.scope == DocumentScope.MUNICIPAL.value:
+                # Regra Municipal: state e city devem bater exatamente com a empresa
+                if not company.estado or not company.cidade: return None
+                return query.filter(EmissionRule.state == company.estado.upper(), EmissionRule.city.ilike(company.cidade)).first()
+
+            return None
+        except DatabaseError:
+            raise HTTPException(status_code=500, detail="Erro interno ao resolver regra de emissão.")

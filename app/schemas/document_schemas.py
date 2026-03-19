@@ -13,6 +13,8 @@ class DocumentStatusEnum(str, Enum):
     EXPIRED = "expired"
     PROCESSING = "processing"
     ERROR = "error"
+    IRREGULAR = "irregular"
+    ARCHIVED = "archived"
 
 class DocumentScopeEnum(str, Enum):
     NATIONAL = "NATIONAL"
@@ -107,3 +109,4 @@ class DocumentCategoryUpdate(BaseModel):
 class DocumentUpdate(BaseModel):
     expiration_date: Optional[date] = None
     authentication_code: Optional[str] = None
+    status: Optional[str] = None

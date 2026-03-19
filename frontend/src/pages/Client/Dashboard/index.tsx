@@ -1,18 +1,17 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-    FileText, Building2, CheckCircle, XCircle, Download,
+    FileText, Building2, CheckCircle, Download,
     AlertTriangle, ArrowRight, FileSignature, CreditCard,
-    ShieldCheck, RefreshCw, ScrollText, AlertOctagon
+    ShieldCheck, RefreshCw, ScrollText, AlertOctagon, XOctagon, CheckCircle2
 } from 'lucide-react';
 
 // Serviços e Contexto
-import { dashboardService } from '../../../services/dashboardService';
-import type { ClientStats } from '../../../services/dashboardService';
 import { documentService } from '../../../services/documentService';
+import type { DocumentDTO } from '../../../services/documentService';
 import { companyService } from '../../../services/companyService';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -25,7 +24,7 @@ export function Dashboard() {
     const { currentCompany } = useAuth();
     const navigate = useNavigate();
 
-    const [stats, setStats] = useState<ClientStats | null>(null);
+    const [documents, setDocuments] = useState<DocumentDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [isDownloading, setIsDownloading] = useState(false);
 
@@ -48,7 +47,6 @@ export function Dashboard() {
             // 1. Busca dados ATUALIZADOS da empresa
             const freshCompany = await companyService.getById(currentCompany.id) as any;
 
-            // Atualiza status local com as 5 flags da Sprint 24
             const currentStatus = {
                 terms: freshCompany.is_terms_accepted || false,
                 data: freshCompany.is_data_completed || false,
@@ -59,7 +57,6 @@ export function Dashboard() {
             };
             setCompanyStatus(currentStatus);
 
-            // Verifica regularidade TOTAL (Os 5 passos precisam ser True)
             const isRegular =
                 currentStatus.terms &&
                 currentStatus.data &&
@@ -67,12 +64,11 @@ export function Dashboard() {
                 currentStatus.contract &&
                 currentStatus.approval;
 
-            // 2. Se for regular, carrega as estatísticas do Cofre
+            // 2. Se for regular, carrega todos os documentos para o Dashboard
             if (isRegular) {
-                const data = await dashboardService.getClientStats(currentCompany.id);
-                setStats(data);
-            } else {
-                setStats(null); // Garante que mostre o Wizard
+                const docs = await documentService.getAll(currentCompany.id);
+                // Filtramos os arquivados para não sujarem os indicadores
+                setDocuments(docs.filter(d => d.status !== 'archived'));
             }
 
         } catch (error) {
@@ -90,7 +86,7 @@ export function Dashboard() {
         if (isDownloading) return;
         try {
             setIsDownloading(true);
-            toast.info("Iniciando download...");
+            toast.info("A iniciar download...");
             await documentService.downloadDocument(docId, filename);
         } catch (error) {
             toast.error("Erro ao baixar o arquivo.");
@@ -98,6 +94,31 @@ export function Dashboard() {
             setIsDownloading(false);
         }
     }
+
+    // --- INTELIGÊNCIA DO DASHBOARD ---
+    const dashboardData = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const validDocs = documents.filter(d => d.status === 'valid');
+
+        // Pendências: Erro na emissão, Irregular ou Vencido
+        const attentionDocs = documents.filter(d => {
+            const isExpired = d.expiration_date ? new Date(d.expiration_date) < today : false;
+            return d.status === 'error' || d.status === 'irregular' || d.status === 'expired' || isExpired;
+        });
+
+        // ÚLTIMAS ATUALIZAÇÕES: Pega os documentos válidos, ordena do mais recente para o mais antigo, limite de 5
+        const recentDocs = [...validDocs]
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+            .slice(0, 5);
+
+        const healthScore = documents.length > 0
+            ? Math.round((validDocs.length / documents.length) * 100)
+            : 100;
+
+        return { validDocs, attentionDocs, recentDocs, healthScore, total: documents.length };
+    }, [documents]);
 
     const isRegular =
         companyStatus.terms &&
@@ -115,16 +136,14 @@ export function Dashboard() {
                     <div className="h-8 w-24 bg-slate-200 rounded"></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-32 w-full" />
-                    ))}
+                    {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
                 </div>
                 <div className="h-64 bg-slate-200 rounded-lg"></div>
             </div>
         );
     }
 
-    // --- RENDER 2: WIZARD DE PENDÊNCIAS (5 Passos) ---
+    // --- RENDER 2: WIZARD DE PENDÊNCIAS (Mantido) ---
     if (!isRegular && currentCompany) {
         return (
             <div className="max-w-4xl mx-auto py-8 px-4 animate-in slide-in-from-bottom-4 duration-500">
@@ -143,7 +162,7 @@ export function Dashboard() {
                     </Button>
                 </div>
 
-                {/* ALERTA DE PENDÊNCIAS DO ADMIN (US-2406) */}
+                {/* ALERTA DE PENDÊNCIAS DO ADMIN */}
                 {companyStatus.pendencies && (
                     <div className="mb-8 p-5 bg-red-50 border border-red-200 rounded-xl flex gap-4 items-start shadow-sm">
                         <AlertOctagon className="h-6 w-6 text-red-600 shrink-0 mt-0.5" />
@@ -156,7 +175,6 @@ export function Dashboard() {
                 )}
 
                 <div className="grid gap-4">
-
                     {/* STEP 1: TERMOS DE USO */}
                     <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.terms ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-white shadow-md shadow-blue-50'}`}>
                         <div className="flex flex-col sm:flex-row items-center gap-5">
@@ -195,12 +213,7 @@ export function Dashboard() {
                                 <p className="text-slate-600 text-sm mt-1">Preenchimento completo dos dados da empresa e responsável legal.</p>
                             </div>
                             {!companyStatus.data && (
-                                <Button
-                                    variant={companyStatus.terms ? 'primary' : 'outline'}
-                                    disabled={!companyStatus.terms}
-                                    onClick={() => navigate('/company-settings')}
-                                    className="w-full sm:w-auto"
-                                >
+                                <Button variant={companyStatus.terms ? 'primary' : 'outline'} disabled={!companyStatus.terms} onClick={() => navigate('/company-settings')} className="w-full sm:w-auto">
                                     Completar Dados
                                 </Button>
                             )}
@@ -221,12 +234,7 @@ export function Dashboard() {
                                 <p className="text-slate-600 text-sm mt-1">Confirmação da assinatura do serviço.</p>
                             </div>
                             {!companyStatus.payment && (
-                                <Button
-                                    variant={companyStatus.data ? 'primary' : 'outline'}
-                                    disabled={!companyStatus.data}
-                                    onClick={() => navigate('/payment')}
-                                    className="w-full sm:w-auto"
-                                >
+                                <Button variant={companyStatus.data ? 'primary' : 'outline'} disabled={!companyStatus.data} onClick={() => navigate('/payment')} className="w-full sm:w-auto">
                                     Realizar Pagamento
                                 </Button>
                             )}
@@ -247,12 +255,7 @@ export function Dashboard() {
                                 <p className="text-slate-600 text-sm mt-1">Assinatura digital dos documentos de representação.</p>
                             </div>
                             {!companyStatus.contract && (
-                                <Button
-                                    variant={companyStatus.payment ? 'primary' : 'outline'}
-                                    disabled={!companyStatus.payment}
-                                    onClick={() => navigate('/signature')} // <--- ALTERA AQUI DE '/contract-sign' PARA '/signature'
-                                    className="w-full sm:w-auto"
-                                >
+                                <Button variant={companyStatus.payment ? 'primary' : 'outline'} disabled={!companyStatus.payment} onClick={() => navigate('/signature')} className="w-full sm:w-auto">
                                     Assinar Documentos
                                 </Button>
                             )}
@@ -279,32 +282,32 @@ export function Dashboard() {
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         );
     }
 
-    // --- RENDER 3: DASHBOARD REAL ---
-    if (!stats) return null;
-
+    // --- RENDER 3: DASHBOARD REAL DO CLIENTE ---
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-12">
             {/* Header com Contexto */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Visão Geral</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Resumo do Cofre</h1>
                     <div className="flex items-center gap-2 mt-1">
                         <Building2 className="h-4 w-4 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-700">{stats.company_name}</span>
+                        <span className="text-sm font-medium text-slate-700">{currentCompany?.razao_social}</span>
                         <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">
-                            <CheckCircle className="h-3 w-3" /> Regular
+                            <CheckCircle className="h-3 w-3" /> Monitoramento Ativo
                         </span>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => loadData()}>
+                    <Button variant="outline" onClick={() => navigate('/document-templates')}>
+                        <FileSignature className="mr-2 h-4 w-4" /> Gerar Declarações
+                    </Button>
+                    <Button variant="outline" onClick={() => loadData()}>
                         <RefreshCw className="mr-2 h-4 w-4" /> Atualizar
                     </Button>
                 </div>
@@ -312,50 +315,115 @@ export function Dashboard() {
 
             {/* Cards de Estatísticas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard title="Total de Documentos" value={stats.total_docs} icon={FileText} description="Arquivos no cofre" color="blue" />
-                <StatsCard title="Válidos" value={stats.docs_valid} icon={CheckCircle} description="Certidões em dia" color="green" />
-                <StatsCard title="Vencidos / Inválidos" value={stats.docs_expired} icon={XCircle} description="Requer atenção" color="red" />
-                <StatsCard title="Saúde Fiscal" value={stats.docs_expired === 0 && stats.total_docs > 0 ? "100%" : `${Math.round((stats.docs_valid / (stats.total_docs || 1)) * 100)}%`} icon={Building2} description="Índice de conformidade" color="blue" />
+                <StatsCard title="Total no Cofre" value={dashboardData.total} icon={FileText} description="Documentos sob nossa gestão" color="blue" />
+                <StatsCard title="Regulares" value={dashboardData.validDocs.length} icon={CheckCircle} description="Certidões ativas e em dia" color="green" />
+                <StatsCard title="Atenção Necessária" value={dashboardData.attentionDocs.length} icon={AlertTriangle} description="Pendências na prefeitura ou órgãos" color={dashboardData.attentionDocs.length > 0 ? "red" : "green"} />
+                <StatsCard title="Saúde Fiscal" value={`${dashboardData.healthScore}%`} icon={ShieldCheck} description="Índice de conformidade" color={dashboardData.healthScore === 100 ? "green" : "amber"} />
             </div>
 
-            {/* Lista de Documentos Recentes */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                    <h2 className="text-lg font-bold text-slate-900">Últimas Atualizações</h2>
-                    <Button variant="ghost" className="text-blue-600 hover:text-blue-700 text-sm" onClick={() => navigate('/documents')}>Ver tudo &rarr;</Button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* LADO ESQUERDO: PENDÊNCIAS (Ação Necessária) */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <AlertOctagon className="h-5 w-5 text-red-500" />
+                            Ação Necessária
+                        </h2>
+                        {dashboardData.attentionDocs.length > 0 && (
+                            <button onClick={() => navigate('/help-center')} className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+                                Falar com Suporte
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px]">
+                        {dashboardData.attentionDocs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-[300px] text-center px-4">
+                                <CheckCircle className="h-14 w-14 text-green-300 mb-3" />
+                                <h3 className="text-lg font-medium text-slate-700">Tudo em conformidade!</h3>
+                                <p className="text-sm text-slate-500 mt-1 max-w-xs">Nenhum documento vencido ou com pendência de emissão no seu cofre.</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-slate-100">
+                                {dashboardData.attentionDocs.map(doc => {
+                                    const isError = doc.status === 'error';
+                                    const isIrregular = doc.status === 'irregular';
+
+                                    return (
+                                        <div key={doc.id} className="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between gap-4 group">
+                                            <div className="flex items-center gap-4 overflow-hidden">
+                                                <div className={`p-2.5 rounded-lg shrink-0 ${isError ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}`}>
+                                                    {isError ? <XOctagon size={20} /> : <AlertTriangle size={20} />}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold text-slate-900 text-sm truncate" title={doc.title || doc.filename}>
+                                                        {doc.title || doc.filename}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isError ? 'bg-red-100 text-red-700' : isIrregular ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {isError ? 'Erro na Emissão' : isIrregular ? 'Irregularidade' : 'Vencido'}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500 truncate" title={doc.filename}>{doc.filename}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button onClick={() => navigate('/documents')} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg shrink-0">
+                                                <ArrowRight size={18} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="p-6 space-y-3">
-                    {stats.recent_docs.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-slate-100 rounded-xl">
-                            <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-                            <p className="text-slate-500 font-medium">Nenhum documento encontrado.</p>
-                        </div>
-                    ) : (
-                        stats.recent_docs.map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-slate-100 hover:border-blue-300 hover:shadow-md transition-all group">
-                                <div className="flex items-center gap-4">
-                                    <div className={`p-2.5 rounded-lg ${doc.status === 'valid' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                        <FileText size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-slate-900 text-sm">{doc.title || doc.filename}</p>
-                                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                                            <span>{doc.created_at && format(new Date(doc.created_at), "dd MMM, HH:mm", { locale: ptBR })}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide rounded-full ${doc.status === 'valid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                        {doc.status === 'valid' ? 'Válido' : 'Vencido'}
-                                    </span>
-                                    <button onClick={() => handleDownload(doc.id, doc.filename)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                        <Download size={18} />
-                                    </button>
-                                </div>
+                {/* LADO DIREITO: ÚLTIMAS ATUALIZAÇÕES DA EQUIPE (A MÁGICA PSICOLÓGICA) */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <ShieldCheck className="h-5 w-5 text-green-500" />
+                            Últimas Atualizações no Cofre
+                        </h2>
+                        {dashboardData.recentDocs.length > 0 && (
+                            <button onClick={() => navigate('/documents')} className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+                                Acessar Cofre
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px]">
+                        {dashboardData.recentDocs.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-[300px] text-center px-4">
+                                <RefreshCw className="h-14 w-14 text-slate-300 mb-3" />
+                                <h3 className="text-lg font-medium text-slate-700">Monitoramento Ativo</h3>
+                                <p className="text-sm text-slate-500 mt-1 max-w-xs">A nossa equipa monitoriza a sua empresa diariamente. Assim que houver renovações, elas aparecerão aqui.</p>
                             </div>
-                        ))
-                    )}
+                        ) : (
+                            <div className="divide-y divide-slate-100">
+                                {dashboardData.recentDocs.map((doc) => (
+                                    <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center gap-4 overflow-hidden">
+                                            <div className="p-2.5 rounded-lg bg-green-50 text-green-600 shrink-0 border border-green-100">
+                                                <CheckCircle2 size={20} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-slate-900 text-sm truncate" title={doc.title || doc.filename}>
+                                                    {doc.title || doc.filename}
+                                                </p>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    Processado em {format(new Date(doc.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDownload(doc.id, doc.filename)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg shrink-0">
+                                            <Download size={18} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

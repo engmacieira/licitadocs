@@ -13,7 +13,9 @@ import {
     LifeBuoy,
     InboxIcon,
     Hourglass,
-    MapPin
+    MapPin,
+    Send,
+    LayoutGrid
 } from 'lucide-react';
 
 // Adicionamos a interface para aceitar estilos externos (Responsividade)
@@ -108,11 +110,13 @@ export function Sidebar({ className = "" }: SidebarProps) {
                         <NavItem to="/admin/validity-monitor" icon={Hourglass} label="Monitor de Vencimento" activeColor="bg-purple-600" />
                         <NavItem to="/admin/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
                         <NavItem to="/admin/emission-rules" icon={MapPin} label="Regras de Emissão" activeColor="bg-purple-600" />
+                        <NavItem to="/admin/manual-emission" icon={Send} label="Emissão Manual" activeColor="bg-purple-600" />
                     </>
                 ) : (
                     <>
                         <NavItem to="/dashboard" icon={LayoutDashboard} label="Visão Geral" activeColor="bg-blue-600" />
                         <NavItem to="/documents" icon={FileText} label="Meus Documentos" activeColor="bg-blue-600" />
+                        <NavItem to="/document-templates" icon={LayoutGrid} label="Modelos de Documentos" activeColor="bg-blue-600" />
                         <NavItem to="/help-center" icon={LifeBuoy} label="Ajuda e Suporte" activeColor="bg-blue-600" />
                         {currentCompany?.role === 'MASTER' && (
                             <NavItem to="/company-settings" icon={Settings} label="Minha Empresa" activeColor="bg-blue-600" />

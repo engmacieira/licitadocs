@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
     ChevronDown, ChevronRight, FileText, CheckCircle2,
-    AlertCircle, History, Download, FolderOpen, AlertTriangle, Key, Edit
+    AlertCircle, Download, FolderOpen, AlertTriangle, Edit, XOctagon, Trash2, Archive
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -11,29 +11,38 @@ import type { DocumentDTO } from '../../services/documentService';
 
 interface CompanyVaultProps {
     documents: DocumentDTO[];
-    onEditClick?: (doc: DocumentDTO) => void; // NOVO: Prop para habilitar a edição
+    onEditClick?: (doc: DocumentDTO) => void;
+    onDeleteClick?: (doc: DocumentDTO) => void;  // NOVO: Apagar
+    onArchiveClick?: (doc: DocumentDTO) => void; // NOVO: Armazenar
 }
 
 interface GroupedVault {
     [categoryName: string]: {
         valid: DocumentDTO[];
-        expired: DocumentDTO[];
+        archived: DocumentDTO[]; // Alterado de 'expired' para 'archived'
     }
 }
 
-export function CompanyVault({ documents, onEditClick }: CompanyVaultProps) {
+export function CompanyVault({ documents, onEditClick, onDeleteClick, onArchiveClick }: CompanyVaultProps) {
     const groupedData = useMemo(() => {
         const groups: GroupedVault = {};
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
         documents.forEach(doc => {
             const catName = doc.category_name || 'Outros Documentos';
 
             if (!groups[catName]) {
-                groups[catName] = { valid: [], expired: [] };
+                groups[catName] = { valid: [], archived: [] };
             }
 
-            if (doc.status === 'expired') {
-                groups[catName].expired.push(doc);
+            // 🔥 A MÁGICA FOI CORRIGIDA:
+            // Agora, a certidão SÓ vai para o armazenamento se o status for explicitamente 'archived'.
+            // Se estiver vencida, ela continua na lista 'valid' (principal), mas o DocumentRow 
+            // continuará a pintá-la de vermelho para alertar o operador!
+
+            if (doc.status === 'archived') {
+                groups[catName].archived.push(doc);
             } else {
                 groups[catName].valid.push(doc);
             }
@@ -60,8 +69,10 @@ export function CompanyVault({ documents, onEditClick }: CompanyVaultProps) {
                     key={cat}
                     title={cat}
                     validDocs={groupedData[cat].valid}
-                    expiredDocs={groupedData[cat].expired}
-                    onEditClick={onEditClick} // Repassando a função
+                    archivedDocs={groupedData[cat].archived}
+                    onEditClick={onEditClick}
+                    onDeleteClick={onDeleteClick}
+                    onArchiveClick={onArchiveClick}
                 />
             ))}
         </div>
@@ -69,12 +80,11 @@ export function CompanyVault({ documents, onEditClick }: CompanyVaultProps) {
 }
 
 // --- Sub-componente de Seção ---
-function VaultSection({ title, validDocs, expiredDocs, onEditClick }: { title: string, validDocs: DocumentDTO[], expiredDocs: DocumentDTO[], onEditClick?: (doc: DocumentDTO) => void }) {
+function VaultSection({ title, validDocs, archivedDocs, onEditClick, onDeleteClick, onArchiveClick }: any) {
     const [isOpen, setIsOpen] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
 
-    const hasDocs = validDocs.length > 0 || expiredDocs.length > 0;
-
+    const hasDocs = validDocs.length > 0 || archivedDocs.length > 0;
     if (!hasDocs) return null;
 
     return (
@@ -100,22 +110,22 @@ function VaultSection({ title, validDocs, expiredDocs, onEditClick }: { title: s
                     {validDocs.length === 0 ? (
                         <p className="text-sm text-slate-500 text-center py-4">Nenhum documento vigente nesta categoria.</p>
                     ) : (
-                        validDocs.map(doc => <DocumentRow key={doc.id} doc={doc} onEditClick={onEditClick} />)
+                        validDocs.map((doc: any) => <DocumentRow key={doc.id} doc={doc} onEditClick={onEditClick} onDeleteClick={onDeleteClick} onArchiveClick={onArchiveClick} />)
                     )}
 
-                    {expiredDocs.length > 0 && (
+                    {archivedDocs.length > 0 && (
                         <div className="pt-2">
                             <button
                                 onClick={() => setShowHistory(!showHistory)}
-                                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors py-2"
+                                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-800 transition-colors py-2 font-medium"
                             >
-                                <History size={16} />
-                                {showHistory ? 'Ocultar Histórico Vencido' : `Ver Histórico (${expiredDocs.length})`}
+                                <Archive size={16} />
+                                {showHistory ? 'Ocultar Armazenados' : `Ver Armazenados / Vencidos (${archivedDocs.length})`}
                             </button>
 
                             {showHistory && (
                                 <div className="mt-3 space-y-3 pl-4 border-l-2 border-slate-200">
-                                    {expiredDocs.map(doc => <DocumentRow key={doc.id} doc={doc} isHistory onEditClick={onEditClick} />)}
+                                    {archivedDocs.map((doc: any) => <DocumentRow key={doc.id} doc={doc} isArchived onEditClick={onEditClick} onDeleteClick={onDeleteClick} />)}
                                 </div>
                             )}
                         </div>
@@ -127,8 +137,11 @@ function VaultSection({ title, validDocs, expiredDocs, onEditClick }: { title: s
 }
 
 // --- Sub-componente de Linha (Documento) ---
-function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO, isHistory?: boolean, onEditClick?: (doc: DocumentDTO) => void }) {
+function DocumentRow({ doc, isArchived = false, onEditClick, onDeleteClick, onArchiveClick }: any) {
     const isWarning = doc.status === 'warning';
+
+    // Verificação em tempo real se já passou da validade
+    const isExpiredByDate = doc.expiration_date && new Date(doc.expiration_date) < new Date(new Date().setHours(0, 0, 0, 0));
 
     const onDownload = async () => {
         try {
@@ -140,14 +153,14 @@ function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO
     };
 
     return (
-        <div className={`flex items-center justify-between p-3 rounded-lg border bg-white ${isHistory ? 'border-slate-200 opacity-75 grayscale' : 'border-slate-200 shadow-sm'} hover:border-blue-300 transition-colors group`}>
+        <div className={`flex items-center justify-between p-3 rounded-lg border bg-white ${isArchived ? 'border-slate-200 opacity-80 bg-slate-50' : 'border-slate-200 shadow-sm'} hover:border-blue-300 transition-colors group`}>
             <div className="flex items-center gap-3 md:gap-4 overflow-hidden">
-                <div className={`p-2 rounded-lg shrink-0 ${isHistory ? 'bg-slate-100 text-slate-400' : 'bg-blue-50 text-blue-600'}`}>
+                <div className={`p-2 rounded-lg shrink-0 ${isArchived ? 'bg-slate-200 text-slate-500' : 'bg-blue-50 text-blue-600'}`}>
                     <FileText size={20} />
                 </div>
 
                 <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${isHistory ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
+                    <p className={`text-sm font-medium truncate ${isArchived ? 'text-slate-600' : 'text-slate-800'}`}>
                         {doc.title}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
@@ -157,7 +170,7 @@ function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO
                         {doc.expiration_date && (
                             <>
                                 <span>•</span>
-                                <span className={isWarning && !isHistory ? "text-amber-600 font-medium" : ""}>
+                                <span className={isWarning && !isArchived ? "text-amber-600 font-medium" : ""}>
                                     Validade: {format(new Date(doc.expiration_date), 'dd/MM/yyyy')}
                                 </span>
                             </>
@@ -165,17 +178,7 @@ function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO
                         {doc.is_structured && (
                             <>
                                 <span>•</span>
-                                <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider">
-                                    INTELIGENTE
-                                </span>
-                            </>
-                        )}
-                        {doc.authentication_code && (
-                            <>
-                                <span className="hidden sm:inline">•</span>
-                                <span className="flex items-center gap-1 text-slate-400" title="Código de Autenticação">
-                                    <Key size={12} /> {doc.authentication_code}
-                                </span>
+                                <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wider">INTELIGENTE</span>
                             </>
                         )}
                     </div>
@@ -184,17 +187,25 @@ function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO
 
             <div className="flex items-center gap-2 md:gap-4 pl-2 shrink-0">
                 <div className="hidden md:block">
-                    {isHistory ? (
+                    {doc.status === 'archived' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-600">
+                            <Archive size={10} /> Armazenado
+                        </span>
+                    ) : isArchived || isExpiredByDate ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                             <AlertCircle size={10} /> Vencido
+                        </span>
+                    ) : doc.status === 'error' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200 shadow-sm">
+                            <XOctagon size={10} /> Erro na Emissão
+                        </span>
+                    ) : doc.status === 'irregular' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200 shadow-sm">
+                            <AlertTriangle size={10} /> Irregular
                         </span>
                     ) : isWarning ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
                             <AlertTriangle size={10} /> Vencendo
-                        </span>
-                    ) : doc.status === 'processing' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                            <CheckCircle2 size={10} /> Processando
                         </span>
                     ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -203,23 +214,23 @@ function DocumentRow({ doc, isHistory = false, onEditClick }: { doc: DocumentDTO
                     )}
                 </div>
 
-                <div className="flex items-center">
-                    {/* NOVO: Botão de Edição (Apenas se a prop for passada) */}
+                <div className="flex items-center gap-1">
+                    {onArchiveClick && !isArchived && (
+                        <button onClick={() => onArchiveClick(doc)} className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors" title="Armazenar">
+                            <Archive size={18} />
+                        </button>
+                    )}
                     {onEditClick && (
-                        <button
-                            onClick={() => onEditClick(doc)}
-                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"
-                            title="Editar Validade / Código"
-                        >
+                        <button onClick={() => onEditClick(doc)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-100 rounded-lg transition-colors" title="Editar Documento">
                             <Edit size={18} />
                         </button>
                     )}
-
-                    <button
-                        onClick={onDownload}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                        title="Baixar Arquivo"
-                    >
+                    {onDeleteClick && (
+                        <button onClick={() => onDeleteClick(doc)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-colors" title="Excluir Definitivamente">
+                            <Trash2 size={18} />
+                        </button>
+                    )}
+                    <button onClick={onDownload} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-lg transition-colors" title="Baixar Arquivo">
                         <Download size={18} />
                     </button>
                 </div>

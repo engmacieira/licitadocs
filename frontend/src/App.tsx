@@ -27,6 +27,7 @@ import { DocumentsPage } from './pages/Client/Documents';
 import { CompanySettings } from './pages/Client/CompanySettings';
 import { SignaturePage } from './pages/Client/Signature';
 import { HelpCenterPage } from './pages/Client/HelpCenter';
+import { DocumentTemplatesPage } from './pages/Client/DocumentTemplates';
 
 // Área do Administrador
 import { AdminDashboard } from './pages/Admin/Dashboard';
@@ -37,6 +38,7 @@ import { SettingsPage } from './pages/Admin/Settings';
 import { AdminInbox } from './pages/Admin/Inbox';
 import { ValidityMonitorPage } from './pages/Admin/ValidityMonitor';
 import { AdminEmissionRulesPage } from './pages/Admin/EmissionRules';
+import { ManualEmissionPage } from './pages/Admin/ManualEmission';
 
 function App() {
   return (
@@ -75,6 +77,7 @@ function App() {
             <Route path="/company-settings" element={<CompanySettings />} />
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/help-center" element={<HelpCenterPage />} />
+            <Route path="/document-templates" element={<DocumentTemplatesPage />} />
 
             {/* --- ADMINISTRADOR (Backoffice) --- */}
             {/* Dica: Futuramente você pode criar um wrapper <AdminRoute> aqui */}
@@ -83,6 +86,7 @@ function App() {
             <Route path="/admin/settings" element={<SettingsPage />} />
             <Route path="/admin/inbox" element={<AdminInbox />} />
             <Route path="/admin/emission-rules" element={<AdminEmissionRulesPage />} />
+            <Route path="/admin/manual-emission/:ruleId" element={<ManualEmissionPage />} />
 
             {/* Gestão de Empresas */}
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />

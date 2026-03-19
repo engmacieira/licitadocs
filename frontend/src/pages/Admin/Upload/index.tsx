@@ -78,6 +78,30 @@ export function AdminUploadPage() {
         }
     }
 
+    const handleDeleteDocument = async (doc: DocumentDTO) => {
+        if (window.confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o documento "${doc.title || doc.filename}"? Esta ação não pode ser desfeita.`)) {
+            try {
+                await documentService.deleteDocument(doc.id);
+                toast.success("Documento excluído com sucesso!");
+                loadDocuments(selectedCompanyId); // Recarrega a lista
+            } catch (error) {
+                toast.error("Erro ao excluir o documento.");
+            }
+        }
+    };
+
+    const handleArchiveDocument = async (doc: DocumentDTO) => {
+        if (window.confirm(`Deseja mover "${doc.title || doc.filename}" para a área de armazenamento?`)) {
+            try {
+                await documentService.updateDocument(doc.id, { status: 'archived' });
+                toast.success("Documento armazenado com sucesso!");
+                loadDocuments(selectedCompanyId); // Recarrega a lista
+            } catch (error) {
+                toast.error("Erro ao arquivar o documento.");
+            }
+        }
+    };
+
     // Salvar Pendências
     const handleSavePendingNotes = async () => {
         if (!selectedCompanyId) return;
@@ -256,11 +280,12 @@ export function AdminUploadPage() {
                                     ) : (
                                         <CompanyVault
                                             documents={officialVault}
-                                            // ---> ADICIONE A PROPRIEDADE AQUI:
                                             onEditClick={(doc) => {
                                                 setDocumentToEdit(doc);
                                                 setIsEditModalOpen(true);
                                             }}
+                                            onDeleteClick={handleDeleteDocument}
+                                            onArchiveClick={handleArchiveDocument}
                                         />
                                     )}
                                 </div>

@@ -262,7 +262,7 @@ class DocumentRepository:
         db.commit()
         
     @staticmethod
-    def update_metadata(db: Session, item_id: str, expiration_date: Optional[date] = None, authentication_code: Optional[str] = None):
+    def update_metadata(db: Session, item_id: str, expiration_date: Optional[date] = None, authentication_code: Optional[str] = None, status: Optional[str] = None):
         """
         Atualiza metadados (Validade e Código) de um documento no Cofre.
         Suporta tanto Documentos Legados quanto Certificados Estruturados.
@@ -270,16 +270,12 @@ class DocumentRepository:
         # Tenta achar primeiro na tabela de Documentos Legados
         doc = db.query(Document).filter(Document.id == item_id).first()
         if doc:
-            if expiration_date is not None:
-                doc.expiration_date = expiration_date
-            # Documento Legado não costuma ter authentication_code, mas se no seu model tiver, pode descomentar a linha abaixo:
-            # if authentication_code is not None and hasattr(doc, 'authentication_code'):
-            #     doc.authentication_code = authentication_code
-            
+            if expiration_date is not None: doc.expiration_date = expiration_date
+            if status is not None: doc.status = status # <-- ADICIONADO AQUI
             try:
                 db.commit()
                 db.refresh(doc)
-                return {"id": doc.id, "type": "legacy", "message": "Documento atualizado com sucesso"}
+                return {"id": doc.id, "type": "legacy", "message": "Documento atualizado"}
             except SQLAlchemyError as e:
                 db.rollback()
                 raise ValueError(f"Erro ao atualizar documento: {str(e)}")
@@ -291,6 +287,8 @@ class DocumentRepository:
                 cert.expiration_date = expiration_date
             if authentication_code is not None:
                 cert.authentication_code = authentication_code
+            if status is not None: 
+                cert.status = status
                 
             try:
                 db.commit()
@@ -326,7 +324,8 @@ class DocumentRepository:
             joinedload(Certificate.document_type).joinedload(DocumentType.category)
         ).filter(
             Certificate.expiration_date != None,
-            Certificate.expiration_date <= target_date
+            Certificate.expiration_date <= target_date,
+            Certificate.status != "archived" # <--- CORRIGIDO
         ).all()
         
         for cert in certs:
@@ -355,7 +354,8 @@ class DocumentRepository:
         # 2. Busca Documentos Legados (se houver algum com validade)
         legacies = db.query(Document).filter(
             Document.expiration_date != None,
-            Document.expiration_date <= target_date
+            Document.expiration_date <= target_date,
+            Document.status != "archived" # <--- CORRIGIDO
         ).all()
         
         for doc in legacies:
@@ -383,4 +383,68 @@ class DocumentRepository:
 
         # Ordena para mostrar os mais urgentes (vencidos/vencendo primeiro)
         unified_list.sort(key=lambda x: x["expiration_date"])
+        return unified_list
+
+    @staticmethod
+    def get_irregular_global(db: Session) -> List[dict]:
+        from datetime import date
+        unified_list = []
+        
+        companies = {
+            c.id: {"name": c.razao_social or c.name or "Empresa Desconhecida", "cnpj": getattr(c, 'cnpj', '')} 
+            for c in db.query(Company).all()
+        }
+        default_comp = {"name": "Empresa Desconhecida", "cnpj": ""}
+        
+        # 1. Busca Certidões com Erro ou Irregulares
+        certs = db.query(Certificate).options(
+            joinedload(Certificate.document_type).joinedload(DocumentType.category)
+        ).filter(
+            Certificate.status.in_(["error", "irregular"])
+        ).all()
+        
+        for cert in certs:
+            comp_info = companies.get(cert.company_id, default_comp)
+            unified_list.append({
+                "id": cert.id,
+                "title": cert.document_type.name if cert.document_type else "Certidão",
+                "filename": cert.filename,
+                "expiration_date": cert.expiration_date,
+                "status": cert.status,
+                "created_at": cert.created_at,
+                "company_id": cert.company_id,
+                "company_name": comp_info["name"],
+                "company_cnpj": comp_info["cnpj"],
+                "is_structured": True,
+                "type_id": cert.type_id,
+                "category_id": cert.document_type.category_id if cert.document_type else None,
+                "type_name": cert.document_type.name if cert.document_type else None,
+                "category_name": cert.document_type.category.name if cert.document_type and cert.document_type.category else None,
+                "authentication_code": cert.authentication_code,
+                "is_client_upload": False
+            })
+
+        # 2. Busca Documentos Legados com Erro ou Irregulares
+        legacies = db.query(Document).filter(
+            Document.status.in_(["error", "irregular"])
+        ).all()
+        
+        for doc in legacies:
+            comp_info = companies.get(doc.company_id, default_comp)
+            unified_list.append({
+                "id": doc.id,
+                "title": doc.title or "Documento Legado",
+                "filename": doc.filename,
+                "expiration_date": doc.expiration_date,
+                "status": doc.status,
+                "created_at": doc.created_at,
+                "company_id": doc.company_id,
+                "company_name": comp_info["name"],
+                "company_cnpj": comp_info["cnpj"],
+                "is_structured": False,
+                "is_client_upload": getattr(doc, 'is_client_upload', False)
+            })
+
+        # Ordena alfabeticamente pelo nome da empresa
+        unified_list.sort(key=lambda x: x["company_name"])
         return unified_list

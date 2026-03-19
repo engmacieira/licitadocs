@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, Key, Edit } from 'lucide-react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { X, Calendar, Key, Edit, Info } from 'lucide-react';
 import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
 
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { documentService } from '../../services/documentService';
 import type { DocumentDTO } from '../../services/documentService';
+
+// Importando os componentes modulares do UploadModal
+import { EmissionLinkDisplay } from '../UploadModal/EmissionLinkDisplay';
+import { RegularityAnalysis } from '../UploadModal/RegularityAnalysis';
 
 interface EditDocumentModalProps {
     isOpen: boolean;
@@ -18,11 +22,17 @@ interface EditDocumentModalProps {
 interface EditForm {
     expiration_date: string;
     authentication_code: string;
+    status: string;
+    notes: string;
 }
 
 export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: EditDocumentModalProps) {
     const [isUpdating, setIsUpdating] = useState(false);
-    const { register, handleSubmit, reset, setValue } = useForm<EditForm>();
+
+    const methods = useForm<EditForm>();
+    const { register, handleSubmit, reset, setValue, watch } = methods;
+
+    const currentStatus = watch('status');
 
     // Preenche os campos com os dados atuais quando o modal abre
     useEffect(() => {
@@ -31,6 +41,8 @@ export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: Edit
             const formattedDate = document.expiration_date ? document.expiration_date.split('T')[0] : '';
             setValue('expiration_date', formattedDate);
             setValue('authentication_code', document.authentication_code || '');
+            setValue('status', document.status || 'valid');
+            setValue('notes', ''); // Notas são limpas ao abrir para forçar nova justificativa se houver erro
         } else {
             reset();
         }
@@ -39,15 +51,26 @@ export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: Edit
     if (!isOpen || !document) return null;
 
     async function handleUpdate(data: EditForm) {
-        // ---> ADICIONADO AQUI: Garantia para o TypeScript de que o documento existe <---
         if (!document) return;
+
+        // 1. VALIDAÇÃO INTELIGENTE DA NOVA REGRA DE NEGÓCIO
+        const isFileRequired = data.status === 'valid';
+
+        if (!isFileRequired && (!data.notes || data.notes.trim() === '')) {
+            toast.error("Observação Obrigatória", { description: "Justifique o motivo da irregularidade ou erro nas observações." });
+            return;
+        }
 
         setIsUpdating(true);
         try {
+            // Atualiza os metadados e o novo status!
             await documentService.updateDocument(document.id, {
                 expiration_date: data.expiration_date || undefined,
-                authentication_code: data.authentication_code || undefined
+                authentication_code: data.authentication_code || undefined,
+                status: data.status,
+                notes: data.notes || undefined
             });
+
             toast.success("Documento atualizado com sucesso!");
             onSuccess();
             onClose();
@@ -59,57 +82,91 @@ export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: Edit
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
-                            <Edit className="h-5 w-5" />
+        <FormProvider {...methods}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col h-[90vh]">
+
+                    {/* Header */}
+                    <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                                <Edit className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800">Editar Documento</h2>
+                                <p className="text-sm text-slate-500">Atualize metadados ou altere o status de regularidade.</p>
+                            </div>
                         </div>
-                        <h2 className="text-lg font-semibold text-slate-800">Editar Documento</h2>
+                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                            <X className="h-5 w-5" />
+                        </button>
                     </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                        <X className="h-5 w-5" />
-                    </button>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit(handleUpdate)} className="p-6 flex-1 overflow-y-auto bg-white flex flex-col gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+
+                            {/* COLUNA ESQUERDA: Ficheiro e Metadados */}
+                            <div className="space-y-6">
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <p className="text-xs text-slate-500 font-bold uppercase mb-1">Ficheiro no Cofre:</p>
+                                    <p className="text-sm text-slate-800 font-semibold truncate mt-0.5">{document.title || document.filename}</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Input
+                                        id="expiration_date"
+                                        type="date"
+                                        label="Nova Data de Validade"
+                                        className="h-11 rounded-xl"
+                                        icon={<Calendar className="h-4 w-4 text-slate-400" />}
+                                        {...register('expiration_date')}
+                                    />
+                                    <Input
+                                        id="authentication_code"
+                                        type="text"
+                                        label="Novo Cód. Autenticação"
+                                        placeholder="Ex: ABCD-1234"
+                                        className="h-11 rounded-xl"
+                                        icon={<Key className="h-4 w-4 text-slate-400" />}
+                                        {...register('authentication_code')}
+                                    />
+                                </div>
+
+                                {/* UX de Ouro: Avisa que a edição não faz upload de ficheiro */}
+                                {currentStatus === 'valid' && document.filename === 'Registro de Pendência' && (
+                                    <div className="flex items-start gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800 text-xs font-medium">
+                                        <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                                        <p>Este registo de pendência não possui um anexo em PDF. Se o documento agora está regularizado, recomendamos excluir este registo e fazer um "Novo Documento Oficial" com o ficheiro PDF correto anexado.</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* COLUNA DIREITA: Inteligências Componentizadas */}
+                            <div className="space-y-6">
+                                {/* Aproveitamos o componente do Upload para manter as coisas unificadas */}
+                                <EmissionLinkDisplay
+                                    documentTypeId={document.type_id || null}
+                                    companyId={document.company_id || ""}
+                                />
+
+                                {/* Componente de Status e Observações */}
+                                <RegularityAnalysis />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-6 mt-auto border-t border-slate-100 flex gap-4 shrink-0 bg-white">
+                            <Button type="button" variant="ghost" onClick={onClose} className="w-40 rounded-xl h-12">
+                                Cancelar
+                            </Button>
+                            <Button type="submit" isLoading={isUpdating} className="flex-1 bg-amber-500 hover:bg-amber-600 shadow-amber-500/30 text-white rounded-xl h-12 text-lg">
+                                Guardar Alterações
+                            </Button>
+                        </div>
+                    </form>
                 </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit(handleUpdate)} className="p-6 flex flex-col gap-5">
-
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 mb-1">
-                        <p className="text-xs text-slate-500 font-medium">Ficheiro selecionado:</p>
-                        <p className="text-sm text-slate-800 font-semibold truncate mt-0.5">{document.title || document.filename}</p>
-                    </div>
-
-                    <Input
-                        id="expiration_date"
-                        type="date"
-                        label="Nova Data de Validade"
-                        icon={<Calendar className="h-4 w-4 text-slate-400" />}
-                        {...register('expiration_date')}
-                    />
-
-                    <Input
-                        id="authentication_code"
-                        type="text"
-                        label="Novo Cód. Autenticação"
-                        placeholder="Ex: ABCD-1234"
-                        icon={<Key className="h-4 w-4 text-slate-400" />}
-                        {...register('authentication_code')}
-                    />
-
-                    {/* Actions */}
-                    <div className="pt-2 flex gap-3">
-                        <Button type="button" variant="ghost" onClick={onClose} className="flex-1">
-                            Cancelar
-                        </Button>
-                        <Button type="submit" isLoading={isUpdating} className="flex-1 bg-amber-500 hover:bg-amber-600 shadow-amber-500/30 text-white">
-                            Guardar Alterações
-                        </Button>
-                    </div>
-                </form>
             </div>
-        </div>
+        </FormProvider>
     );
 }

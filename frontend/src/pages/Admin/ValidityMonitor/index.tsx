@@ -1,34 +1,41 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { format, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import {
-    AlertTriangle, ShieldAlert, Building2, Calendar,
-    FileText, Download, Clock, Search
-} from 'lucide-react';
+import { ShieldAlert, Search, AlertTriangle, Clock } from 'lucide-react';
 
 import { documentService } from '../../../services/documentService';
 import type { DocumentDTO } from '../../../services/documentService';
-import { Skeleton } from '../../../components/ui/Skeleton';
+
+// Nossos subcomponentes
+import { IrregularMonitor } from './components/IrregularMonitor';
+import { ExpiringMonitor } from './components/ExpiringMonitor';
 
 export function ValidityMonitorPage() {
-    const [documents, setDocuments] = useState<DocumentDTO[]>([]);
+    const [expiringDocs, setExpiringDocs] = useState<DocumentDTO[]>([]);
+    const [irregularDocs, setIrregularDocs] = useState<DocumentDTO[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Filtros e Abas
+    const [activeTab, setActiveTab] = useState<'expiring' | 'irregular'>('irregular');
     const [daysFilter, setDaysFilter] = useState<number>(30);
     const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
-        loadExpiringDocuments();
+        loadMonitors();
     }, [daysFilter]);
 
-    async function loadExpiringDocuments() {
+    async function loadMonitors() {
         setLoading(true);
         try {
-            const data = await documentService.getExpiring(daysFilter);
-            setDocuments(data);
+            // Busca as duas listas em paralelo
+            const [expiring, irregular] = await Promise.all([
+                documentService.getExpiring(daysFilter),
+                documentService.getIrregular()
+            ]);
+            setExpiringDocs(expiring);
+            setIrregularDocs(irregular);
         } catch (error) {
             console.error(error);
-            toast.error("Erro ao carregar o monitor de validade.");
+            toast.error("Erro ao carregar o monitor de regularidade.");
         } finally {
             setLoading(false);
         }
@@ -39,176 +46,91 @@ export function ValidityMonitorPage() {
             toast.info("A iniciar download...");
             await documentService.downloadDocument(docId, filename);
         } catch (error) {
-            toast.error("Erro ao transferir o documento.");
+            toast.error("Erro ao baixar o arquivo.");
         }
     };
-
-    // Função auxiliar para calcular os dias e definir as cores do alerta
-    const getStatusInfo = (dateString?: string) => {
-        if (!dateString) return { text: 'Sem data', color: 'bg-slate-100 text-slate-500', icon: <Clock size={14} /> };
-
-        const expDate = new Date(dateString);
-        const today = new Date();
-        const diff = differenceInDays(expDate, today);
-
-        if (diff < 0) {
-            return {
-                text: `Vencido há ${Math.abs(diff)} dias`,
-                color: 'bg-red-50 text-red-700 border-red-200',
-                icon: <ShieldAlert size={14} className="text-red-500" />
-            };
-        }
-        if (diff === 0) {
-            return {
-                text: 'Vence HOJE',
-                color: 'bg-orange-50 text-orange-700 border-orange-300',
-                icon: <AlertTriangle size={14} className="text-orange-500" />
-            };
-        }
-        return {
-            text: `Vence em ${diff} dias`,
-            color: 'bg-amber-50 text-amber-700 border-amber-200',
-            icon: <Clock size={14} className="text-amber-500" />
-        };
-    };
-
-    const filteredDocs = documents.filter(doc => {
-        if (!searchTerm) return true;
-        const term = searchTerm.toLowerCase();
-        return (
-            doc.company_name?.toLowerCase().includes(term) ||
-            doc.title?.toLowerCase().includes(term) ||
-            doc.filename?.toLowerCase().includes(term)
-        );
-    });
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Cabeçalho */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <AlertTriangle className="h-6 w-6 text-amber-500" />
-                        Monitor de Validade
-                    </h1>
-                    <p className="text-sm text-slate-500">
-                        Acompanhe as certidões e documentos que estão prestes a caducar.
-                    </p>
+        <div className="max-w-7xl mx-auto space-y-6 pb-12 animate-in fade-in">
+            {/* Header Moderno */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="p-4 bg-slate-100 text-slate-700 rounded-2xl">
+                        <ShieldAlert size={32} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-800">Monitor de Regularidade</h1>
+                        <p className="text-sm text-slate-500">Controlo global de pendências e certidões a vencer.</p>
+                    </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative">
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Buscar empresa ou doc..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full sm:w-64 pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-200 outline-none"
                         />
                     </div>
-                    <select
-                        className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        value={daysFilter}
-                        onChange={(e) => setDaysFilter(Number(e.target.value))}
-                    >
-                        <option value={15}>Próximos 15 dias</option>
-                        <option value={30}>Próximos 30 dias</option>
-                        <option value={60}>Próximos 60 dias</option>
-                        <option value={90}>Próximos 90 dias</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* Listagem */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-slate-800">
-                        Documentos em Alerta <span className="ml-2 bg-slate-200 text-slate-700 py-0.5 px-2.5 rounded-full text-xs">{filteredDocs.length}</span>
-                    </h3>
-                </div>
-
-                <div className="p-0">
-                    {loading ? (
-                        <div className="p-6 space-y-4">
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                            <Skeleton className="h-16 w-full rounded-lg" />
-                        </div>
-                    ) : filteredDocs.length === 0 ? (
-                        <div className="text-center py-16 px-4">
-                            <div className="mx-auto w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4 border border-green-100">
-                                <ShieldAlert className="h-8 w-8 text-green-500" />
-                            </div>
-                            <h3 className="text-lg font-medium text-slate-800">Tudo sob controlo!</h3>
-                            <p className="text-slate-500 mt-1 max-w-sm mx-auto text-sm">
-                                Não há documentos ou certidões a vencer no período de {daysFilter} dias.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
-                            {filteredDocs.map((doc) => {
-                                const status = getStatusInfo(doc.expiration_date);
-                                return (
-                                    <div key={doc.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/80 transition-colors group">
-
-                                        <div className="flex gap-4 items-start">
-                                            <div className={`p-2.5 rounded-xl shrink-0 border ${status.color.split(' ')[0]} ${status.color.split(' ')[2]}`}>
-                                                {status.icon}
-                                            </div>
-
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-semibold text-slate-800 text-sm">{doc.title || 'Documento'}</h4>
-                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${status.color}`}>
-                                                        {status.text}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
-                                                    <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                                                        <Building2 size={13} className="text-slate-400" />
-                                                        {doc.company_name}
-                                                        {doc.company_cnpj && (
-                                                            <span className="text-slate-400 font-mono text-[11px] bg-slate-100 px-1.5 py-0.5 rounded cursor-copy hover:bg-slate-200 transition-colors" title="Clique para copiar" onClick={(e) => {
-                                                                e.preventDefault();
-                                                                navigator.clipboard.writeText(doc.company_cnpj!);
-                                                                toast.success("CNPJ copiado!");
-                                                            }}>
-                                                                {doc.company_cnpj}
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                    <span className="flex items-center gap-1.5">
-                                                        <FileText size={13} className="text-slate-400" />
-                                                        {doc.filename}
-                                                    </span>
-                                                    {doc.expiration_date && (
-                                                        <span className="flex items-center gap-1.5 font-medium">
-                                                            <Calendar size={13} className="text-slate-400" />
-                                                            Vence: {format(new Date(doc.expiration_date), "dd/MM/yyyy", { locale: ptBR })}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex sm:flex-col gap-2 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity pl-12 sm:pl-0">
-                                            <button
-                                                onClick={() => handleDownload(doc.id, doc.filename)}
-                                                className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 rounded-lg text-xs font-medium transition-all"
-                                            >
-                                                <Download size={14} /> Transferir
-                                            </button>
-                                        </div>
-
-                                    </div>
-                                )
-                            })}
-                        </div>
+                    {activeTab === 'expiring' && (
+                        <select
+                            value={daysFilter}
+                            onChange={(e) => setDaysFilter(Number(e.target.value))}
+                            className="w-full sm:w-auto px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-slate-200"
+                        >
+                            <option value={15}>Vence em 15 dias</option>
+                            <option value={30}>Vence em 30 dias</option>
+                            <option value={60}>Vence em 60 dias</option>
+                        </select>
                     )}
                 </div>
             </div>
+
+            {/* Abas (Tabs) */}
+            <div className="flex items-center gap-2 border-b border-slate-200 px-2">
+                <button
+                    onClick={() => setActiveTab('irregular')}
+                    className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'irregular' ? 'border-amber-500 text-amber-700 bg-amber-50/50 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg'}`}
+                >
+                    <AlertTriangle size={18} />
+                    Empresas com Pendências
+                    <span className="ml-2 bg-amber-100 text-amber-700 py-0.5 px-2 rounded-full text-xs">{irregularDocs.length}</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('expiring')}
+                    className={`flex items-center gap-2 px-6 py-3 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'expiring' ? 'border-blue-500 text-blue-700 bg-blue-50/50 rounded-t-lg' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded-t-lg'}`}
+                >
+                    <Clock size={18} />
+                    Documentos a Vencer
+                    <span className="ml-2 bg-slate-100 text-slate-600 py-0.5 px-2 rounded-full text-xs">{expiringDocs.length}</span>
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="p-10 text-center text-slate-500">A atualizar monitor...</div>
+            ) : (
+                <div className="space-y-6">
+                    {/* Renderização Condicional dos Subcomponentes */}
+                    {activeTab === 'irregular' && (
+                        <IrregularMonitor
+                            documents={irregularDocs}
+                            searchTerm={searchTerm}
+                        />
+                    )}
+
+                    {activeTab === 'expiring' && (
+                        <ExpiringMonitor
+                            documents={expiringDocs}
+                            searchTerm={searchTerm}
+                            daysFilter={daysFilter}
+                            onDownload={handleDownload}
+                        />
+                    )}
+                </div>
+            )}
         </div>
     );
 }

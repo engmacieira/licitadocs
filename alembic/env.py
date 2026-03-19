@@ -35,6 +35,7 @@ from app.models import (
     emission_rule_model,
     message_model,
     user_model, 
+    emission_request_model,
 ) 
 
 # ------------------------------------------------------------------
