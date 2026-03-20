@@ -6,43 +6,69 @@ import { jwtDecode } from 'jwt-decode';
 import { authService } from '../services/authService';
 import type { SignInCredentials } from '../services/authService';
 import { userService } from '../services/userService';
-// IMPORTANTE: Importamos o UserProfile aqui também!
 import type { UserCompany, UserProfile } from '../services/userService';
 
-// Interface do Token Decodificado (Payload do JWT)
+/**
+ * Interface que representa o *payload* (conteúdo decodificado) do token JWT.
+ * @interface User
+ */
 interface User {
+    /** Identificador único do utilizador (geralmente o email ou UUID). */
     sub: string;
+    /** Papel/Nível de acesso do utilizador (ex: 'admin', 'client'). */
     role: string;
+    /** ID principal de referência no banco de dados. */
     id: string;
+    /** ID de relacionamento com a tabela de utilizadores. */
     user_id: string;
+    /** *Timestamp* de expiração do token. */
     exp?: number;
 }
 
+/**
+ * Estrutura de dados globais fornecida pelo contexto de Autenticação.
+ * @interface AuthContextData
+ */
 interface AuthContextData {
+    /** Dados básicos do utilizador extraídos do token JWT. */
     user: User | null;
-    userProfile: UserProfile | null; // <-- NOVO: Guardará os dados completos do banco!
+    /** Perfil completo do utilizador vindo da base de dados (ex: CPF, RG, etc). */
+    userProfile: UserProfile | null;
+    /** Flag booleana que indica se existe uma sessão ativa. */
     isAuthenticated: boolean;
+    /** Função assíncrona para iniciar uma nova sessão (Login). */
     signIn: (credentials: SignInCredentials) => Promise<void>;
+    /** Função para encerrar a sessão atual, limpando tokens e estados (Logout). */
     signOut: () => void;
+    /** Flag que indica se o contexto ainda está a restaurar a sessão inicial durante o carregamento da página. */
     loading: boolean;
 
     // Multi-Tenancy
+    /** Lista de empresas (tenants) vinculadas ao utilizador logado. */
     companies: UserCompany[];
+    /** Empresa atualmente selecionada no contexto da aplicação. */
     currentCompany: UserCompany | null;
+    /** Função para alternar o contexto ativo entre diferentes empresas. */
     switchCompany: (companyId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
+/**
+ * *Provider* de Autenticação Global.
+ * Deve envolver toda a árvore de componentes da aplicação para fornecer
+ * acesso ao estado do utilizador, sessão e contexto de multi-tenancy (empresas).
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // <-- NOVO ESTADO
+    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [companies, setCompanies] = useState<UserCompany[]>([]);
     const [currentCompany, setCurrentCompany] = useState<UserCompany | null>(null);
     const [loading, setLoading] = useState(true);
 
     /**
-     * Carrega as empresas do usuário e o PERFIL COMPLETO.
+     * Carrega as empresas do utilizador e o PERFIL COMPLETO da API.
+     * Também gere a seleção automática da última empresa acedida através do *localStorage*.
      */
     const loadUserContext = useCallback(async () => {
         try {
@@ -50,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const profile = await userService.getMe();
             setUserProfile(profile);
 
-            // 2. Busca as empresas
+            // 2. Busca as empresas associadas
             const myCompanies = await userService.getMyCompanies();
             setCompanies(myCompanies);
 
@@ -63,12 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 localStorage.setItem('@LicitaDoc:companyId', target.id);
             }
         } catch (error) {
-            console.error("AuthContext: Falha ao carregar contexto do usuário", error);
+            console.error("AuthContext: Falha ao carregar contexto do utilizador", error);
         }
     }, []);
 
     /**
-     * Efeito Inicial: Restaura a sessão ao recarregar a página.
+     * Efeito Inicial: Restaura a sessão ao recarregar a página (F5).
+     * Verifica a validade do token JWT armazenado e carrega o contexto se válido.
      */
     useEffect(() => {
         const loadedToken = localStorage.getItem('@LicitaDoc:token');
@@ -92,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [loadUserContext]);
 
-    // O useEffect acima precisa garantir que o loading termine após o fluxo
+    // Garante que o estado de "loading" termine após a verificação de sessão
     useEffect(() => {
         if (user || !localStorage.getItem('@LicitaDoc:token')) {
             setLoading(false);
@@ -100,7 +127,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     /**
-     * Realiza o Login delegando para o authService.
+     * Realiza a autenticação delegando para o serviço (authService).
+     * Salva o token, decodifica as informações e aciona o carregamento do perfil.
+     * * @param {SignInCredentials} credentials - Credenciais de acesso (email e senha).
      */
     async function signIn(credentials: SignInCredentials) {
         const response = await authService.signIn(credentials);
@@ -115,19 +144,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     /**
-     * Limpa a sessão completamente.
+     * Limpa a sessão completamente, removendo tokens do armazenamento local
+     * e resetando os estados em memória.
      */
     function signOut() {
         localStorage.removeItem('@LicitaDoc:token');
         localStorage.removeItem('@LicitaDoc:companyId');
         setUser(null);
-        setUserProfile(null); // <-- Limpa o perfil na saída
+        setUserProfile(null);
         setCompanies([]);
         setCurrentCompany(null);
     }
 
     /**
-     * Troca a empresa ativa (Tenant Switch).
+     * Troca a empresa ativa na sessão atual (Tenant Switch) e salva a
+     * preferência no armazenamento local.
+     * * @param {string} companyId - Identificador único da empresa a ser ativada.
      */
     function switchCompany(companyId: string) {
         const target = companies.find(c => c.id === companyId);
@@ -140,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return (
         <AuthContext.Provider value={{
             user,
-            userProfile, // <-- Exportando para usar nas telas!
+            userProfile,
             isAuthenticated: !!user,
             signIn,
             signOut,
@@ -154,6 +186,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 }
 
+/**
+ * *Hook* customizado para aceder ao contexto de autenticação de forma simples.
+ * @returns {AuthContextData} Todos os dados e métodos expostos pelo *AuthContext*.
+ */
 export function useAuth() {
     return useContext(AuthContext);
 }

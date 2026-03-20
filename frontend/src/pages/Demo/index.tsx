@@ -16,6 +16,12 @@ import {
 // Nossos Componentes UI
 import { Button } from '../../components/ui/Button';
 
+/**
+ * Página de Demonstração (Demo / Sales Page).
+ * Atua como uma página de marketing detalhada para explicar os pilares de valor
+ * do sistema (Automação, Cofre e IA) de forma visual antes de exigir o registo.
+ * Ideal para conversão de leads (potenciais clientes).
+ */
 export function DemoPage() {
     const navigate = useNavigate();
 
@@ -28,6 +34,7 @@ export function DemoPage() {
                     <button
                         onClick={() => navigate('/')}
                         className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors group"
+                        aria-label="Voltar para a página inicial"
                     >
                         <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
                         <span className="text-sm font-medium">Voltar para Início</span>
@@ -219,7 +226,10 @@ export function DemoPage() {
     );
 }
 
-// Icon Helper
+/**
+ * Subcomponente auxiliar de interface para exibir um ícone de "check" verde circular.
+ * Usado para listas de benefícios na página de Demonstração.
+ */
 function CheckCircleIcon() {
     return (
         <div className="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">

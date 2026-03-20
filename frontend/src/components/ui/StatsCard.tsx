@@ -1,16 +1,31 @@
 import type { ElementType } from 'react';
 import { Skeleton } from './Skeleton';
 
-interface StatsCardProps {
+/**
+ * Propriedades do componente StatsCard.
+ * @interface StatsCardProps
+ */
+export interface StatsCardProps {
+    /** Título ou rótulo do card (ex: "Usuários Ativos"). */
     title: string;
+    /** Valor principal em destaque (ex: "1.240" ou "R$ 5.000,00"). */
     value: string | number;
-    icon: ElementType; // Aqui recebemos o componente (ex: DollarSign)
+    /** Componente de ícone a ser renderizado (ex: `Users` da biblioteca lucide-react). */
+    icon: ElementType;
+    /** Texto descritivo secundário ou comparativo (ex: "em relação ao mês passado"). */
     description?: string;
+    /** Indicador visual de tendência (seta para cima/baixo). */
     trend?: 'up' | 'down' | 'neutral';
+    /** Tema de cor do card. Afeta o fundo do ícone e seu contorno. */
     color?: 'blue' | 'green' | 'red' | 'purple' | 'amber';
+    /** Se true, exibe a versão de carregamento (Skeleton) do card. */
     loading?: boolean;
 }
 
+/**
+ * Card de estatísticas utilizado em Dashboards para exibir métricas rápidas.
+ * Possui suporte nativo a estado de carregamento e indicação visual de tendências.
+ */
 export function StatsCard({
     title,
     value,
@@ -21,7 +36,6 @@ export function StatsCard({
     loading = false
 }: StatsCardProps) {
 
-    // Mapa de temas
     const themes = {
         blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
         green: { bg: 'bg-green-50', text: 'text-green-600' },

@@ -2,6 +2,11 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { FileCheck, ShieldCheck, Zap, ArrowRight, ChevronRight } from 'lucide-react';
 
+/**
+ * Página de aterragem (Landing Page) pública da aplicação.
+ * Apresenta a proposta de valor do LicitaDocs e direciona o utilizador 
+ * para os fluxos de autenticação (Login), registo ou demonstração.
+ */
 export function LandingPage() {
     const navigate = useNavigate();
 
@@ -82,7 +87,24 @@ export function LandingPage() {
     );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+/**
+ * Propriedades do componente FeatureCard.
+ * @interface FeatureCardProps
+ */
+interface FeatureCardProps {
+    /** Ícone representativo da funcionalidade (ex: componente Lucide React). */
+    icon: React.ReactNode;
+    /** Título de destaque da funcionalidade. */
+    title: string;
+    /** Texto descritivo que detalha o benefício para o utilizador. */
+    description: string;
+}
+
+/**
+ * Subcomponente visual que exibe um cartão de funcionalidade (feature) na Landing Page.
+ * Utilizado para manter a consistência visual no grid de benefícios.
+ */
+function FeatureCard({ icon, title, description }: FeatureCardProps) {
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="mb-4">{icon}</div>

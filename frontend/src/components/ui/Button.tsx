@@ -4,17 +4,29 @@ import { Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-// Função utilitária para mesclar classes (padrão shadcn)
 function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
 }
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+/**
+ * Propriedades do componente Button.
+ * @interface ButtonProps
+ * @extends {ButtonHTMLAttributes<HTMLButtonElement>}
+ */
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    /** Indica se o botão está em estado de carregamento, exibindo um spinner e desabilitando o clique. */
     isLoading?: boolean;
+    /** Define a aparência visual do botão de acordo com o Design System. */
     variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+    /** Define o tamanho do botão (altura, padding e fonte). */
     size?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * Componente de Botão genérico do Design System.
+ * Suporta diferentes variantes, tamanhos e estado de carregamento.
+ * * @param {ButtonProps} props - Propriedades do botão.
+ */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ({ className, children, isLoading, variant = 'primary', size = 'md', disabled, ...props }, ref) => {
 

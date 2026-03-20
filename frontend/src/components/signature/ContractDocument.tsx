@@ -1,7 +1,10 @@
 import React from 'react';
 import { ContractContent } from './ContractContent';
 
-// 1. Interface atualizada com RG e Gênero
+/**
+ * Propriedades injetadas no documento do contrato para preenchimento dinâmico.
+ * @interface CompanyDocumentProps
+ */
 export interface CompanyDocumentProps {
     razaoSocial: string;
     cnpj: string;
@@ -17,6 +20,11 @@ export interface CompanyDocumentProps {
     profissao?: string;
 }
 
+/**
+ * Componente que renderiza a estrutura completa do Contrato Principal.
+ * Inclui cabeçalho, qualificação das partes, o conteúdo (ContractContent) e a área de assinaturas.
+ * Utiliza forwardRef para permitir a impressão ou geração de PDF pelo componente pai.
+ */
 export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocumentProps>(
     ({ razaoSocial, cnpj, endereco, responsavel, cpfResponsavel, genero, rg, nacionalidade, estado_civil, profissao }, ref) => {
 
@@ -32,50 +40,62 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
         const isMasc = g === 'masculino' || g === 'm';
         const isFem = g === 'feminino' || g === 'f';
 
-        // Definindo as palavras baseadas no gênero
-        const pSeu = isMasc ? 'seu' : isFem ? 'sua' : 'seu(sua)';
-        const pInscrito = isMasc ? 'inscrito' : isFem ? 'inscrita' : 'inscrito(a)';
+        const pAdmin = isMasc ? 'administrador legal' : isFem ? 'administradora legal' : 'administrador(a) legal';
         const pPortador = isMasc ? 'portador' : isFem ? 'portadora' : 'portador(a)';
+        const pInscrito = isMasc ? 'inscrito' : isFem ? 'inscrita' : 'inscrito(a)';
+
+        const defNac = nacionalidade || 'brasileiro(a)';
+        const defEstCivil = estado_civil || 'estado civil';
+        const defProf = profissao || 'empresário(a)';
+        const defRg = rg || '___.___.___-__';
 
         return (
-            <div ref={ref} className="bg-white p-10 shadow-md max-w-[21cm] w-full text-sm font-serif leading-relaxed text-slate-900 mx-auto print:text-[12px]">
+            <div ref={ref} className="bg-white p-10 md:p-20 text-sm font-serif leading-relaxed text-slate-900 max-w-[21cm] mx-auto shadow-sm border border-slate-200 min-h-[29.7cm]">
 
-                {/* Título Principal */}
-                <h2 className="text-center font-bold text-lg mb-8 uppercase underline decoration-2 underline-offset-4">
-                    Contrato Prestação de Serviços de Tecnologia e Gestão Documental – LicitaDocs
-                </h2>
-
-                <div className="space-y-4 text-justify">
-
-                    {/* Qualificação das Partes */}
-                    <p>
-                        Por este instrumento particular, de um lado, a <strong>CONTRATADA</strong>:<br />
-                        <strong>39.672.264 MATHEUS HENRIQUE MACIEIRA - ME</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº 39.672.264/0001-27, com sede na Fazenda Lages, s/n, zona rural, Braúnas/MG, neste ato representada por seu titular, <strong>MATHEUS HENRIQUE MACIEIRA</strong>, brasileiro, casado, empresário, portador da Cédula de Identidade RG nº MG-15.999.624 e inscrito no CPF sob o nº 105.723.796-50.
-                    </p>
-
-                    <p>
-                        E de outro lado, a <strong>CONTRATANTE</strong>:<br />
-                        <strong>{razaoSocial}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {cnpj}, com sede em {endereco}, devidamente qualificada no formulário eletrônico de adesão e neste ato representada por {pSeu} Usuário Master (Administrador Legal ou Procurador), <strong>{responsavel}</strong>, {nacionalidade || '[Nacionalidade]'}, {estado_civil || '[Estado Civil]'}, {profissao || '[Profissão]'}, {pPortador} da Cédula de Identidade RG nº {rg || '[Número do RG]'} e {pInscrito} no CPF sob o nº {cpfResponsavel}.
-                    </p>
-
-                    <p className="mb-6">
-                        As partes resolvem firmar o presente Contrato de Prestação de Serviços, regido pelas cláusulas e condições a seguir:
-                    </p>
-
-                    {/* Divisor Visual */}
-                    <div className="border-t border-slate-300 my-6"></div>
-
-                    <ContractContent />
-
+                {/* Cabeçalho */}
+                <div className="text-center mb-12">
+                    <h1 className="text-xl font-bold uppercase underline decoration-2 underline-offset-4 mb-2">
+                        Contrato de Prestação de Serviços de Tecnologia
+                    </h1>
+                    <h2 className="text-lg font-bold uppercase">Plataforma LicitaDocs</h2>
                 </div>
 
-                {/* BLOCO DE ASSINATURAS - Prevenindo quebra de página na impressão */}
-                <div className="mt-16 print:break-inside-avoid">
-                    <p className="mb-8 text-center">
-                        Braúnas/MG, {dia} de {mes} de {ano}.
+                {/* Qualificação das Partes */}
+                <div className="space-y-6 text-justify">
+                    <p>
+                        Pelo presente instrumento particular, de um lado:
+                    </p>
+                    <p>
+                        <strong>CONTRATADA:</strong> <strong>LICITADOCS TECNOLOGIA S.A.</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº 12.345.678/0001-90, com sede na Avenida da Inovação, nº 1000, Edifício Tech, São Paulo/SP, neste ato representada na forma do seu Contrato Social;
+                    </p>
+                    <p>
+                        E, de outro lado:
+                    </p>
+                    <p>
+                        <strong>CONTRATANTE:</strong> <strong>{razaoSocial}</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº {cnpj}, com sede em {endereco}, neste ato representada por seu {pAdmin}, <strong>{responsavel}</strong>, {defNac}, {defEstCivil}, {defProf}, {pPortador} do RG nº {defRg} e {pInscrito} no CPF sob o nº {cpfResponsavel}.
+                    </p>
+                    <p>
+                        As Partes acima identificadas celebram o presente Contrato de Prestação de Serviços de Tecnologia em nuvem (SaaS), o qual se regerá pelas cláusulas e condições a seguir estipuladas.
+                    </p>
+                </div>
+
+                <div className="border-t border-slate-300 my-8"></div>
+
+                {/* Corpo do Contrato centralizado */}
+                <div className="text-justify">
+                    <ContractContent />
+                </div>
+
+                {/* Fechamento e Assinaturas */}
+                <div className="mt-16 break-inside-avoid">
+                    <p className="text-justify mb-12">
+                        E, por estarem assim justas e contratadas, as Partes firmam o presente instrumento em formato digital, reconhecendo a validade das assinaturas eletrônicas aqui apostas.
                     </p>
 
-                    {/* Grid para Contratada e Contratante */}
+                    <p className="text-center mb-12">
+                        São Paulo/SP, {dia} de {mes} de {ano}.
+                    </p>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 text-center mb-12">
                         <div className="border-t border-slate-900 pt-3">
                             <p className="font-bold">{razaoSocial}</p>
@@ -85,7 +105,7 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
                         </div>
 
                         <div className="border-t border-slate-900 pt-3">
-                            <p className="font-bold">39.672.264 MATHEUS HENRIQUE MACIEIRA - ME</p>
+                            <p className="font-bold">LICITADOCS TECNOLOGIA S.A.</p>
                             <p className="text-xs">CNPJ: 39.672.264/0001-27</p>
                             <p className="text-xs">Representada por: MATHEUS HENRIQUE MACIEIRA</p>
                             <p className="text-xs italic text-slate-600 mt-2">(Assinatura Digital / Eletrônica com validade jurídica)</p>
@@ -108,7 +128,6 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
                         </div>
                     </div>
                 </div>
-
             </div>
         );
     }

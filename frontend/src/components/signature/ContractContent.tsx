@@ -1,3 +1,8 @@
+/**
+ * Componente que armazena o texto estático e as cláusulas do Contrato de Prestação de Serviços.
+ * Atua como Fonte Única de Verdade (Single Source of Truth) para as minutas.
+ * É consumido tanto na visualização prévia (Onboarding) quanto na geração do documento final.
+ */
 export function ContractContent() {
     return (
         <>
@@ -5,59 +10,29 @@ export function ContractContent() {
             <p><strong>1.1. Da Licença de Uso (SaaS):</strong> O presente instrumento tem por objeto a concessão, pela CONTRATADA à CONTRATANTE, de uma licença de uso temporária, revogável, não exclusiva e intransferível do software web denominado <strong>LicitaDocs</strong>, disponibilizado na modalidade <em>Software as a Service</em> (SaaS).</p>
             <p><strong>1.1.1.</strong> A licença ora concedida não confere à CONTRATANTE qualquer direito de propriedade intelectual sobre o código-fonte, banco de dados, marcas, identidade visual ou arquitetura do sistema.</p>
             <p><strong>1.2. Da Funcionalidade da Plataforma:</strong> O escopo principal da plataforma compreende a automação da rotina de captação, organização, monitoramento e disponibilização em cofre digital de certidões de regularidade (fiscal, trabalhista, previdenciária e econômico-financeira) e demais documentos de habilitação, visando atender primordialmente aos requisitos estipulados pela Nova Lei de Licitações e Contratos Administrativos (Lei nº 14.133/2021).</p>
-            <p><strong>1.3. Da Limitação por CNPJ:</strong> A licença de uso e a respectiva automação de buscas contratadas estão estritamente vinculadas ao monitoramento de <strong>1 (um) único Cadastro Nacional da Pessoa Jurídica (CNPJ)</strong>, seja ele Matriz ou Filial, devidamente informado e validado no ato do cadastro.</p>
-            <p><strong>1.3.1.</strong> Caso a CONTRATANTE deseje monitorar e gerir a documentação de empresas filiais ou de empresas pertencentes ao mesmo grupo econômico que possuam CNPJs distintos, deverá realizar a contratação de novas assinaturas individualizadas para cada raiz de CNPJ.</p>
-            <p><strong>1.4. Da Exclusão de Escopo:</strong> Para garantir a mais absoluta clareza e segurança jurídica entre as partes, fica expressamente estabelecido que <strong>não</strong> compõem o escopo de serviços deste contrato:</p>
-            <ul className="list-[lower-alpha] pl-6 space-y-1">
-                <li>A prestação de serviços de consultoria jurídica, assessoria contábil, auditoria financeira ou serviços de despachante;</li>
-                <li>A regularização ativa de pendências, débitos ou restrições atreladas ao CNPJ da CONTRATANTE perante os órgãos da Administração Pública;</li>
-                <li>A garantia de sucesso, habilitação ou vitória da CONTRATANTE em qualquer certame licitatório de que venha a participar, sendo a plataforma uma ferramenta facilitadora de gestão documental (obrigação de meio).</li>
-            </ul>
+            <p><strong>1.3. Da Limitação por CNPJ:</strong> A licença de uso e a respectiva automação de buscas contratadas estão estritamente vinculadas ao monitoramento de <strong>1 (um) único CNPJ</strong> (matriz ou filial), previamente cadastrado no momento da assinatura.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 2ª – DOS PRAZOS OPERACIONAIS, DINÂMICA DE CAPTAÇÃO E OBRIGAÇÕES</h3>
-            <p><strong>2.1. Do Prazo de Validação e Condições de Liberação (Setup Inicial):</strong> A liberação do acesso definitivo à plataforma e o início da prestação dos serviços de captação documental estão estritamente condicionados à validação de conformidade cadastral e jurídica. A equipe técnica da CONTRATADA terá o prazo de até <strong>48 (quarenta e oito) horas úteis</strong> para analisar e validar os seguintes requisitos cumulativos:</p>
-            <ul className="list-[lower-alpha] pl-6 space-y-1">
-                <li>A confirmação do registro sistêmico do Termo de Aceite prévio;</li>
-                <li>A efetiva compensação e aprovação do pagamento da assinatura anual pelo <em>gateway</em>;</li>
-                <li>O preenchimento completo, correto e verídico de todos os dados cadastrais da CONTRATANTE na plataforma;</li>
-                <li>A devida formalização e assinatura digital do Contrato Principal e do Instrumento de Procuração por representante legal que possua poderes expressos para tal.</li>
-            </ul>
-            <p><strong>2.1.1. Das Inconsistências na Validação:</strong> Caso seja identificada qualquer pendência, erro de preenchimento ou assinatura por pessoa sem poderes de representação, a CONTRATADA notificará a CONTRATANTE para regularização. O prazo estipulado no item 2.1 será pausado e sua contagem reiniciada apenas após a correção definitiva pela CONTRATANTE.</p>
-            <p><strong>2.2. Do Prazo de Captação e Inserção:</strong> Apenas após a conclusão com sucesso de todas as etapas de verificação listadas na Cláusula 2.1, iniciar-se-á o novo prazo de <strong>48 (quarenta e oito) horas úteis</strong> para que a CONTRATADA realize a busca, captação e inserção das certidões de regularidade iniciais no cofre digital da CONTRATANTE.</p>
-            <p><strong>2.3. Da Inteligência de Busca Vinculada ao Objeto:</strong> A captação do acervo de certidões será parametrizada com base no Objeto Social da CONTRATANTE (conforme descrito em seu Contrato Social e CNAEs), garantindo que a documentação disponibilizada seja aderente e suficiente para a participação em processos licitatórios compatíveis com o seu ramo de atuação.</p>
-            <p><strong>2.4. Das Exceções aos Prazos de Emissão:</strong> O prazo estipulado no item 2.2 poderá ser estendido exclusivamente para certidões de âmbito municipal ou documentos cuja emissão pelo órgão público dependa de análise humana, processos físicos ou prazos próprios da autarquia.</p>
-            <p><strong>2.4.1.</strong> Nestes cenários, a obrigação da CONTRATADA restringe-se a comprovar que a solicitação ou o protocolo junto ao respectivo órgão foi realizado dentro do prazo original de 48 (quarenta e oito) horas.</p>
-            <p><strong>2.5. Da Renovação Ativa (Monitoramento Contínuo):</strong> Durante a vigência deste contrato, a CONTRATADA realizará ativamente o processo de renovação das certidões monitoradas. A busca pelas novas emissões será executada em até <strong>8 (oito) dias corridos</strong> antes da data de vencimento do documento vigente, garantindo a continuidade da regularidade no cofre digital.</p>
-            <p><strong>2.6. Da Constatação de Irregularidades Impeditivas:</strong> Se, durante o processo de emissão ou renovação, for constatada qualquer irregularidade, pendência ou débito que impeça a emissão da certidão, a plataforma suspenderá a busca daquele documento específico e notificará a CONTRATANTE pelos canais oficiais.</p>
-            <p><strong>2.6.1.</strong> Conforme estabelecido na exclusão de escopo, a CONTRATADA não assumirá a responsabilidade de regularizar a pendência, cabendo à CONTRATANTE sanar a irregularidade junto ao órgão para que a plataforma possa retomar a captação.</p>
-            <p><strong>2.7. Dos Documentos de Inserção Exclusiva da CONTRATANTE:</strong> A plataforma não realizará a busca ou elaboração de documentos de natureza contábil, privada ou que exijam assinatura de próprio punho. Fica sob a responsabilidade exclusiva da CONTRATANTE a inserção manual no cofre digital de Balanços Patrimoniais, Demonstrações Contábeis e Declarações específicas exigidas em editais.</p>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 2ª – DOS LIMITES DE ATUAÇÃO E OBRIGAÇÃO DE MEIO</h3>
+            <p><strong>2.1. Da Natureza do Serviço:</strong> A CONTRATADA atua exclusivamente como ferramenta de tecnologia. A execução da rotina de extração caracteriza-se estritamente como <strong>obrigação de meio</strong>, uma vez que a emissão das certidões depende da estabilidade, disponibilidade e processamento dos portais governamentais de terceiros.</p>
+            <p><strong>2.2. Da Inexistência de Assessoria:</strong> Em caso de identificação de pendências, débitos ou irregularidades vinculadas ao CNPJ da CONTRATANTE, a CONTRATADA <strong>não</strong> prestará serviços de despachante, contabilidade, assessoria jurídica ou regularização de passivos.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 3ª – DA GESTÃO DE USUÁRIOS E LIMITES DO COFRE DIGITAL</h3>
-            <p><strong>3.1. Dos Perfis de Acesso (ACL):</strong> Para a operação e visualização do cofre digital, a plataforma adota um sistema de controle de acessos estruturado da seguinte forma:</p>
-            <p><strong>3.1.1. Usuário Master (Administrador):</strong> No ato do cadastro, a CONTRATANTE criará 1 (um) perfil principal, gerido pelo administrador legal ou procurador constituído. Este perfil detém plenos poderes para alimentar os dados cadastrais da empresa, assinar eletronicamente os documentos, outorgar procurações e gerenciar a conta.</p>
-            <p><strong>3.1.2. Usuários Adicionais (Somente Leitura):</strong> O Usuário Master terá o direito de cadastrar até <strong>3 (três) usuários adicionais</strong> vinculados ao mesmo CNPJ. Estes perfis secundários possuirão permissões restritas exclusivamente à consulta, visualização e <em>download</em> das certidões e documentos armazenados, sendo tecnicamente bloqueados para realizar alterações sistêmicas, exclusões ou uploads.</p>
-            <p><strong>3.2. Da Finalidade Estrita do Cofre Digital:</strong> O ambiente de armazenamento em nuvem fornecido pela plataforma destina-se única e exclusivamente à guarda e organização de documentos com finalidade habilitatória para processos licitatórios (Lei nº 14.133/2021). O cofre digital não configura, sob nenhuma hipótese, um serviço de disco virtual de uso genérico corporativo.</p>
-            <p><strong>3.3. Da Restrição e Localização de Uploads Manuais:</strong> A CONTRATANTE está autorizada a realizar o <em>upload</em> manual no sistema <strong>apenas e estritamente</strong> dos documentos oficiais exigidos (como Contrato Social, RG, Balanços, etc), os quais deverão ser inseridos obrigatoriamente em seus respectivos campos e abas designadas na plataforma.</p>
-            <p><strong>3.4. Da Exclusão Permanente de Arquivos Não Autorizados:</strong> Fica expressamente pactuado que qualquer outro documento, imagem, planilha ou arquivo anexado manualmente pela CONTRATANTE que fuja ao escopo taxativo da Cláusula 3.3 será considerado uso indevido da infraestrutura, reservando-se à CONTRATADA o direito de exclusão imediata.</p>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 3ª – DAS OBRIGAÇÕES DA CONTRATANTE</h3>
+            <p><strong>3.1.</strong> Manter atualizados os dados cadastrais da empresa e de seus representantes legais na plataforma.</p>
+            <p><strong>3.2.</strong> Outorgar, sempre que requisitado, o Instrumento de Procuração específico necessário para o acesso da CONTRATADA aos sistemas restritos (ex: e-CAC, Conectividade Social), sob pena de paralisação técnica da coleta de certidões bloqueadas, sem que isso configure falha na prestação do serviço.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 4ª – DO PREÇO, CONDIÇÕES DE PAGAMENTO E LIBERAÇÃO DE ACESSO</h3>
-            <p><strong>4.1. Do Valor da Assinatura Anual:</strong> Pela licença de uso do software e prestação dos serviços atrelados ao monitoramento de 1 (um) único CNPJ, a CONTRATANTE pagará à CONTRATADA o valor correspondente ao ciclo de vigência de <strong>12 (doze) meses</strong> de acesso, estipulado no momento da contratação e checkout.</p>
-            <p><strong>4.2. Das Formas e Meios de Pagamento:</strong> O pagamento deverá ser efetuado no momento da contratação, diretamente no ambiente seguro da plataforma, processado via PIX à vista ou Cartão de Crédito parcelado.</p>
-            <p><strong>4.3. Da Natureza Pré-Paga e Liberação do Serviço:</strong> O modelo de contratação possui natureza estritamente pré-paga. A liberação do ambiente logado está estritamente condicionada à efetiva compensação e aprovação sistêmica do pagamento pelo gateway.</p>
-            <p><strong>4.4. Da Inadimplência e Ausência de Encargos Moratórios:</strong> Tendo em vista o modelo de faturamento sistêmico e pré-pago, fica estabelecido que não haverá a incidência de multas moratórias, juros de mora ou o envio do nome da CONTRATANTE aos órgãos de proteção ao crédito em decorrência de não pagamento, acarretando apenas o cancelamento da licença.</p>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 4ª – DA PROTEÇÃO DE DADOS (LGPD)</h3>
+            <p><strong>4.1.</strong> As Partes comprometem-se a cumprir integralmente as disposições da Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais).</p>
+            <p><strong>4.2.</strong> A CONTRATANTE autoriza expressamente o tratamento de dados pessoais de seus sócios e administradores para a exclusiva finalidade de execução deste contrato e emissão dos instrumentos de procuração necessários.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 5ª – DA DISPONIBILIDADE (SLA) E SUPORTE TÉCNICO</h3>
-            <p><strong>5.1. Do Nível de Serviço (SLA):</strong> A CONTRATADA compromete-se a empreender seus melhores esforços técnicos e operacionais para manter a plataforma acessível e funcional, garantindo um índice de disponibilidade mínima (Uptime) de <strong>99% (noventa e nove por cento)</strong> ao mês.</p>
-            <p><strong>5.2. Das Exclusões de Responsabilidade do SLA:</strong> Não serão computadas como falha as interrupções decorrentes de inoperância de portais de órgãos públicos, quedas da infraestrutura em nuvem (AWS), manutenções programadas ou motivos de força maior.</p>
-            <p><strong>5.3. Dos Canais Oficiais de Atendimento:</strong> O suporte será prestado à CONTRATANTE exclusivamente por E-mail, WhatsApp ou abertura de Tickets via sistema.</p>
-            <p><strong>5.4. Do Horário de Atendimento e Prazo:</strong> O atendimento ocorrerá em <strong>dias úteis</strong>, das <strong>08h00 às 18h00</strong> (horário de Brasília). O prazo máximo para primeira resposta será de 24 (vinte e quatro) horas úteis.</p>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 5ª – DOS NÍVEIS DE SERVIÇO (SLA)</h3>
+            <p><strong>5.1.</strong> A CONTRATADA garante uma disponibilidade de acesso à plataforma (Uptime) de <strong>99% (noventa e nove por cento)</strong> ao mês.</p>
+            <p><strong>5.2.</strong> As manutenções preventivas serão comunicadas com antecedência e realizadas, preferencialmente, em horários de menor tráfego.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 6ª – DO ARMAZENAMENTO E RETENÇÃO DE DADOS</h3>
-            <p><strong>6.1. Do Armazenamento Durante a Vigência:</strong> Durante a vigência deste contrato, a CONTRATADA manterá armazenadas e seguras as informações e certidões no cofre digital.</p>
-            <p><strong>6.2. Do Prazo de Retenção (Término):</strong> Ocorrendo o término do contrato sem renovação, a plataforma manterá os arquivos disponíveis para <em>download</em> pelo prazo improrrogável de <strong>15 (quinze) dias corridos</strong>. Esgotado o prazo, os dados serão excluídos permanentemente.</p>
-            <p><strong>6.3. Do Prazo de Retenção (Cancelamento):</strong> Na hipótese de a CONTRATANTE solicitar o cancelamento antecipado, o prazo para acesso e <em>download</em> será reduzido para <strong>5 (cinco) dias corridos</strong>.</p>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 6ª – DA REMUNERAÇÃO</h3>
+            <p><strong>6.1.</strong> Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA o valor correspondente ao plano anual escolhido no momento do cadastro.</p>
+            <p><strong>6.2.</strong> Em caso de atraso no pagamento de parcelas (se aplicável), incidirá multa moratória de 2% e juros de 1% ao mês, sujeitando a CONTRATANTE à suspensão temporária do acesso ao cofre digital até a regularização.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 7ª – DO PRAZO, RENOVAÇÃO E CANCELAMENTO (CHURN)</h3>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 7ª – DO PRAZO E CANCELAMENTO (CHURN)</h3>
             <p><strong>7.1. Da Vigência:</strong> O presente contrato possui validade fixa e ininterrupta de <strong>1 (um) ano (12 meses)</strong>.</p>
             <p><strong>7.2. Do Aviso Prévio:</strong> A plataforma enviará notificações automáticas com <strong>60 (sessenta) dias de antecedência</strong> do vencimento.</p>
             <p><strong>7.3. Da Ausência de Renovação Automática:</strong> Não haverá renovação automática. Caberá à CONTRATANTE providenciar o pagamento de um novo ciclo.</p>
@@ -66,7 +41,7 @@ export function ContractContent() {
             <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 8ª – DA FORMALIZAÇÃO E FORO</h3>
             <p><strong>8.1. Da Assinatura Digital:</strong> A CONTRATANTE deverá realizar a assinatura eletrônica avançada ou via certificado digital ICP-Brasil para validação deste instrumento.</p>
             <p><strong>8.2. Das Alterações:</strong> A CONTRATADA poderá alterar os termos do serviço para adequações sistêmicas ou legais, comunicando com 15 dias de antecedência.</p>
-            <p><strong>8.3. Do Foro de Eleição:</strong> As partes elegem o foro da Comarca de domicílio da CONTRATADA para dirimir controvérsias.</p>
+            <p><strong>8.3. Do Foro de Eleição:</strong> Fica eleito o foro da Comarca de Lisboa para dirimir quaisquer dúvidas, renunciando a qualquer outro por mais privilegiado que seja.</p>
         </>
     );
 }

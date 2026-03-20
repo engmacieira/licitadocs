@@ -6,6 +6,11 @@ function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
 }
 
+/**
+ * Componente Skeleton para indicação de carregamento (Loading State).
+ * Utilizado para criar *placeholders* pulsantes enquanto o conteúdo principal é carregado.
+ * * @param {HTMLAttributes<HTMLDivElement>} props - Propriedades padrão de uma `div` HTML.
+ */
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     return (
         <div

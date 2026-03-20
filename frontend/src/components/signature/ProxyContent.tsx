@@ -1,3 +1,9 @@
+
+/**
+ * Componente que armazena as cláusulas e poderes específicos da Procuração.
+ * Atua como Fonte Única de Verdade (Single Source of Truth) para o escopo de poderes
+ * que o cliente outorga à plataforma.
+ */
 export function ProxyContent() {
     return (
         <>
@@ -14,12 +20,13 @@ export function ProxyContent() {
                 <li>Regularidade Fiscal e Tributária (âmbito federal, estadual e municipal);</li>
                 <li>Regularidade Trabalhista (CNDT) e Previdenciária;</li>
                 <li>Regularidade relativa ao Fundo de Garantia do Tempo de Serviço (CRF/FGTS);</li>
-                <li>Regularidade Econômico-Financeira (Certidões Negativas de Falência, Concordata e Recuperação Judicial/Extrajudicial);</li>
-                <li>Situação de regularidade junto aos Conselhos de Fiscalização Profissional;</li>
-                <li>Demais documentos de habilitação exigidos para contratações públicas, conforme Lei nº 14.133/2021.</li>
+                <li>Regularidade Econômico-Financeira (Certidão de Falência e Concordata).</li>
             </ul>
+            <p className="mt-2">
+                Todos os documentos extraídos destinam-se a compor o acervo probatório do cofre digital da OUTORGANTE na plataforma LicitaDocs, visando à habilitação em procedimentos licitatórios (Lei 14.133/2021).
+            </p>
 
-            <h3 className="font-bold mt-6 mb-2">3. DA LIMITAÇÃO DE PODERES (CLÁUSULA RESTRITIVA)</h3>
+            <h3 className="font-bold mt-6 mb-2 text-red-700">3. DA VEDAÇÃO ABSOLUTA (CLÁUSULA RESTRITIVA)</h3>
             <p>
                 Fica <strong>expressamente vedado</strong> à OUTORGADA, sob pena de responsabilização civil e criminal:
             </p>

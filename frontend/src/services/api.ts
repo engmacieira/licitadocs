@@ -1,13 +1,22 @@
 import axios from 'axios';
 import { toast } from 'sonner';
 
+/** URL base para as requisições, priorizando variáveis de ambiente. */
 const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
+/** * Instância central do Axios configurada com timeout e baseURL.
+ * Utilizada por todos os serviços da aplicação para garantir consistência.
+ */
 const api = axios.create({
     baseURL: API_URL,
     timeout: 10000,
 });
 
+/**
+ * Interceptor de Requisição:
+ * Injeta automaticamente o Token de Autenticação (JWT) no cabeçalho
+ * de todas as saídas, caso o usuário esteja logado.
+ */
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('@LicitaDoc:token');
     if (token) {
@@ -16,6 +25,11 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+/**
+ * Interceptor de Resposta:
+ * Gerenciador global de erros e UX de rede. Trata sessões expiradas,
+ * quedas de conexão e erros internos do servidor com feedback visual (Toasts).
+ */
 api.interceptors.response.use(
     (response) => response,
     (error) => {
@@ -25,7 +39,7 @@ api.interceptors.response.use(
             });
         }
         else if (error.response.status === 401) {
-            // UX: Sessão expirou? Limpa tudo e manda pro login.
+            // Tratamento de Sessão Expirada: Limpa o estado local e redireciona
             localStorage.removeItem('@LicitaDoc:token');
             localStorage.removeItem('@LicitaDoc:companyId');
 
@@ -33,20 +47,18 @@ api.interceptors.response.use(
                 description: "Por segurança, faça login novamente."
             });
 
-            // Pequeno delay para o usuário ler o toast antes do reload
             setTimeout(() => {
                 window.location.href = '/login';
             }, 1500);
         }
         else if (error.response.status === 403) {
-            // UX: Usuário tentou acessar empresa que não é dele.
             toast.error("Acesso Negado", {
-                description: "Você não tem permissão para realizar esta ação ou acessar esta empresa."
+                description: "Você não tem permissão para realizar esta ação."
             });
         }
         else if (error.response.status >= 500) {
             toast.error("Erro interno do servidor", {
-                description: "Nossos engenheiros foram notificados."
+                description: "Nossa equipe técnica foi notificada do incidente."
             });
         }
 

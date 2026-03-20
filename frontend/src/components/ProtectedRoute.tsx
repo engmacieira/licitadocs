@@ -3,16 +3,34 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2, ShieldAlert } from 'lucide-react';
 
+/**
+ * Propriedades do componente ProtectedRoute.
+ * @interface ProtectedRouteProps
+ */
 interface ProtectedRouteProps {
+    /** O componente de página (ou layout) que será renderizado se o acesso for permitido. */
     children: ReactNode;
-    allowedRoles?: string[]; // Nova prop opcional para filtrar por tipo de usuário
+    /** * Lista opcional de papéis (roles) autorizados a aceder a esta rota.
+     * Exemplo: ['admin', 'manager']. Se não for fornecido, apenas exige que o utilizador esteja logado.
+     */
+    allowedRoles?: string[];
 }
 
+/**
+ * Componente de Guarda de Rotas (Router Guard).
+ * Intercepta a navegação do utilizador para garantir que este está autenticado
+ * e possui as permissões (roles) necessárias para visualizar a página solicitada.
+ * * Funciona através de 4 estados sequenciais:
+ * 1. Carregamento (Validação de sessão em curso)
+ * 2. Redirecionamento (Utilizador não autenticado -> Login)
+ * 3. Bloqueio (Utilizador autenticado, mas sem permissão -> Ecrã de Erro)
+ * 4. Acesso Permitido (Renderiza os children)
+ */
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     const { user, isAuthenticated, loading } = useAuth();
     const location = useLocation();
 
-    // Estado 1: Carregando (Verificando Token/Sessão)
+    // ESTADO 1: Carregando (Verificando Token/Sessão na API ou LocalStorage)
     if (loading) {
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 gap-4">
@@ -24,13 +42,13 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         );
     }
 
-    // Estado 2: Não Autenticado -> Manda para Login
+    // ESTADO 2: Não Autenticado -> Manda para a raiz (Login/Landing)
     if (!isAuthenticated) {
-        // Salva a origem para redirecionar de volta após login
+        // Guarda a rota que o utilizador tentou aceder para o redirecionar de volta após o login
         return <Navigate to="/" state={{ from: location }} replace />;
     }
 
-    // Estado 3: Autenticado mas sem Permissão (Blindagem de Rota)
+    // ESTADO 3: Autenticado mas sem Permissão (Blindagem de Rota baseada em Role)
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
         return (
             <div className="min-h-screen w-full flex flex-col items-center justify-center bg-slate-50 p-4 text-center animate-in fade-in duration-500">
@@ -39,7 +57,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
                 </div>
                 <h2 className="text-2xl font-bold text-slate-900 mb-2">Acesso Restrito</h2>
                 <p className="text-slate-500 max-w-md mb-8">
-                    Seu perfil de usuário (<strong>{user.role}</strong>) não possui permissão para acessar esta página administrativa.
+                    Seu perfil de usuário (<strong>{user.role}</strong>) não possui permissão para acessar esta página.
                 </p>
                 <div className="flex gap-4 justify-center">
                     <button
@@ -59,6 +77,6 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         );
     }
 
-    // Estado 4: Acesso Permitido
+    // ESTADO 4: Acesso Permitido
     return <>{children}</>;
 }

@@ -7,15 +7,28 @@ function cn(...inputs: (string | undefined | null | false)[]) {
     return twMerge(clsx(inputs));
 }
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+/**
+ * Propriedades do componente Input.
+ * @interface InputProps
+ * @extends {InputHTMLAttributes<HTMLInputElement>}
+ */
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+    /** Texto descritivo exibido acima do campo. */
     label?: string;
+    /** Mensagem de erro exibida abaixo do campo com estilo de alerta (vermelho). */
     error?: string;
+    /** Texto de ajuda adicional exibido abaixo do campo. Ignorado se houver `error`. */
     helperText?: string;
-    // Aceita ReactNode para flexibilidade total (<Icon className="..." />)
+    /** Ícone opcional (ex: Lucide Icons) renderizado no lado esquerdo do input. */
     icon?: ReactNode;
-    registration?: any; // Hook Form register
+    /** Objeto de registro retornado pelo React Hook Form (ex: `...register('campo')`). */
+    registration?: any;
 }
 
+/**
+ * Componente de entrada de texto (Input) do Design System.
+ * Integrável com React Hook Form e suporta ícones, labels e mensagens de validação.
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(
     ({ label, error, helperText, icon, className, registration, ...props }, ref) => {
         return (
@@ -32,7 +45,6 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 <div className="relative group">
                     {icon && (
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-blue-500 transition-colors">
-                            {/* Renderiza o nó diretamente */}
                             {icon}
                         </div>
                     )}
@@ -43,12 +55,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                             "flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm placeholder:text-slate-400 transition-all",
                             "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500",
                             "disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
-                            icon ? "pl-10" : "", // Espaço para o ícone
+                            icon ? "pl-10" : "",
                             error ? "border-red-500 focus:border-red-500 focus:ring-red-500/20" : "",
                             className
                         )}
-                        {...registration} // Espalha as props do Hook Form
-                        {...props} // Espalha as props nativas (value, onChange, etc)
+                        {...registration}
+                        {...props}
                     />
                 </div>
 

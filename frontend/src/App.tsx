@@ -24,18 +24,18 @@ import { PaymentPage } from './pages/Payment';         // Fluxo de entrada
 // Área do Cliente
 import { Dashboard } from './pages/Client/Dashboard';
 import { DocumentsPage } from './pages/Client/Documents';
-import { CompanySettings } from './pages/Client/CompanySettings';
+import { CompanySettingsPage } from './pages/Client/Settings';
 import { SignaturePage } from './pages/Client/Signature';
 import { HelpCenterPage } from './pages/Client/HelpCenter';
 import { DocumentTemplatesPage } from './pages/Client/DocumentTemplates';
 
 // Área do Administrador
-import { AdminDashboard } from './pages/Admin/Dashboard';
+import { AdminDashboardPage } from './pages/Admin/Dashboard';
 import { AdminCompaniesPage } from './pages/Admin/Companies';
-import { AdminCompanyDetails } from './pages/Admin/CompanyDetails';
+import { AdminCompanyDetailsPage } from './pages/Admin/CompanyDetails';
 import { AdminUploadPage } from './pages/Admin/Upload';
 import { SettingsPage } from './pages/Admin/Settings';
-import { AdminInbox } from './pages/Admin/Inbox';
+import { AdminInboxPage } from './pages/Admin/Inbox';
 import { ValidityMonitorPage } from './pages/Admin/ValidityMonitor';
 import { AdminEmissionRulesPage } from './pages/Admin/EmissionRules';
 import { ManualEmissionPage } from './pages/Admin/ManualEmission';
@@ -74,23 +74,23 @@ function App() {
             {/* --- CLIENTE (Empresas) --- */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/company-settings" element={<CompanySettings />} />
+            <Route path="/company-settings" element={<CompanySettingsPage />} />
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/help-center" element={<HelpCenterPage />} />
             <Route path="/document-templates" element={<DocumentTemplatesPage />} />
 
             {/* --- ADMINISTRADOR (Backoffice) --- */}
             {/* Dica: Futuramente você pode criar um wrapper <AdminRoute> aqui */}
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/upload" element={<AdminUploadPage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
-            <Route path="/admin/inbox" element={<AdminInbox />} />
+            <Route path="/admin/inbox" element={<AdminInboxPage />} />
             <Route path="/admin/emission-rules" element={<AdminEmissionRulesPage />} />
             <Route path="/admin/manual-emission/:ruleId" element={<ManualEmissionPage />} />
 
             {/* Gestão de Empresas */}
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
-            <Route path="/admin/companies/:id" element={<AdminCompanyDetails />} />
+            <Route path="/admin/companies/:id" element={<AdminCompanyDetailsPage />} />
             <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
 
             {/* Fallback: Rota 404 ou Redirecionamento */}

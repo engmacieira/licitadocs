@@ -14,6 +14,11 @@ import {
 // Nossos Componentes UI
 import { Button } from '../../components/ui/Button';
 
+/**
+ * Página institucional "Sobre Nós" (About).
+ * Apresenta a missão, visão, valores (DNA) e a proposta de valor da empresa aos visitantes.
+ * É uma página pública, desenhada com foco em branding corporativo e conversão final.
+ */
 export function AboutPage() {
     const navigate = useNavigate();
 
@@ -26,6 +31,7 @@ export function AboutPage() {
                     <button
                         onClick={() => navigate('/')}
                         className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors group"
+                        aria-label="Voltar para a página inicial"
                     >
                         <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
                         <span className="text-sm font-medium">Voltar</span>
@@ -94,7 +100,7 @@ export function AboutPage() {
                         <div className="relative">
                             <div className="aspect-square bg-blue-600 rounded-3xl overflow-hidden shadow-2xl relative">
                                 {/* Aqui ficaria uma imagem de alta qualidade da equipa ou do escritório */}
-                                <div className="absolute inset-0 bg-linear-to-t from-blue-900/60 to-transparent flex items-end p-8">
+                                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/60 to-transparent flex items-end p-8">
                                     <p className="text-white text-lg font-medium italic">
                                         "A inovação não é apenas sobre código, é sobre facilitar a vida de quem constrói o país."
                                     </p>
@@ -168,8 +174,24 @@ export function AboutPage() {
     );
 }
 
-// Componente Interno para os Valores
-function ValueCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+/**
+ * Propriedades do componente ValueCard.
+ * @interface ValueCardProps
+ */
+interface ValueCardProps {
+    /** Ícone representativo do valor (ex: componente Lucide React). */
+    icon: React.ReactNode;
+    /** Título em destaque do valor central. */
+    title: string;
+    /** Breve descrição ou manifesto sobre como a empresa aplica este valor. */
+    description: string;
+}
+
+/**
+ * Subcomponente interno para renderizar os cartões da secção "Valores Core" (O Nosso DNA).
+ * Possui efeitos de hover interativos e estrutura padronizada.
+ */
+function ValueCard({ icon, title, description }: ValueCardProps) {
     return (
         <div className="text-center space-y-4 group">
             <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
