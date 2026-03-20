@@ -1,48 +1,52 @@
 """
-Router Administrativo.
-Gerenciamento global de empresas (Backoffice).
+Router Administrativo (Backoffice).
+Gerenciamento global de empresas, status de acesso e documentos via painel do Admin.
 """
-import shutil
 import os
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
-from app.dependencies import require_role # Importamos a nova fábrica
+from app.dependencies import require_role
+from app.models.user_model import User, UserRole
 from app.schemas.company_schemas import CompanyCreate, CompanyUpdate, CompanyResponse
-from app.repositories.company_repository import CompanyRepository
-from app.models.user_model import User, UserRole # Importamos os Enums das roles
-from app.models.company_model import Company
-from app.models.document_model import Document
 
+# Repositórios e Utilitários
+from app.repositories.company_repository import CompanyRepository
+from app.repositories.user_repository import UserRepository
+from app.repositories.document_repository import DocumentRepository
+from app.utils.file_helper import save_upload_file
 
 # Prefixo /admin + Tag "Administração" organiza tudo no Swagger
-router = APIRouter(prefix="/admin", tags=["Administração"])
+router = APIRouter(prefix="/admin", tags=["Administração (Backoffice)"])
+
+# ==========================================
+# 🏢 GESTÃO DE EMPRESAS
+# ==========================================
 
 @router.post(
     "/companies", 
     response_model=CompanyResponse, 
     status_code=status.HTTP_201_CREATED,
-    summary="[Admin] Cadastrar nova Empresa",
-    description="Cria uma empresa manualmente no sistema (Backoffice)."
+    summary="Cadastrar nova Empresa",
+    description="Cria uma empresa manualmente no sistema (Apenas Administradores)."
 )
 def create_company(
     company: CompanyCreate,
     db: Session = Depends(get_db),
-    # 🔥 Nova injeção elegante e blindada!
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
+    # Uso limpo do repositório blindado
     if CompanyRepository.get_by_cnpj(db, company.cnpj):
-        raise HTTPException(400, "Já existe uma empresa com este CNPJ.")
+        raise HTTPException(status_code=400, detail="Já existe uma empresa com este CNPJ.")
     return CompanyRepository.create(db, company)
 
 @router.get(
     "/companies", 
     response_model=List[CompanyResponse],
-    summary="[Admin] Listar Empresas"
+    summary="Listar Todas as Empresas"
 )
 def list_companies(
     skip: int = 0, 
@@ -52,10 +56,26 @@ def list_companies(
 ):
     return CompanyRepository.get_all(db, skip, limit)
 
+@router.get(
+    "/companies/{company_id}", 
+    response_model=CompanyResponse,
+    summary="Detalhes da Empresa"
+)
+def get_company_details(
+    company_id: str,
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
+    # Substituído db.query() pelo repositório que já aplica Soft Delete
+    company = CompanyRepository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+    return company
+
 @router.put(
     "/companies/{company_id}", 
     response_model=CompanyResponse,
-    summary="[Admin] Atualizar Empresa"
+    summary="Atualizar Empresa"
 )
 def update_company(
     company_id: str,
@@ -65,13 +85,13 @@ def update_company(
 ):
     updated = CompanyRepository.update(db, company_id, company_data)
     if not updated:
-        raise HTTPException(404, "Empresa não encontrada.")
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
     return updated
 
 @router.delete(
     "/companies/{company_id}", 
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="[Admin] Remover Empresa"
+    summary="Remover Empresa (Soft Delete)"
 )
 def delete_company(
     company_id: str,
@@ -80,27 +100,28 @@ def delete_company(
 ):
     success = CompanyRepository.delete(db, company_id)
     if not success:
-        raise HTTPException(404, "Empresa não encontrada.")
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
     return None
 
 @router.patch(
     "/companies/{company_id}/toggle-status",
     status_code=status.HTTP_200_OK,
-    summary="[Admin] Ativar/Bloquear Empresa"
+    summary="Ativar/Bloquear Acesso da Empresa"
 )
 def toggle_company_status(
     company_id: str,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = CompanyRepository.get_by_id(db, company_id)
     if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    owner = db.query(User).filter(User.id == company.owner_id).first()
+    owner = UserRepository.get_by_id(db, company.owner_id)
     if not owner:
-        raise HTTPException(status_code=404, detail="Usuário dono não encontrado")
+        raise HTTPException(status_code=404, detail="Usuário responsável não encontrado.")
 
+    # Inverte o status de acesso do dono da empresa
     new_status = not owner.is_active
     owner.is_active = new_status
     db.commit()
@@ -108,41 +129,29 @@ def toggle_company_status(
     status_msg = "ativada" if new_status else "bloqueada"
     return {"message": f"Empresa {status_msg} com sucesso!", "is_active": new_status}
 
-@router.get(
-    "/companies/{company_id}", 
-    response_model=CompanyResponse,
-    summary="[Admin] Detalhes da Empresa"
-)
-def get_company_details(
-    company_id: str,
-    db: Session = Depends(get_db),
-    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
-):
-    company = db.query(Company).filter(Company.id == company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
-    return company
+# ==========================================
+# 📂 GESTÃO DE DOCUMENTOS (Visão Admin)
+# ==========================================
 
 @router.get(
     "/companies/{company_id}/documents",
-    summary="[Admin] Listar Documentos da Empresa"
+    summary="Listar Documentos da Empresa"
 )
 def list_company_documents(
     company_id: str,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    company = db.query(Company).filter(Company.id == company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+    if not CompanyRepository.get_by_id(db, company_id):
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    docs = db.query(Document).filter(Document.company_id == company_id).all()
-    return docs
+    # Usamos a busca unificada do DocumentRepository! Muito mais rico para o Frontend.
+    return DocumentRepository.get_unified_by_company(db, company_id)
 
 @router.post(
     "/companies/{company_id}/upload",
     status_code=status.HTTP_201_CREATED,
-    summary="[Admin] Upload de Documento"
+    summary="Upload Administrativo de Documento"
 )
 def upload_company_document(
     company_id: str,
@@ -150,72 +159,43 @@ def upload_company_document(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    company = db.query(Company).filter(Company.id == company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
-
-    upload_dir = "uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(upload_dir, unique_filename)
+    if not CompanyRepository.get_by_id(db, company_id):
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Delega o salvamento físico para o file_helper
+        file_path, _ = save_upload_file(file, "admin_uploads")
+        
+        # Delega o salvamento no banco para o Repository
+        new_doc = DocumentRepository.create_legacy(
+            db=db,
+            title="Documento Administrativo",
+            filename=file.filename,
+            file_path=file_path,
+            company_id=company_id,
+            uploaded_by_id=current_admin.id,
+            is_client_upload=False # Flag que indica que foi o sistema/admin que subiu
+        )
+        return new_doc
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao salvar arquivo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro no processamento do arquivo: {str(e)}")
 
-    new_doc = Document(
-        filename=file.filename,
-        file_path=file_path,
-        company_id=company_id,
-        uploaded_by_id=current_admin.id, 
-        status="active"
-    )
-    
-    db.add(new_doc)
-    db.commit()
-    db.refresh(new_doc)
-    
-    return new_doc
-
-@router.get("/companies/{company_id}/documents/{doc_id}/download")
+@router.get(
+    "/companies/{company_id}/documents/{doc_id}/download",
+    summary="Download de Documento (Admin)"
+)
 def download_company_document(
     company_id: str,
     doc_id: str,
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    doc = db.query(Document).filter(Document.id == doc_id, Document.company_id == company_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Documento não encontrado")
+    # Delega a busca segura do path para o Repositório
+    file_path = DocumentRepository.get_file_path(db, doc_id)
     
-    if not os.path.exists(doc.file_path):
-        raise HTTPException(status_code=404, detail="Arquivo físico não encontrado no servidor")
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Arquivo físico não encontrado no servidor.")
         
-    return FileResponse(
-        path=doc.file_path, 
-        filename=doc.filename,
-        media_type='application/octet-stream'
-    )
-
-@router.delete("/companies/{company_id}/documents/{doc_id}")
-def delete_company_document(
-    company_id: str,
-    doc_id: str,
-    db: Session = Depends(get_db),
-    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
-):
-    doc = db.query(Document).filter(Document.id == doc_id, Document.company_id == company_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Documento não encontrado")
-        
-    if os.path.exists(doc.file_path):
-        os.remove(doc.file_path)
-        
-    db.delete(doc)
-    db.commit()
-    
-    return {"message": "Documento removido com sucesso"}
+    filename = os.path.basename(file_path)
+    return FileResponse(path=file_path, filename=filename, media_type='application/octet-stream')

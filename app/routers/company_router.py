@@ -1,16 +1,23 @@
+"""
+Router de Gestão de Empresas.
+Controla as rotas de atualização de dados, membros da equipa (convites e permissões) e onboarding.
+"""
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DatabaseError
 import secrets
-from uuid import UUID
 
 from app.core.database import get_db
 from app.core.security import get_password_hash
 from app.dependencies import get_current_active_user, verify_company_access, get_current_user
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
-from app.repositories.company_repository import CompanyRepository
 from app.models.company_model import Company
+
+# Repositórios
+from app.repositories.company_repository import CompanyRepository
+from app.repositories.user_repository import UserRepository
+
 from app.schemas.company_schemas import (
     CompanyUpdate, 
     CompanyResponse, 
@@ -20,10 +27,61 @@ from app.schemas.company_schemas import (
     MemberUpdateRole
 )
 
-router = APIRouter(prefix="/companies", tags=["Gestão de Empresas"])
+router = APIRouter(prefix="/companies", tags=["Gestão de Empresas e Equipa"])
 
-# --- 1. ATUALIZAR EMPRESA ---
-@router.put("/{company_id}", response_model=CompanyResponse)
+# ==========================================
+# 🏢 GESTÃO DE DADOS DA EMPRESA
+# ==========================================
+
+@router.get(
+    "/", 
+    response_model=List[CompanyResponse],
+    summary="Listar Todas as Empresas (Apenas Admin)"
+)
+def get_companies(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Retorna uma lista paginada de todas as empresas do sistema. Uso restrito à equipa interna."""
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Apenas administradores podem listar todas as empresas."
+        )
+
+    # Usa o repositório blindado contra Soft Delete
+    return CompanyRepository.get_all(db, skip=skip, limit=limit)
+
+@router.get(
+    "/{company_id}", 
+    response_model=CompanyResponse,
+    summary="Detalhes da Empresa"
+)
+def get_company_by_id(
+    company_id: str = Path(..., description="ID da Empresa"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Busca dados detalhados de uma empresa específica. Valida o acesso do utilizador."""
+    company = CompanyRepository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+
+    # Verificação de Segurança
+    is_owner = str(company.owner_id) == str(current_user.id)
+    if not is_owner and current_user.role != UserRole.ADMIN.value:
+         # Valida se existe vínculo ativo
+         verify_company_access(company_id, current_user)
+
+    return company
+
+@router.put(
+    "/{company_id}", 
+    response_model=CompanyResponse,
+    summary="Atualizar Dados da Empresa"
+)
 def update_company(
     company_in: CompanyUpdate,
     company_id: str = Path(..., description="ID da empresa a editar"),
@@ -31,21 +89,20 @@ def update_company(
     db: Session = Depends(get_db)
 ):
     """
-    Atualiza dados da empresa.
-    REQUER: Ser membro com cargo 'MASTER' ou 'ADMIN'.
+    Atualiza os dados cadastrais da empresa.
+    REQUER: Ser membro com cargo 'MASTER' ou Administrador.
     """
-    # Segurança: Verifica se é MASTER dessa empresa ou ADMIN
-    if current_user.role != "admin":
+    if current_user.role != UserRole.ADMIN.value:
         verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
         
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = CompanyRepository.get_by_id(db, company_id)
     if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
     update_data = company_in.model_dump(exclude_unset=True, by_alias=True)
     
-    # Exclusivo de ADMIN (Cliente não pode auto-aprovar ou apagar as pendências impostas)
-    if current_user.role != "admin":
+    # Blindagem: O cliente não pode auto-aprovar pendências impostas pelo Admin
+    if current_user.role != UserRole.ADMIN.value:
         update_data.pop("is_admin_verified", None)
         update_data.pop("is_contract_signed", None)
         update_data.pop("is_payment_active", None)
@@ -58,15 +115,66 @@ def update_company(
     db.refresh(company)
     return company
 
-# --- 2. LISTAR MEMBROS (Rota Existente Preservada) ---
-@router.get("/{company_id}/members", response_model=List[MemberResponse])
+@router.patch(
+    "/{company_id}/onboarding-step",
+    summary="Atualizar Etapa do Onboarding"
+)
+def update_onboarding_step(
+    company_id: str,
+    step: str = Query(..., description="terms | payment | data | contract"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Avança as flags de progresso do onboarding da empresa."""
+    verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
+    
+    company = CompanyRepository.get_by_id(db, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
+    
+    if step == "terms":
+        company.is_terms_accepted = True
+    elif step == "payment":
+        company.is_payment_active = True
+    elif step == "data":
+        company.is_data_completed = True
+    elif step == "contract":
+        company.is_contract_signed = True
+    else:
+        raise HTTPException(status_code=400, detail="Etapa de onboarding inválida.")
+        
+    db.commit()
+    db.refresh(company)
+    return company
+
+# ==========================================
+# 👥 GESTÃO DE EQUIPA (MEMBROS)
+# ==========================================
+
+def check_is_master(user: User, company_id: str):
+    """Helper local para validar permissões de gestão de equipa."""
+    if user.role == UserRole.ADMIN.value:
+        return True
+    
+    link = next((l for l in user.company_links if l.company_id == company_id), None)
+    if not link or link.role != UserCompanyRole.MASTER.value:
+        raise HTTPException(
+            status_code=403, 
+            detail="Apenas gestores (MASTER) podem gerir a equipa."
+        )
+    return True
+
+@router.get(
+    "/{company_id}/members", 
+    response_model=List[MemberResponse],
+    summary="Listar Membros da Equipa"
+)
 def list_members(
     company_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """Lista todos os membros da empresa."""
-    # Qualquer membro (Viewer ou Master) pode ver a lista da equipe
+    """Lista todos os utilizadores vinculados a esta empresa (Acesso para qualquer membro)."""
     verify_company_access(company_id, current_user)
     
     members_links = db.query(UserCompanyLink).filter(UserCompanyLink.company_id == company_id).all()
@@ -76,7 +184,7 @@ def list_members(
         user = link.user
         results.append({
             "user_id": user.id,
-            "name": getattr(user, "nome", None) or user.email.split("@")[0], # Fallback simples
+            "name": getattr(user, "nome", None) or user.email.split("@")[0],
             "email": user.email,
             "role": link.role,
             "status": link.is_active,
@@ -84,73 +192,12 @@ def list_members(
         })
     return results
 
-@router.get("/{company_id}", response_model=CompanyResponse)
-def get_company_by_id(
-    company_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Busca dados detalhados de uma empresa específica.
-    """
-    # 1. Busca a empresa
-    company = CompanyRepository.get_by_id(db, company_id)
-    
-    if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada.")
-
-    # 2. Verificação de Segurança (Básica)
-    # Verifica se o usuário é ADMIN ou se é DONO/MEMBRO da empresa
-    # (Se você tiver uma lógica de 'is_admin', use aqui)
-    is_owner = str(company.owner_id) == str(current_user.id)
-    
-    # Se quiser ser mais restritivo, adicione verificação de vínculo aqui.
-    # Por enquanto, se ele é o dono ou admin, libera.
-    if not is_owner and current_user.role != "admin":
-         # Opcional: verificar se existe vínculo na tabela UserCompanyLink
-         pass 
-
-    return company
-
-@router.get("/", response_model=List[CompanyResponse])
-def get_companies(
-    skip: int = 0,
-    limit: int = 100,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Lista todas as empresas cadastradas.
-    Restrito apenas para ADMIN.
-    """
-    # 1. Segurança: Apenas Admin pode ver a lista completa
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Apenas administradores podem listar todas as empresas."
-        )
-
-    # 2. Busca no banco
-    companies = CompanyRepository.get_all(db, skip=skip, limit=limit)
-    return companies
-
-# --- 3. ADICIONAR MEMBRO (Nova Rota da Sprint 15) ---
-
-# Helper local para garantir a mensagem de erro exata que o teste espera
-def check_is_master(user: User, company_id: str):
-    if user.role == UserRole.ADMIN.value:
-        return True
-    
-    link = next((l for l in user.company_links if l.company_id == company_id), None)
-    
-    if not link or link.role != UserCompanyRole.MASTER.value:
-        raise HTTPException(
-            status_code=403, 
-            detail="Apenas gerentes (MASTER) podem gerenciar a equipe."
-        )
-    return True
-
-@router.post("/{company_id}/members", response_model=MemberAddResponse, status_code=201)
+@router.post(
+    "/{company_id}/members", 
+    response_model=MemberAddResponse, 
+    status_code=201,
+    summary="Convidar Novo Membro"
+)
 def add_member(
     company_id: str,
     data: CompanyMemberInvite,
@@ -158,18 +205,17 @@ def add_member(
     db: Session = Depends(get_db)
 ):
     """
-    Convida um usuário para a empresa com blindagem usando SAVEPOINTS (begin_nested).
+    Convida um utilizador para a empresa utilizando transações seguras (Savepoints).
+    Cria a conta automaticamente caso o e-mail não exista.
     """
-    # 1. Segurança
     check_is_master(current_user, company_id)
 
-    # 2. Valida Empresa
-    company = db.query(Company).filter(Company.id == company_id).first()
+    company = CompanyRepository.get_by_id(db, company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    # 3. Busca ou Cria Usuário com SAVEPOINT
-    user = db.query(User).filter(User.email == data.email).first()
+    # Busca utilizador via Repositório para garantir Soft Delete check
+    user = UserRepository.get_by_email(db, data.email)
     is_new = False
     temp_password = None
 
@@ -184,26 +230,23 @@ def add_member(
             cpf=data.cpf
         )
         try:
-            # 🛡️ BLINDAGEM 1: Cria um Checkpoint. Se falhar, volta apenas até aqui!
+            # 🛡️ BLINDAGEM 1: Savepoint de transação (Evita concorrência)
             with db.begin_nested():
                 db.add(user)
                 db.flush()
         except (IntegrityError, DatabaseError):
-            # Outra requisição foi milissegundos mais rápida! 
-            # O SQLAlchemy já recuperou automaticamente do erro graças ao Checkpoint.
-            user = db.query(User).filter(User.email == data.email).first()
+            user = UserRepository.get_by_email(db, data.email)
             is_new = False
 
-    # 4. Verifica Vínculo Existente
+    # Valida se já existe vínculo
     link_existente = db.query(UserCompanyLink).filter(
         UserCompanyLink.user_id == user.id,
         UserCompanyLink.company_id == company.id
     ).first()
 
     if link_existente:
-        raise HTTPException(status_code=400, detail="Usuário já faz parte da equipe.")
+        raise HTTPException(status_code=400, detail="O utilizador já faz parte da equipa.")
 
-    # 5. Cria Vínculo com SAVEPOINT
     new_link = UserCompanyLink(
         user_id=user.id,
         company_id=company.id,
@@ -212,22 +255,18 @@ def add_member(
     )
     
     try:
-        # 🛡️ BLINDAGEM 2: Novo Checkpoint para o vínculo
+        # 🛡️ BLINDAGEM 2: Savepoint do vínculo
         with db.begin_nested():
             db.add(new_link)
             db.flush()
-            
-        # Se sobrevivemos a todos os checkpoints, fazemos o Commit real!
         db.commit()
     except IntegrityError:
-        # Outra requisição vinculou a pessoa milissegundos antes
-        db.rollback() # Aborta a transação final
-        raise HTTPException(status_code=400, detail="Usuário já faz parte da equipe.")
+        db.rollback()
+        raise HTTPException(status_code=400, detail="O utilizador já faz parte da equipa.")
 
-    # 6. Prepara Resposta
-    msg = "Usuário adicionado à equipe com sucesso."
+    msg = "Utilizador adicionado à equipa com sucesso."
     if is_new:
-        msg = f"Usuário criado. Senha provisória: {temp_password}"
+        msg = f"Conta criada. Senha provisória do membro: {temp_password}"
 
     return {
         "user_id": user.id,
@@ -235,40 +274,12 @@ def add_member(
         "role": data.role.value,
         "message": msg
     }
-    
-@router.patch("/{company_id}/onboarding-step")
-def update_onboarding_step(
-    company_id: str,
-    step: str = Query(..., description="terms | payment | data | contract"), # <-- ATUALIZADO SPRINT 24
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    # 1. Verifica permissão (apenas MASTER pode fazer isso)
-    verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
-    
-    company = db.query(Company).filter(Company.id == company_id).first()
-    if not company:
-        raise HTTPException(status_code=404, detail="Empresa não encontrada")
-    
-    # Atualiza a flag correspondente ao passo concluído
-    if step == "terms":
-        company.is_terms_accepted = True
-    elif step == "payment":
-        company.is_payment_active = True
-    elif step == "data":
-        company.is_data_completed = True
-    elif step == "contract":
-        company.is_contract_signed = True
-    else:
-        raise HTTPException(status_code=400, detail="Passo inválido")
-        
-    db.commit()
-    db.refresh(company)
-    return company
 
-# --- 4. GESTÃO DE EQUIPA (EDITAR E REMOVER) ---
-
-@router.put("/{company_id}/members/{user_id}", response_model=MemberResponse)
+@router.put(
+    "/{company_id}/members/{user_id}", 
+    response_model=MemberResponse,
+    summary="Alterar Permissões do Membro"
+)
 def update_member_role(
     company_id: str,
     user_id: str,
@@ -276,13 +287,9 @@ def update_member_role(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Atualiza a permissão de um membro da equipa (MASTER ou VIEWER).
-    """
-    # 1. Segurança: Quem faz o pedido tem que ser MASTER
+    """Promove ou despromove um membro (MASTER <-> VIEWER)."""
     check_is_master(current_user, company_id)
 
-    # 2. Busca o vínculo do utilizador alvo
     link = db.query(UserCompanyLink).filter(
         UserCompanyLink.company_id == company_id,
         UserCompanyLink.user_id == user_id
@@ -291,11 +298,9 @@ def update_member_role(
     if not link:
         raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
 
-    # 3. Regra de Negócio: Não se pode despromover a si mesmo
     if str(current_user.id) == user_id:
-        raise HTTPException(status_code=400, detail="Não pode alterar a sua própria permissão por aqui.")
+        raise HTTPException(status_code=400, detail="Não é possível alterar o seu próprio nível de permissão por esta via.")
 
-    # 4. Atualiza e Salva
     link.role = data.role.value
     db.commit()
     db.refresh(link)
@@ -310,20 +315,20 @@ def update_member_role(
         "joined_at": link.created_at
     }
 
-@router.delete("/{company_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{company_id}/members/{user_id}", 
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remover Membro da Equipa"
+)
 def remove_member(
     company_id: str,
     user_id: str,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Remove um membro da equipa.
-    """
-    # 1. Segurança: Quem faz o pedido tem que ser MASTER
+    """Remove o acesso de um utilizador à empresa."""
     check_is_master(current_user, company_id)
 
-    # 2. Busca o vínculo
     link = db.query(UserCompanyLink).filter(
         UserCompanyLink.company_id == company_id,
         UserCompanyLink.user_id == user_id
@@ -332,14 +337,13 @@ def remove_member(
     if not link:
         raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
 
-    # 3. Regras de Negócio de Remoção
     if str(current_user.id) == user_id:
-        raise HTTPException(status_code=400, detail="Não pode remover-se a si mesmo.")
+        raise HTTPException(status_code=400, detail="Não pode remover-se a si próprio.")
         
     if link.role == UserCompanyRole.MASTER.value:
-        raise HTTPException(status_code=400, detail="Um gestor principal (MASTER) não pode ser removido.")
+        raise HTTPException(status_code=400, detail="Um gestor principal (MASTER) não pode ser removido antes de ser despromovido.")
 
-    # 4. Deleta o vínculo
+    # Remove fisicamente o vínculo de equipa (Neste caso, o Hard Delete na tabela Link faz sentido)
     db.delete(link)
     db.commit()
 

@@ -1,37 +1,81 @@
 """
 Modelagem da Automação de Documentos (Motor Strategy).
 Define as regras e qual robô/crawler deve buscar determinado tipo de documento.
+Essencial para o Módulo 3: A Fábrica de Certidões.
 """
+
 from sqlalchemy import Column, String, Boolean, ForeignKey, JSON
 from sqlalchemy.orm import relationship
-from app.core.database import Base, generate_uuid
+from app.core.database import Base, SoftDeleteMixin, generate_uuid
 
-class DocumentAutomationConfig(Base):
+class DocumentAutomationConfig(Base, SoftDeleteMixin):
+    """
+    Configurações de automação vinculadas a um tipo de documento específico.
+    Determina se um documento pode ser emitido automaticamente e por qual meio.
+    """
     __tablename__ = "document_automation_configs"
 
-    id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    # --- Identificadores ---
+    id = Column(
+        String, 
+        primary_key=True, 
+        default=generate_uuid, 
+        index=True,
+        doc="ID único da configuração de automação"
+    )
     
-    # Vínculo 1:1 com o DocumentType (Se o Tipo for apagado, esta config vai junto)
-    document_type_id = Column(String, ForeignKey("document_types.id", ondelete="CASCADE"), unique=True, nullable=False)
+    # Vínculo 1:1 com o DocumentType
+    document_type_id = Column(
+        String, 
+        ForeignKey("document_types.id", ondelete="CASCADE"), 
+        unique=True, 
+        nullable=False,
+        doc="Vínculo obrigatório com o tipo de documento (Ex: CND Federal)"
+    )
     
-    # --- Flags e Configurações de Estratégia ---
-    is_automatable = Column(Boolean, default=False, nullable=False)
+    # --- Flags de Operação ---
+    is_automatable = Column(
+        Boolean, 
+        default=False, 
+        nullable=False,
+        doc="Define se o sistema deve tentar buscar este documento via robô"
+    )
     
-    # O Nome exato da classe/estratégia no backend (Ex: "RECEITA_FEDERAL_API")
-    strategy_name = Column(String, nullable=True) 
+    requires_captcha = Column(
+        Boolean, 
+        default=False, 
+        nullable=False,
+        doc="Informa se a estratégia exige serviços de quebra de captcha (2Captcha/AntiCaptcha)"
+    )
     
-    # A URL oficial do portal para os robôs que precisam fazer web scraping
-    source_url = Column(String, nullable=True)    
+    # --- Estratégia e Origem ---
+    strategy_name = Column(
+        String, 
+        nullable=True,
+        doc="Nome exato da classe/estratégia no backend (Ex: 'RECEITA_FEDERAL_API')"
+    ) 
     
-    # Flag para sabermos se o robô vai precisar do serviço de quebra de captcha (2Captcha / AntiCaptcha)
-    requires_captcha = Column(Boolean, default=False, nullable=False)
+    source_url = Column(
+        String, 
+        nullable=True,
+        doc="URL oficial do portal de origem para web scraping ou consulta"
+    )    
     
-    # De quanto em quanto tempo o sistema deve tentar buscar (Ex: "0 0 * * *" = Meia-noite)
-    cron_schedule = Column(String, nullable=True) 
+    # --- Agendamento e Parâmetros ---
+    cron_schedule = Column(
+        String, 
+        nullable=True,
+        doc="Expressão Cron para agendamento (Ex: '0 0 * * *' para execução diária)"
+    ) 
     
-    # 🔥 A "Cereja no Bolo": Parâmetros extras dinâmicos
-    # Ex: {"requires_inscricao_estadual": true, "timeout_seconds": 120}
-    extra_params = Column(JSON, nullable=True)
+    extra_params = Column(
+        JSON, 
+        nullable=True,
+        doc="Parâmetros dinâmicos (Ex: timeouts, flags específicas do órgão)"
+    )
     
-    # Relacionamento Reverso
-    document_type = relationship("app.models.document_type_model.DocumentType", back_populates="automation_config")
+    # --- Relacionamentos (ORM) ---
+    document_type = relationship(
+        "app.models.document_type_model.DocumentType", 
+        back_populates="automation_config"
+    )

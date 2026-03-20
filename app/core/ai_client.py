@@ -1,74 +1,90 @@
 """
-Cliente de IA (Google Gemini).
-Encapsula a comunicação com a API do Google GenAI (v2).
+Módulo de Integração com Inteligência Artificial (Google Gemini).
+Responsável por encapsular a lógica de comunicação com o modelo generativo 
+para suporte ao 'Tira-Dúvidas' de certidões.
 """
+
 import os
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente (.env)
+# Garantir carregamento das variáveis para instâncias isoladas
 load_dotenv()
 
 class AIClient:
     """
-    Wrapper para o SDK do Google Gemini.
-    Gerencia autenticação e chamadas de geração de texto.
+    Wrapper especializado para o SDK do Google Gemini (v2).
+    Implementa o padrão Singleton implícito através da exportação da instância.
     """
+
     def __init__(self):
+        """
+        Inicializa o cliente da API. 
+        Realiza o 'Fail Fast' silencioso caso a chave não esteja presente, 
+        prevenindo queda do servidor mas alertando nos logs.
+        """
         self.api_key = os.getenv("GOOGLE_API_KEY")
         self.client = None
+        self.model_name = "gemini-2.0-flash"
         
         if not self.api_key:
-            print("⚠️ AVISO: GOOGLE_API_KEY não encontrada no .env. O Chatbot não funcionará.")
+            print("⚠️ [IA_CORE] AVISO: GOOGLE_API_KEY ausente. Funcionalidades de IA desativadas.")
         else:
             try:
-                # Inicialização da SDK v2
+                # Inicialização da SDK v2 para suporte ao Gemini 2.0
                 self.client = genai.Client(api_key=self.api_key)
             except Exception as e:
-                print(f"❌ Erro fatal ao iniciar client Gemini: {e}")
+                print(f"❌ [IA_CORE] Erro na inicialização do cliente GenAI: {e}")
 
     def generate_chat_response(self, message: str, context: str = "") -> str:
         """
-        Envia um prompt para o modelo Gemini 2.0 Flash.
+        Envia uma instrução ao modelo Gemini e processa a resposta.
         
         Args:
-            message (str): A pergunta ou instrução do usuário.
-            context (str): O contexto do sistema (lista de documentos, regras, persona).
+            message (str): Pergunta direta do usuário sobre a certidão.
+            context (str, opcional): Contexto jurídico ou conteúdo do documento 
+                                     para basear a resposta (RAG).
             
         Returns:
-            str: A resposta em texto puro ou uma mensagem de erro amigável.
+            str: Resposta textual processada ou mensagem de erro amigável.
         """
         if not self.client:
-            return "Erro Técnico: Chave de API da IA não configurada no servidor."
+            return "Erro Técnico: O motor de IA não foi configurado corretamente no servidor."
 
         try:
-            # Monta o prompt com contexto (RAG simplificado)
-            # Se houver contexto, ele vem antes da pergunta para "preparar" a IA.
+            # Construção do Prompt (Mantendo a lógica de RAG Simplificado do LicitaDoc)
             full_prompt = message
             if context:
-                full_prompt = f"CONTEXTO DO SISTEMA:\n{context}\n\nPERGUNTA DO USUÁRIO:\n{message}"
+                full_prompt = (
+                    f"--- CONTEXTO DO DOCUMENTO ---\n"
+                    f"{context}\n\n"
+                    f"--- PERGUNTA DO CLIENTE ---\n"
+                    f"{message}\n\n"
+                    f"Responda de forma técnica, porém clara, baseando-se apenas no contexto acima."
+                )
 
-            # Chamada à API
+            # Chamada de geração com parâmetros otimizados para documentos jurídicos
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=self.model_name,
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
-                    max_output_tokens=1000, # Aumentei para garantir respostas jurídicas completas
-                    temperature=0.7 # Criatividade equilibrada
+                    max_output_tokens=1024,
+                    temperature=0.7  # Equilíbrio entre precisão técnica e fluidez
                 )
             )
             
-            # Retorno seguro
+            # Validação de saída
             if response.text:
                 return response.text
-            return "A IA processou a solicitação mas não retornou texto."
+            
+            return "A IA não conseguiu gerar uma resposta para este documento. Revise o conteúdo enviado."
             
         except Exception as e:
-            # Log do erro real para o desenvolvedor
-            print(f"❌ Erro na chamada Gemini: {str(e)}")
-            # Resposta amigável para o usuário final
-            return "Desculpe, estou com dificuldades de conexão com meu cérebro digital agora. Tente novamente em instantes."
+            # Log técnico detalhado para o desenvolvedor
+            print(f"❌ [IA_CORE] Falha na chamada ao modelo {self.model_name}: {str(e)}")
+            return "Estou com dificuldades para analisar este documento agora. Por favor, tente novamente em instantes."
 
-# Instância Singleton para ser importada nos Services/Routers
+# Instância única para importação global (Singleton Pattern)
+# Uso: from app.core.ai_client import ai_client
 ai_client = AIClient()

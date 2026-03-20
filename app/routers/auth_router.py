@@ -1,7 +1,6 @@
 """
-Router de Autenticação.
-Controla as rotas relacionadas a cadastro, login e gestão de acesso.
-Versão Definitiva: Suporta Upload (Form), JSON Legado e Login via /token.
+Router de Autenticação e Onboarding.
+Controla as rotas de cadastro complexo (Multipart Form), login JWT e utilitários de acesso.
 """
 import os
 from datetime import timedelta
@@ -22,30 +21,45 @@ from app.utils.file_helper import save_upload_file
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_schemas import Token
 
-router = APIRouter(prefix="/auth", tags=["Autenticação"])
+router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
 
-# --- ROTA PRINCIPAL: CADASTRO COM UPLOAD (Multipart/Form) ---
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+# ==========================================
+# 🚀 ONBOARDING (CADASTRO COMPLETO)
+# ==========================================
+
+@router.post(
+    "/register", 
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastro de Novo Cliente (Onboarding)",
+    description=(
+        "Executa uma transação atômica complexa que:\n"
+        "1. Cria o Usuário Administrador da conta.\n"
+        "2. Cria o Tenant (Empresa).\n"
+        "3. Vincula o Usuário à Empresa com cargo MASTER.\n"
+        "4. Faz upload de até 4 documentos iniciais para o Cofre.\n\n"
+        "Se qualquer passo falhar, toda a operação é revertida (Rollback)."
+    )
+)
 def register(
-    email: EmailStr = Form(..., description="Email do usuário"),
-    password: str = Form(..., description="Senha"),
-    legal_name: str = Form(..., description="Razão Social"),
+    email: EmailStr = Form(..., description="E-mail de acesso do usuário"),
+    password: str = Form(..., description="Senha forte"),
+    legal_name: str = Form(..., description="Razão Social da empresa"),
     trade_name: Optional[str] = Form(None, description="Nome Fantasia"),
-    cnpj: str = Form(..., description="CNPJ"),
-    responsible_name: str = Form(..., description="Nome do Responsável"),
+    cnpj: str = Form(..., description="CNPJ (apenas números)"),
+    responsible_name: str = Form(..., description="Nome do Responsável Legal"),
     cpf: str = Form(..., description="CPF do Responsável"),
-    social_contract: Optional[UploadFile] = File(None),
-    cnpj_card: Optional[UploadFile] = File(None),
-    responsible_doc: Optional[UploadFile] = File(None),
-    proxy_doc: Optional[UploadFile] = File(None),
+    social_contract: Optional[UploadFile] = File(None, description="PDF do Contrato Social"),
+    cnpj_card: Optional[UploadFile] = File(None, description="PDF do Cartão CNPJ"),
+    responsible_doc: Optional[UploadFile] = File(None, description="PDF do Documento de Identidade"),
+    proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação Inicial
+    # 1. Validação Inicial (Usando o repositório blindado)
     if UserRepository.get_by_email(db, email):
-        raise HTTPException(status_code=400, detail="Email já cadastrado.")
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado no sistema.")
 
     try:
-        # 2. Cria Usuário
+        # 2. Cria Usuário (Apenas instanciando o Model para garantir a Transação Atômica)
         new_user = User(
             email=email, 
             password_hash=get_password_hash(password),
@@ -55,7 +69,7 @@ def register(
             cpf=cpf
         )
         db.add(new_user)
-        db.flush() 
+        db.flush() # Gera o ID, mas não commita
         
         # 3. Cria Empresa
         new_company = Company(
@@ -69,7 +83,7 @@ def register(
         db.add(new_company)
         db.flush() 
 
-        # 4. Cria Vínculo
+        # 4. Cria Vínculo de Equipe
         link = UserCompanyLink(
             user_id=new_user.id,
             company_id=new_company.id,
@@ -78,12 +92,13 @@ def register(
         )
         db.add(link)
 
-        # 5. Processamento de Arquivos
+        # 5. Processamento de Arquivos Físicos
         def process_file(upload_file: UploadFile, title: str):
             if not upload_file: 
                 return
             
             try:
+                # Usa o file_helper otimizado para lidar com a gravação no disco
                 path, size = save_upload_file(upload_file, "companies")
                 
                 doc = Document(
@@ -97,7 +112,6 @@ def register(
                 )
                 db.add(doc)
             except Exception as e:
-                print(f"Erro crítico no upload {title}: {e}")
                 raise ValueError(f"Falha ao salvar {title}: {str(e)}")
 
         if social_contract: process_file(social_contract, "Contrato Social")
@@ -105,10 +119,10 @@ def register(
         if responsible_doc: process_file(responsible_doc, "Documento Identidade")
         if proxy_doc: process_file(proxy_doc, "Procuração")
 
-        # 6. Finaliza a Transação Atômica
+        # 6. Finaliza a Transação Atômica com Sucesso
         db.commit()
         
-        # 7. Auto-Login
+        # 7. Auto-Login (Retorna o JWT para o Frontend não precisar logar de novo)
         access_token = create_access_token(
             data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -124,25 +138,34 @@ def register(
         }
 
     except Exception as e:
-        db.rollback() 
-        print(f"Erro no registro: {e}")
+        db.rollback() # 🛡️ BLINDAGEM: Se qualquer passo falhar, o banco volta ao estado inicial
         if "Email já cadastrado" in str(e):
-            raise HTTPException(status_code=400, detail="Email já cadastrado.")
+            raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
         raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro: {str(e)}")
 
-# --- ROTA DE LOGIN ---
-@router.post("/token", response_model=Token)
+
+# ==========================================
+# 🔐 LOGIN (GERAÇÃO DE TOKEN)
+# ==========================================
+
+@router.post(
+    "/token", 
+    response_model=Token,
+    summary="Login de Usuário (OAuth2)",
+    description="Valida as credenciais e retorna o Token JWT de acesso."
+)
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """Login padrão OAuth2. Retorna Access Token."""
+    # Consome o UserRepository (já protegido contra Soft Delete)
     user = UserRepository.get_by_email(db, form_data.username)
+    
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou senha incorretos",
+            detail="E-mail ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Usuário inativo.")
+        raise HTTPException(status_code=403, detail="Acesso bloqueado. Conta inativa.")
 
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role, "user_id": user.id},
@@ -150,16 +173,24 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# --- ROTA LEGADA: REGISTRO SIMPLES (JSON) ---
+
+# ==========================================
+# 🛠️ UTILITÁRIOS E LEGADOS
+# ==========================================
+
 class UserSimpleCreate(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
-@router.post("/register-simple", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register-simple", 
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastro Simplificado (Testes/Admin)",
+    description="Cria apenas a entidade Usuário (sem Empresa ou arquivos). Útil para testes ou criação de Staff."
+)
 def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
-    """Cadastro simplificado (JSON) apenas para testes legados ou criação rápida de Admin."""
     if UserRepository.get_by_email(db, user_in.email):
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
+        raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
     
     user = User(
         email=user_in.email,
@@ -172,23 +203,23 @@ def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     return user
 
-# --- ROTA AUXILIAR DE PAGAMENTO (BLINDADA) ---
 class PaymentSimulationRequest(BaseModel):
-    email: str
+    email: EmailStr
 
-@router.post("/simulate-payment", status_code=status.HTTP_200_OK)
+@router.post(
+    "/simulate-payment", 
+    status_code=status.HTTP_200_OK,
+    summary="Simular Webhook de Pagamento",
+    description="Ativa a conta de um usuário. Funciona apenas em ambiente de desenvolvimento."
+)
 def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_db)):
-    """
-    Simula um webhook de pagamento ativando utilizadores instantaneamente.
-    [SEGURANÇA]: Bloqueada em ambiente de produção (Feature Flag).
-    """
     env = os.getenv("ENV", "development").lower()
     
-    # Trava (Feature Flag) baseada no ambiente
+    # Feature Flag de Segurança
     if env == "production":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Operação não permitida em produção. Utilize o Webhook oficial do parceiro de pagamentos."
+            detail="Operação bloqueada em produção. O sistema aguarda o webhook real do parceiro de pagamento."
         )
         
     user = UserRepository.get_by_email(db, email=data.email)
@@ -197,4 +228,4 @@ def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_d
     
     user.is_active = True
     db.commit()
-    return {"message": f"Pagamento simulado com sucesso em modo '{env}'! Utilizador {user.email} ativado."}
+    return {"message": f"Pagamento simulado (Modo: {env}). Conta de {user.email} ativada com sucesso."}

@@ -1,37 +1,78 @@
 """
 Modelagem do Motor de Regras de Emissão (Diretórios).
-Responsável por armazenar contatos manuais e links cruzando Tipo de Documento x Localização.
+Responsável por armazenar o 'mapa' de busca de documentos, cruzando 
+o Tipo de Documento com a localização geográfica (Estado/Cidade).
 """
+
 from sqlalchemy import Column, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base, generate_uuid
+from app.core.database import Base, SoftDeleteMixin, generate_uuid
 
-class EmissionRule(Base):
+class EmissionRule(Base, SoftDeleteMixin):
+    """
+    Define o procedimento de obtenção para um documento específico.
+    Funciona como um manual de instruções para o Módulo 3 (Fábrica de Certidões),
+    seja para automação via robô ou para solicitação manual.
+    """
     __tablename__ = "emission_rules"
 
-    id = Column(String, primary_key=True, default=generate_uuid, index=True)
+    # --- Identificador ---
+    id = Column(
+        String, 
+        primary_key=True, 
+        default=generate_uuid, 
+        index=True,
+        doc="ID único da regra de emissão"
+    )
     
-    # Qual documento esta regra ensina a emitir? (Ex: CND Municipal)
-    document_type_id = Column(String, ForeignKey("document_types.id", ondelete="CASCADE"), nullable=False, index=True)
+    # --- Contexto e Filtros (Onde e O Quê) ---
+    document_type_id = Column(
+        String, 
+        ForeignKey("document_types.id", ondelete="CASCADE"), 
+        nullable=False, 
+        index=True,
+        doc="Vínculo com o tipo de documento no catálogo"
+    )
     
-    # Localização (Se for Nacional, ambos ficam nulos. Se Estadual, só city fica nulo)
-    state = Column(String(2), nullable=True, index=True) # Ex: SP, RJ
-    city = Column(String, nullable=True, index=True)  # Ex: São Paulo, Campinas
+    state = Column(
+        String(2), 
+        nullable=True, 
+        index=True, 
+        doc="Sigla do Estado (UF). Nulo se for uma regra Nacional."
+    )
     
-    # Hiperlink dinâmico para o portal
-    emission_link = Column(String, nullable=True)
+    city = Column(
+        String, 
+        nullable=True, 
+        index=True, 
+        doc="Nome da cidade. Nulo se for regra Nacional ou Estadual."
+    )
     
-    # Contatos para solicitação manual (caso não tenha portal)
+    # --- Ações de Emissão (Como) ---
+    emission_link = Column(
+        String, 
+        nullable=True,
+        doc="Hiperlink oficial para o portal de emissão do órgão"
+    )
+    
+    # --- Contatos para Solicitação Manual ---
     contact_email = Column(String, nullable=True)
     contact_phone = Column(String, nullable=True)
     contact_whatsapp = Column(String, nullable=True)
     
-    # Campo livre para a equipe de operação (Ex: "A prefeitura só atende de terça e quinta")
-    operation_notes = Column(String, nullable=True)
+    # --- Notas de Operação ---
+    operation_notes = Column(
+        String, 
+        nullable=True,
+        doc="Instruções manuais para a equipe (Ex: 'Requer senha do e-CAC')"
+    )
 
+    # --- Auditoria ---
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relacionamento para o SQLAlchemy trazer os dados do tipo quando necessário
-    document_type = relationship("DocumentType")
+    # --- Relacionamentos (ORM) ---
+    document_type = relationship(
+        "app.models.document_type_model.DocumentType"
+    )

@@ -1,21 +1,26 @@
 """
 Repositório de Regras de Emissão (Diretórios).
 Isola a lógica de acesso à base de dados para a entidade EmissionRule.
+Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
 """
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import DatabaseError, IntegrityError
 from fastapi import HTTPException
+
+from app.repositories.base_repository import BaseRepository
 from app.models.emission_rule_model import EmissionRule
 from app.schemas.emission_rule_schemas import EmissionRuleCreate, EmissionRuleUpdate
 
-class EmissionRuleRepository:
+class EmissionRuleRepository(BaseRepository[EmissionRule]):
+    # Define qual modelo esta classe manipula para o BaseRepository
+    model = EmissionRule
     
-    @staticmethod
-    def get_all(db: Session, skip: int = 0, limit: int = 100):
+    @classmethod
+    def get_all(cls, db: Session, skip: int = 0, limit: int = 100):
         try:
-            # Usa joinedload para carregar os dados do DocumentType associado numa única query
-            rules = db.query(EmissionRule).options(joinedload(EmissionRule.document_type))\
-                      .order_by(EmissionRule.created_at.desc())\
+            # Usa get_active_query para ignorar os deletados e adiciona o joinedload
+            rules = cls.get_active_query(db).options(joinedload(cls.model.document_type))\
+                      .order_by(cls.model.created_at.desc())\
                       .offset(skip).limit(limit).all()
             
             # Injeta o nome do documento no objeto para o Pydantic ler facilmente
@@ -26,47 +31,46 @@ class EmissionRuleRepository:
         except DatabaseError:
             raise HTTPException(status_code=500, detail="Erro interno ao buscar regras de emissão.")
 
-    @staticmethod
-    def get_by_id(db: Session, rule_id: str) -> EmissionRule:
+    @classmethod
+    def get_by_id(cls, db: Session, rule_id: str) -> EmissionRule:
         try:
-            rule = db.query(EmissionRule).options(joinedload(EmissionRule.document_type)).filter(EmissionRule.id == rule_id).first()
+            # O mesmo aqui: get_active_query + joinedload
+            rule = cls.get_active_query(db).options(joinedload(cls.model.document_type))\
+                      .filter(cls.model.id == rule_id).first()
             if rule:
                 rule.document_type_name = rule.document_type.name if rule.document_type else "Desconhecido"
             return rule
         except DatabaseError:
             raise HTTPException(status_code=500, detail="Erro interno ao buscar regra de emissão.")
             
-    @staticmethod
-    def get_specific_rule(db: Session, document_type_id: str, state: str = None, city: str = None) -> EmissionRule:
+    @classmethod
+    def get_specific_rule(cls, db: Session, document_type_id: str, state: str = None, city: str = None) -> EmissionRule:
         """Busca uma regra específica cruzando o Documento e a Localização."""
         try:
-            query = db.query(EmissionRule).filter(EmissionRule.document_type_id == document_type_id)
+            query = cls.get_active_query(db).filter(cls.model.document_type_id == document_type_id)
             
-            # Filtro exato para Estado (ou garante que é nulo se for Nacional)
             if state:
-                query = query.filter(EmissionRule.state == state.upper())
+                query = query.filter(cls.model.state == state.upper())
             else:
-                query = query.filter(EmissionRule.state == None)
+                query = query.filter(cls.model.state == None)
                 
-            # Filtro exato para Cidade (ou garante que é nulo se for Estadual/Nacional)
             if city:
-                query = query.filter(EmissionRule.city.ilike(city))
+                query = query.filter(cls.model.city.ilike(city))
             else:
-                query = query.filter(EmissionRule.city == None)
+                query = query.filter(cls.model.city == None)
                 
             return query.first()
         except DatabaseError:
             raise HTTPException(status_code=500, detail="Erro interno ao buscar regra por localização.")
 
-    @staticmethod
-    def create(db: Session, rule_in: EmissionRuleCreate) -> EmissionRule:
+    @classmethod
+    def create(cls, db: Session, rule_in: EmissionRuleCreate) -> EmissionRule:
         try:
-            # Verifica se já existe para evitar cadastrar o mesmo link duas vezes para o mesmo local
-            existing = EmissionRuleRepository.get_specific_rule(db, rule_in.document_type_id, rule_in.state, rule_in.city)
+            existing = cls.get_specific_rule(db, rule_in.document_type_id, rule_in.state, rule_in.city)
             if existing:
                 raise HTTPException(status_code=400, detail="Já existe uma regra cadastrada para este documento nesta exata localização.")
                 
-            new_rule = EmissionRule(
+            new_rule = cls.model(
                 document_type_id=rule_in.document_type_id,
                 state=rule_in.state.upper() if rule_in.state else None,
                 city=rule_in.city,
@@ -80,8 +84,7 @@ class EmissionRuleRepository:
             db.commit()
             db.refresh(new_rule)
             
-            # Recarrega a regra com o join para ter o nome do documento ao retornar
-            return EmissionRuleRepository.get_by_id(db, new_rule.id)
+            return cls.get_by_id(db, new_rule.id)
         except IntegrityError:
             db.rollback()
             raise HTTPException(status_code=400, detail="Erro de integridade ao criar a regra de emissão.")
@@ -89,10 +92,10 @@ class EmissionRuleRepository:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao salvar a regra.")
 
-    @staticmethod
-    def update(db: Session, rule_id: str, rule_in: EmissionRuleUpdate) -> EmissionRule:
+    @classmethod
+    def update(cls, db: Session, rule_id: str, rule_in: EmissionRuleUpdate) -> EmissionRule:
         try:
-            rule = db.query(EmissionRule).filter(EmissionRule.id == rule_id).first()
+            rule = cls.get_by_id(db, rule_id)
             if not rule:
                 raise HTTPException(status_code=404, detail="Regra de emissão não encontrada.")
             
@@ -104,59 +107,60 @@ class EmissionRuleRepository:
                 
             db.commit()
             db.refresh(rule)
-            return EmissionRuleRepository.get_by_id(db, rule.id)
+            return cls.get_by_id(db, rule.id)
         except DatabaseError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao atualizar a regra.")
             
-    @staticmethod
-    def delete(db: Session, rule_id: str):
+    @classmethod
+    def delete(cls, db: Session, rule_id: str):
         try:
-            rule = db.query(EmissionRule).filter(EmissionRule.id == rule_id).first()
-            if not rule:
+            # Substituímos db.delete() pelo superpoder do cls.soft_delete()
+            success = cls.soft_delete(db, rule_id)
+            if not success:
                 raise HTTPException(status_code=404, detail="Regra de emissão não encontrada.")
-                
-            db.delete(rule)
-            db.commit()
             return True
         except DatabaseError:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao excluir a regra.")
 
-    @staticmethod
-    def resolve_rule_for_company(db: Session, document_type_id: str, company_id: str) -> EmissionRule:
+    @classmethod
+    def resolve_rule_for_company(cls, db: Session, document_type_id: str, company_id: str) -> EmissionRule:
         """
         RESOLUÇÃO MÁGICA: Cruza o Documento com o Endereço da Empresa e Escopo.
-        Devolve a regra exata (Link, Contatos) ou None se não houver regra para aquele endereço.
+        Agora totalmente blindada contra lixo eletrônico (Soft Delete).
         """
         try:
             from app.models.company_model import Company
             from app.models.document_type_model import DocumentType, DocumentScope
 
-            # 1. Busca os dados da Empresa (para ter Estado e Cidade)
-            company = db.query(Company).filter(Company.id == company_id).first()
+            # 1. Busca os dados da Empresa (Garante que a empresa não foi deletada)
+            company = db.query(Company).filter(
+                Company.id == company_id,
+                Company.deleted_at.is_(None) # <--- BLINDAGEM SOFT DELETE
+            ).first()
             if not company: return None
             
-            # 2. Busca o Tipo de Documento (para saber o Escopo)
-            doc_type = db.query(DocumentType).filter(DocumentType.id == document_type_id).first()
+            # 2. Busca o Tipo de Documento (Garante que o tipo de documento não foi deletado)
+            doc_type = db.query(DocumentType).filter(
+                DocumentType.id == document_type_id,
+                DocumentType.deleted_at.is_(None) # <--- BLINDAGEM SOFT DELETE
+            ).first()
             if not doc_type: return None
 
-            # 3. Lógica de Resolução baseada no Escopo
-            query = db.query(EmissionRule).filter(EmissionRule.document_type_id == document_type_id)
+            # 3. Lógica de Resolução baseada no Escopo ignorando regras deletadas
+            query = cls.get_active_query(db).filter(cls.model.document_type_id == document_type_id)
 
             if doc_type.scope == DocumentScope.NATIONAL.value:
-                # Regra Nacional: state e city devem ser NULOS
-                return query.filter(EmissionRule.state == None, EmissionRule.city == None).first()
+                return query.filter(cls.model.state == None, cls.model.city == None).first()
 
             elif doc_type.scope == DocumentScope.STATE.value:
-                # Regra Estadual: state deve bater com a empresa, city deve ser NULA
                 if not company.estado: return None
-                return query.filter(EmissionRule.state == company.estado.upper(), EmissionRule.city == None).first()
+                return query.filter(cls.model.state == company.estado.upper(), cls.model.city == None).first()
 
             elif doc_type.scope == DocumentScope.MUNICIPAL.value:
-                # Regra Municipal: state e city devem bater exatamente com a empresa
                 if not company.estado or not company.cidade: return None
-                return query.filter(EmissionRule.state == company.estado.upper(), EmissionRule.city.ilike(company.cidade)).first()
+                return query.filter(cls.model.state == company.estado.upper(), cls.model.city.ilike(company.cidade)).first()
 
             return None
         except DatabaseError:

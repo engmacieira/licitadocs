@@ -24,7 +24,7 @@ load_dotenv()
 # IMPORTANTE: Importe TODOS os arquivos de modelo aqui.
 # Se um modelo não for importado, o Alembic não detecta a tabela.
 # ------------------------------------------------------------------
-from app.core.database import Base
+from app.core.database import Base, SoftDeleteMixin
 from app.models import (
     certificate_model,
     company_model, 
@@ -32,10 +32,10 @@ from app.models import (
     document_category_model,
     document_model, 
     document_type_model,
+    emission_request_model,
     emission_rule_model,
     message_model,
     user_model, 
-    emission_request_model,
 ) 
 
 # ------------------------------------------------------------------

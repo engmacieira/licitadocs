@@ -1,21 +1,37 @@
+"""
+Repositório de Solicitações de Emissão.
+Gerencia a fila de trabalho para emissão de certidões.
+Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
+"""
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
+
+from app.repositories.base_repository import BaseRepository
 from app.models.emission_request_model import EmissionRequest
 from app.models.company_model import Company
 from app.schemas.emission_request_schemas import EmissionRequestCreate, EmissionRequestUpdate
 
-class EmissionRequestRepository:
+class EmissionRequestRepository(BaseRepository[EmissionRequest]):
+    # Define qual modelo esta classe manipula para o BaseRepository
+    model = EmissionRequest
     
-    @staticmethod
-    def get_by_rule_and_company(db: Session, rule_id: str, company_id: str):
-        requests = db.query(EmissionRequest).filter(
-            EmissionRequest.emission_rule_id == rule_id,
-            EmissionRequest.company_id == company_id
-        ).order_by(EmissionRequest.created_at.desc()).all()
+    @classmethod
+    def get_by_rule_and_company(cls, db: Session, rule_id: str, company_id: str):
+        """Busca o histórico de solicitações de uma regra para uma empresa."""
+        # Utiliza a query ativa (cls.get_active_query) que JÁ IGNORA as solicitações deletadas
+        requests = cls.get_active_query(db).filter(
+            cls.model.emission_rule_id == rule_id,
+            cls.model.company_id == company_id
+        ).order_by(cls.model.created_at.desc()).all()
         
         results = []
         for req in requests:
-            company = db.query(Company).filter(Company.id == req.company_id).first()
+            # Busca os dados da empresa, mas blinda contra empresas deletadas (Soft Delete)
+            company = db.query(Company).filter(
+                Company.id == req.company_id,
+                Company.deleted_at.is_(None)
+            ).first()
+            
             results.append({
                 "id": req.id,
                 "date": req.created_at,
@@ -26,9 +42,10 @@ class EmissionRequestRepository:
             })
         return results
 
-    @staticmethod
-    def create(db: Session, rule_id: str, user_id: str, payload: EmissionRequestCreate):
-        new_request = EmissionRequest(
+    @classmethod
+    def create(cls, db: Session, rule_id: str, user_id: str, payload: EmissionRequestCreate):
+        """Registra uma nova solicitação na fila."""
+        new_request = cls.model(
             emission_rule_id=rule_id,
             company_id=payload.company_id,
             requested_by_id=user_id
@@ -37,7 +54,12 @@ class EmissionRequestRepository:
         db.commit()
         db.refresh(new_request)
         
-        company = db.query(Company).filter(Company.id == payload.company_id).first()
+        # Blinda a busca da empresa contra o Soft Delete para montar a resposta
+        company = db.query(Company).filter(
+            Company.id == payload.company_id,
+            Company.deleted_at.is_(None)
+        ).first()
+        
         return {
             "id": new_request.id,
             "date": new_request.created_at,
@@ -47,9 +69,12 @@ class EmissionRequestRepository:
             "status": new_request.status
         }
 
-    @staticmethod
-    def update(db: Session, request_id: str, payload: EmissionRequestUpdate):
-        req = db.query(EmissionRequest).filter(EmissionRequest.id == request_id).first()
+    @classmethod
+    def update(cls, db: Session, request_id: str, payload: EmissionRequestUpdate):
+        """Atualiza o status ou previsão de entrega da solicitação."""
+        # Reutiliza o get_by_id da classe pai, que JÁ APLICA o filtro de Soft Delete!
+        req = cls.get_by_id(db, request_id)
+        
         if not req:
             raise HTTPException(status_code=404, detail="Registo de emissão não encontrado.")
             

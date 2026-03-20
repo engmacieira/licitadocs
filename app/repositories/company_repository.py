@@ -6,16 +6,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional, List
 
+from app.repositories.base_repository import BaseRepository
 from app.models.company_model import Company
 from app.schemas.company_schemas import CompanyCreate, CompanyUpdate
 
-class CompanyRepository:
-    @staticmethod
-    def create(db: Session, company: CompanyCreate) -> Company:
-        """
-        Cria uma nova empresa.
-        """
-        db_company = Company(
+class CompanyRepository(BaseRepository[Company]):
+    # Indica para a classe pai qual é o modelo que estamos manipulando
+    model = Company 
+
+    @classmethod
+    def create(cls, db: Session, company: CompanyCreate) -> Company:
+        """Cria uma nova empresa."""
+        db_company = cls.model(
             razao_social=company.name, # Mapeamento Schema -> Model
             cnpj=company.cnpj,
         )
@@ -28,37 +30,36 @@ class CompanyRepository:
             db.rollback()
             raise ValueError(f"Erro ao criar empresa: {str(e)}")
 
-    @staticmethod
-    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[Company]:
-        """Lista todas as empresas (Paginação simples)."""
-        return db.query(Company).offset(skip).limit(limit).all()
+    @classmethod
+    def get_all(cls, db: Session, skip: int = 0, limit: int = 100) -> List[Company]:
+        """Lista todas as empresas ativas (Paginação simples)."""
+        # Chama a inteligência do BaseRepository que já filtra os deletados
+        return super().get_all(db, skip, limit)
 
-    @staticmethod
-    def get_by_id(db: Session, company_id: str) -> Optional[Company]:
-        """Busca empresa por UUID."""
-        return db.query(Company).filter(Company.id == company_id).first()
-    
-    @staticmethod
-    def get_by_cnpj(db: Session, cnpj: str) -> Optional[Company]:
+    @classmethod
+    def get_by_id(cls, db: Session, company_id: str) -> Optional[Company]:
+        """Busca empresa ativa por UUID."""
+        # Chama a inteligência do BaseRepository que já filtra os deletados
+        return super().get_by_id(db, company_id)
+
+    @classmethod
+    def get_by_cnpj(cls, db: Session, cnpj: str) -> Optional[Company]:
         """Busca empresa por CNPJ (Único)."""
-        return db.query(Company).filter(Company.cnpj == cnpj).first()
+        # Usa get_active_query para ignorar CNPJs de contas excluídas
+        return cls.get_active_query(db).filter(cls.model.cnpj == cnpj).first()
 
-    @staticmethod
-    def update(db: Session, company_id: str, company_data: CompanyUpdate) -> Optional[Company]:
-        """
-        Atualiza dados da empresa.
-        Retorna None se não encontrar.
-        """
-        db_company = db.query(Company).filter(Company.id == company_id).first()
+    @classmethod
+    def update(cls, db: Session, company_id: str, company_data: CompanyUpdate) -> Optional[Company]:
+        """Atualiza dados da empresa. Retorna None se não encontrar."""
+        # Usamos o método próprio (que já tem soft delete) em vez de db.query puro
+        db_company = cls.get_by_id(db, company_id)
         if not db_company:
             return None
         
-        # Atualiza apenas campos preenchidos
         update_data = company_data.model_dump(exclude_unset=True)
         
         try:
             for key, value in update_data.items():
-                # Tratamento especial para mapeamento de nomes diferentes
                 if key == "name":
                     setattr(db_company, "razao_social", value)
                 else:
@@ -71,20 +72,10 @@ class CompanyRepository:
             db.rollback()
             raise ValueError(f"Erro ao atualizar empresa: {str(e)}")
 
-    @staticmethod
-    def delete(db: Session, company_id: str) -> bool:
+    @classmethod
+    def delete(cls, db: Session, company_id: str) -> bool:
         """
-        Remove uma empresa.
+        Remove uma empresa (Agora via Soft Delete).
         Retorna True se sucesso, False se não encontrada.
         """
-        db_company = db.query(Company).filter(Company.id == company_id).first()
-        if not db_company:
-            return False
-            
-        try:
-            db.delete(db_company)
-            db.commit()
-            return True
-        except SQLAlchemyError as e:
-            db.rollback()
-            raise ValueError(f"Erro ao deletar empresa (possível vínculo com dados): {str(e)}")
+        return cls.soft_delete(db, company_id)

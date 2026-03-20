@@ -1,99 +1,108 @@
 """
-Modelagem de Documentos (SQLAlchemy).
-Responsável por mapear a tabela 'documents' e suas regras de negócio.
+Modelagem de Documentos (Geral).
+Responsável por mapear os arquivos físicos armazenados e seus metadados básicos.
+Diferencia uploads manuais de clientes de emissões automáticas do sistema.
 """
-import uuid
+
 import enum
-from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Text, Enum, Boolean
+from sqlalchemy import Column, String, Date, ForeignKey, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base
-
-# Função auxiliar para gerar UUIDs compatíveis com SQLite e Postgres
-def generate_uuid():
-    return str(uuid.uuid4())
+from app.core.database import Base, SoftDeleteMixin, generate_uuid
 
 class DocumentStatus(str, enum.Enum):
     """
-    Define os estados possíveis de um documento no sistema.
-    Usado para lógica de coloração no Frontend e alertas.
+    Define os estados possíveis de um documento para controle visual.
+    Utilizado para o 'Semáforo' no Dashboard de Conformidade (US-02).
     """
-    VALID = "valid"       # Em dia
-    WARNING = "warning"   # Vence em breve (ex: < 30 dias)
-    EXPIRED = "expired"   # Vencido
+    VALID = "valid"       # ✅ Documento dentro do prazo
+    WARNING = "warning"   # ⚠️ Próximo ao vencimento
+    EXPIRED = "expired"   # ❌ Prazo de validade ultrapassado
 
-class Document(Base):
+class Document(Base, SoftDeleteMixin):
     """
-    Representa um arquivo enviado (Upload) vinculado a uma empresa.
-    
-    Contém metadados (nome, validade) e o caminho físico do arquivo (file_path).
-    Não armazena o binário do arquivo no banco (apenas o ponteiro).
+    Entidade que representa o arquivo físico e seu estado no sistema.
+    Não armazena o binário, apenas o ponteiro (path) e metadados de validade.
     """
     __tablename__ = "documents"
 
-    # =================================================================
-    # Identificadores
-    # =================================================================
-    title = Column(String, nullable=True)
-    id = Column(String, primary_key=True, default=generate_uuid, index=True, doc="Identificador único universal (UUID) do documento")
+    # --- Identificadores e Título ---
+    id = Column(
+        String, 
+        primary_key=True, 
+        default=generate_uuid, 
+        index=True, 
+        doc="Identificador único universal (UUID)"
+    )
+    title = Column(
+        String, 
+        nullable=True, 
+        doc="Título amigável para exibição (Ex: 'Contrato Social 2024')"
+    )
 
-    # =================================================================
-    # Metadados do Arquivo
-    # =================================================================
+    # --- Metadados do Arquivo Físico ---
     filename = Column(
         String, 
         nullable=False,
-        doc="Nome original do arquivo enviado pelo usuário (ex: 'certidao_fgts.pdf')"
+        doc="Nome original do arquivo (Ex: 'certidao_fgts.pdf')"
     )
     file_path = Column(
         String, 
         nullable=False,
-        doc="Caminho relativo ou absoluto onde o arquivo foi salvo no disco/bucket"
+        doc="Caminho relativo no storage/disco para recuperação do arquivo"
     )
     is_client_upload = Column(
         Boolean, 
         default=False,
-        doc="True se enviado pelo cliente na área de Configurações/Assinatura. False se emitido pelo sistema/admin."
+        doc="Indica se o arquivo veio de um upload manual do cliente ou via sistema/admin"
     )
 
-    # =================================================================
-    # Regras de Negócio (Vencimento & Status)
-    # =================================================================
+    # --- Regras de Negócio e Validade ---
     expiration_date = Column(
         Date, 
         nullable=True,
-        doc="Data de validade impressa no documento (Null = Documento sem vencimento)"
+        doc="Data de validade (Null indica documento permanente/sem vencimento)"
     )
     status = Column(
         String, 
         default=DocumentStatus.VALID.value,
-        doc="Status atual calculado (Valid/Warning/Expired). Persistido para facilitar queries."
+        doc="Status atual calculado (Valid/Warning/Expired)"
     )
 
-    # =================================================================
-    # Relacionamentos (Foreign Keys)
-    # =================================================================
-    company_id = Column(String, ForeignKey("companies.id"), nullable=False)
+    # --- Relacionamentos e Vínculos (Foreign Keys) ---
+    company_id = Column(
+        String, 
+        ForeignKey("companies.id"), 
+        nullable=False,
+        doc="Vínculo com a empresa proprietária do documento"
+    )
     
-    # Backref permite acessar 'company.documents' sem declarar lá explicitamente
-    company = relationship("app.models.company_model.Company", back_populates="documents")
-    
-    # Relacionamento 1:1 com Certidão (Se este documento for uma certidão)
-    certificate_info = relationship(
-        "Certificate", 
-        back_populates="document", 
-        uselist=False,
-        cascade="all, delete-orphan"
+    uploaded_by_id = Column(
+        String, 
+        ForeignKey("users.id"), 
+        nullable=True,
+        doc="ID do usuário (Admin ou Cliente) que realizou a ação"
     )
 
-    # =================================================================
-    # Auditoria (Quem e Quando)
-    # =================================================================
-    uploaded_by_id = Column(String, ForeignKey("users.id"), nullable=True)
-    uploader = relationship("app.models.user_model.User")
-    
+    # --- Auditoria ---
     created_at = Column(
         DateTime(timezone=True), 
         server_default=func.now(),
-        doc="Data e hora exata do upload"
+        doc="Data e hora exata do registro no sistema"
+    )
+
+    # --- Relacionamentos (ORM) ---
+    company = relationship(
+        "app.models.company_model.Company", 
+        back_populates="documents"
+    )
+    
+    uploader = relationship("app.models.user_model.User")
+    
+    # Vínculo 1:1 com Certidão (Se este documento possuir dados técnicos extraídos)
+    certificate_info = relationship(
+        "app.models.certificate_model.Certificate", 
+        back_populates="document", 
+        uselist=False,
+        cascade="all, delete-orphan"
     )

@@ -1,15 +1,17 @@
 """
 Ponto de Entrada da Aplicação (Entrypoint).
-Inicializa o FastAPI, configura Middlewares e registra as Rotas.
+Inicializa o FastAPI, configura Middlewares e regista as Rotas.
 """
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-#from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.schedulers.background import BackgroundScheduler
 
-# A importação desses módulos já acionará o Fail Fast (sys.exit) se faltarem as envs
+# Importações de Base de Dados e Segurança
 from app.core.database import engine, Base
 from app.core.security import SECRET_KEY
+
+# Importação dos Routers Refatorados
 from app.routers import (
     auth_router, 
     document_router, 
@@ -21,30 +23,40 @@ from app.routers import (
     message_router,
     emission_rule_router
 )
+
+# Models para garantir a criação das tabelas pelo SQLAlchemy
 from app.models import certificate_model
 from app.models.document_automation_model import DocumentAutomationConfig
-
 from app.services.orchestrator_service import OrchestratorService
 
 ENV = os.getenv("ENV", "development").lower()
 
-# Configuração da Aplicação
+# ==========================================
+# 🚀 CONFIGURAÇÃO DA APLICAÇÃO (FASTAPI)
+# ==========================================
+
 app = FastAPI(
     title="LicitaDoc API",
-    version="1.0.3", 
+    version="1.1.0", # Versão atualizada pós-refatoração
     description="""
-    API Backend do sistema LicitaDoc.
+    **API Backend do sistema LicitaDoc.**
     
-    ## Módulos Principais:
-    * **Auth:** Login e Registro (JWT).
-    * **Documents:** Upload e Listagem com isolamento por empresa.
-    * **AI:** Concierge Jurídico (RAG) para análise de editais.
-    * **Admin:** Gestão de Multi-Tenancy (Empresas).
+    A plataforma definitiva para gestão de documentos e certidões para licitações.
+    
+    ## 🧩 Módulos Principais:
+    * **🔐 Auth & Users:** Login, Registo, RBAC e Gestão de Perfil.
+    * **🏢 Companies & Team:** Multi-Tenancy, Gestão de Membros (MASTER/VIEWER) e Onboarding.
+    * **🗂️ Vault (Documents):** Upload seguro, Listagem Unificada e Soft Delete.
+    * **🤖 AI Concierge:** Assistente Virtual RAG focado exclusivamente no Cofre da Empresa.
+    * **⚙️ Admin & Backoffice:** Gestão global, Broadcasts de mensagens e configuração de Automações.
     """,
     docs_url="/docs",
     redoc_url="/redoc"
 )
 
+# ==========================================
+# ⏰ BACKGROUND JOBS (CRON)
+# ==========================================
 '''
 # --- CONFIGURAÇÃO DO BACKGROUND JOBS (APScheduler) ---
 scheduler = BackgroundScheduler()
@@ -64,7 +76,10 @@ def stop_scheduler():
     print("⏰ APScheduler desligado.")
 '''
 
-# --- Configuração de CORS ---
+# ==========================================
+# 🌐 MIDDLEWARES (CORS)
+# ==========================================
+
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -78,18 +93,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Registro de Rotas ---
+# ==========================================
+# 🔀 REGISTO DE ROTAS (ENDPOINTS)
+# ==========================================
+
 app.include_router(auth_router.router)
 app.include_router(user_router.router)
-app.include_router(document_router.router)
-app.include_router(ai_router.router)
-app.include_router(admin_router.router)
 app.include_router(company_router.router)
+app.include_router(document_router.router)
 app.include_router(dashboard_router.router)
 app.include_router(message_router.router)
 app.include_router(emission_rule_router.router)
+app.include_router(ai_router.router)
+app.include_router(admin_router.router)
 
-# Rota de Health Check
+# ==========================================
+# ❤️ HEALTH CHECK
+# ==========================================
+
 @app.get("/", tags=["Health"])
 def health_check():
-    return {"status": "ok", "version": "1.0.3", "system": "LicitaDoc API", "environment": ENV}
+    """Endpoint básico para verificar se a API está online."""
+    return {
+        "status": "ok", 
+        "version": "1.1.0", 
+        "system": "LicitaDoc API", 
+        "environment": ENV
+    }

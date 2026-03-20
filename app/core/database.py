@@ -1,50 +1,62 @@
 """
 Configuração do Banco de Dados (SQLAlchemy).
-Gerencia a conexão e a sessão (SessionLocal) usada em cada requisição.
+Gerencia a conexão, o pool de sessões e a base declarativa para os modelos.
 """
+
 import os
 import sys
 import uuid
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.sql import func
+from dotenv import load_dotenv
 
+# Inicialização de ambiente
 load_dotenv()
-# 1. Definição da URL de Conexão (Exclusivo via Variável de Ambiente)
-DATABASE_URL_ENV = os.getenv("DATABASE_URL")
 
-# Trava de Segurança: Sem PostgreSQL, sem inicialização. (Fail Fast)
-if not DATABASE_URL_ENV:
-    print("🚨 ERRO CRÍTICO [DATABASE]: Variável DATABASE_URL não encontrada no ambiente.")
-    print("O LicitaDoc não utiliza mais SQLite local. É obrigatório fornecer a string de conexão do PostgreSQL.")
-    print("Verifique o seu arquivo .env ou as variáveis injetadas no docker-compose.")
+# 1. Configurações de Conexão
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Protocolo de Tolerância Zero: Interrompe a execução se o banco não estiver configurado
+if not DATABASE_URL:
+    print("🚨 [DATABASE] ERRO CRÍTICO: Variável DATABASE_URL não encontrada.")
+    print("O LicitaDoc exige uma string de conexão PostgreSQL válida no arquivo .env.")
     sys.exit(1)
 
-# 2. Engine (O Motor)
-# Como agora somos 100% PostgreSQL, não precisamos mais do argumento 'check_same_thread=False'
-engine = create_engine(DATABASE_URL_ENV)
+# 2. Engine & Session
+# Configurado para PostgreSQL (sem check_same_thread necessário)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-# 3. SessionFactory (Fábrica de Sessões)
-# autocommit=False: Controle transacional manual para garantir o ACID
+# Fábrica de sessões com controle transacional manual (ACID)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 4. Base Model
-# Todas as classes (User, Company, Document) herdarão daqui
+# 3. Base Declarativa
+# Todos os models em app/models devem herdar desta classe
 Base = declarative_base()
 
-# 5. Funções Utilitárias de Banco
+# --- Funções Utilitárias ---
 
-def generate_uuid():
+class SoftDeleteMixin:
     """
-    Gera UUID compatível com chave primária (String).
+    Mixin para implementação de Soft Delete.
+    Adiciona a coluna 'deleted_at' a qualquer modelo que herdar desta classe.
+    """
+    deleted_at = Column(
+        DateTime(timezone=True), 
+        nullable=True, 
+        doc="Data e hora da exclusão lógica (Null = Registro Ativo)"
+    )
+
+def generate_uuid() -> str:
+    """
+    Gera um UUID v4 como string para chaves primárias.
     """
     return str(uuid.uuid4())
 
-# Dependency Injection (Usado nas Rotas: db: Session = Depends(get_db))
 def get_db():
     """
-    Gera uma nova sessão de banco para cada requisição HTTP e a fecha no final.
-    Garante que não deixaremos conexões penduradas (Memory Leak) ou esgotaremos o Pool.
+    Dependency Injection para rotas FastAPI.
+    Garante que cada requisição tenha sua própria sessão e que ela seja fechada.
     """
     db = SessionLocal()
     try:

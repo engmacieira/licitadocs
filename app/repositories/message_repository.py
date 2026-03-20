@@ -1,24 +1,30 @@
 """
 Repositório de Mensagens.
 Isola a lógica de acesso à base de dados para a entidade Message.
+Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DatabaseError
 from fastapi import HTTPException
+
+from app.repositories.base_repository import BaseRepository
 from app.models.message_model import Message
 from app.schemas.message_schemas import MessageCreate
 
-class MessageRepository:
+class MessageRepository(BaseRepository[Message]):
+    # Define qual modelo esta classe manipula para o BaseRepository
+    model = Message
     
-    @staticmethod
-    def create(db: Session, company_id: str, sender_id: str, message_in: MessageCreate) -> Message:
+    @classmethod
+    def create(cls, db: Session, company_id: str, sender_id: str, message_in: MessageCreate) -> Message:
+        """Cria uma nova mensagem ou ticket no banco de dados."""
         try:
-            new_message = Message(
+            # Usamos cls.model em vez de chamar Message diretamente
+            new_message = cls.model(
                 company_id=company_id,
                 sender_id=sender_id,
                 content=message_in.content,
                 message_type=message_in.message_type,
-                # --- NOVOS CAMPOS (US-2412: Contexto e Tickets) ---
                 subject=message_in.subject,
                 related_document_id=message_in.related_document_id,
                 attachment_path=message_in.attachment_path,
@@ -32,18 +38,23 @@ class MessageRepository:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao salvar a mensagem/ticket.")
 
-    @staticmethod
-    def get_by_company(db: Session, company_id: str):
+    @classmethod
+    def get_by_company(cls, db: Session, company_id: str):
+        """Busca o histórico de mensagens ativas de uma empresa."""
         try:
-            # Retorna o histórico todo ordenado cronologicamente (O Frontend cuida de agrupar as threads pelo parent_id)
-            return db.query(Message).filter(Message.company_id == company_id).order_by(Message.created_at.asc()).all()
+            # Substituído db.query por get_active_query para ignorar mensagens deletadas
+            return cls.get_active_query(db).filter(
+                cls.model.company_id == company_id
+            ).order_by(cls.model.created_at.asc()).all()
         except DatabaseError:
             raise HTTPException(status_code=500, detail="Erro interno ao buscar mensagens.")
 
-    @staticmethod
-    def mark_as_read(db: Session, message_id: str) -> Message:
+    @classmethod
+    def mark_as_read(cls, db: Session, message_id: str) -> Message:
+        """Marca uma mensagem como lida."""
         try:
-            message = db.query(Message).filter(Message.id == message_id).first()
+            # Reutiliza a inteligência do BaseRepository (que já checa o Soft Delete)
+            message = cls.get_by_id(db, message_id)
             if message:
                 message.is_read = True
                 db.commit()
@@ -53,11 +64,12 @@ class MessageRepository:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao atualizar a mensagem.")
 
-    # --- NOVA FUNÇÃO BÓNUS: FECHAR TICKET / RESOLVER PENDÊNCIA ---
-    @staticmethod
-    def resolve_ticket(db: Session, message_id: str) -> Message:
+    @classmethod
+    def resolve_ticket(cls, db: Session, message_id: str) -> Message:
+        """Fecha um ticket ou pendência."""
         try:
-            message = db.query(Message).filter(Message.id == message_id).first()
+            # Reutiliza o get_by_id herdado
+            message = cls.get_by_id(db, message_id)
             if message:
                 message.is_resolved = True
                 db.commit()
@@ -67,10 +79,13 @@ class MessageRepository:
             db.rollback()
             raise HTTPException(status_code=500, detail="Erro interno ao resolver o ticket.")
         
-    @staticmethod
-    def get_all_tickets_admin(db: Session):
+    @classmethod
+    def get_all_tickets_admin(cls, db: Session):
+        """Busca todos os tickets ativos para a visão do Administrador."""
         try:
-            # Traz todos os chats e pendências, ignorando os "avisos de sistema"
-            return db.query(Message).filter(Message.message_type != "system").order_by(Message.created_at.desc()).all()
+            # Traz todos os chats e pendências, blindado pelo Soft Delete
+            return cls.get_active_query(db).filter(
+                cls.model.message_type != "system"
+            ).order_by(cls.model.created_at.desc()).all()
         except DatabaseError:
             raise HTTPException(status_code=500, detail="Erro interno ao buscar todos os tickets.")

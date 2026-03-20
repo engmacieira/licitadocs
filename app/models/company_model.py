@@ -1,68 +1,94 @@
 """
 Modelagem de Empresas (Tenant).
-Responsável pelos dados da Pessoa Jurídica e configurações da empresa.
+Entidade central responsável pelos dados da Pessoa Jurídica, 
+configurações de Onboarding e gestão de membros.
 """
-from sqlalchemy import Column, String, DateTime, ForeignKey, Boolean
+
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.core.database import Base, generate_uuid
+from app.core.database import Base, SoftDeleteMixin, generate_uuid
 
-class Company(Base):
+class Company(Base, SoftDeleteMixin):
+    """
+    Representa uma Empresa Licitante no sistema.
+    Gerencia o estado de conformidade (Onboarding) e o vínculo com os usuários.
+    """
     __tablename__ = "companies"
 
+    # --- Identificador Único ---
     id = Column(String, primary_key=True, default=generate_uuid, index=True)
     
     # --- Dados Cadastrais (PJ) ---
-    cnpj = Column(String, unique=True, index=True, nullable=False)
-    razao_social = Column(String, nullable=False)
+    cnpj = Column(String, unique=True, index=True, nullable=False, doc="CNPJ da empresa (chave de busca principal)")
+    razao_social = Column(String, nullable=False, doc="Nome jurídico oficial")
     nome_fantasia = Column(String, nullable=True)
     inscricao_estadual = Column(String, nullable=True)
     inscricao_municipal = Column(String, nullable=True)
     
-    # --- Endereço Completo ---
+    # --- Localização (Endereço Completo) ---
     cep = Column(String, nullable=True)
     logradouro = Column(String, nullable=True)
     numero = Column(String, nullable=True)
     complemento = Column(String, nullable=True)
     bairro = Column(String, nullable=True)
     cidade = Column(String, nullable=True)
-    estado = Column(String, nullable=True) # UF
+    estado = Column(String, nullable=True, doc="UF da sede da empresa")
     
-    # --- Contato e Responsável ---
+    # --- Contato e Responsabilidade Jurídica ---
     telefone = Column(String, nullable=True)
     whatsapp = Column(String, nullable=True)
     email_corporativo = Column(String, nullable=True)
-    responsavel_nome = Column(String, nullable=True)
+    responsavel_nome = Column(String, nullable=True, doc="Nome do sócio/procurador responsável")
     responsavel_cpf = Column(String, nullable=True)
 
-    # --- Auditoria (Owner original) ---
-    owner_id = Column(String, ForeignKey("users.id"), nullable=True)
-    
-    # Relacionamentos (Usando String para evitar Circular Import)
-    owner = relationship("app.models.user_model.User", back_populates="owned_companies", foreign_keys=[owner_id])
-    
-    # Vínculos N:N
-    members = relationship("app.models.user_model.UserCompanyLink", back_populates="company", cascade="all, delete-orphan")
-    
-    # Documentos
-    documents = relationship("app.models.document_model.Document", back_populates="company", cascade="all, delete-orphan")
+    # --- Propriedade e Auditoria ---
+    owner_id = Column(
+        String, 
+        ForeignKey("users.id"), 
+        nullable=True, 
+        doc="Usuário que realizou o cadastro inicial"
+    )
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True, doc="Define se a empresa tem acesso ao sistema")
     
-    # Controle Geral
-    is_active = Column(Boolean, default=True)
+    # --- Fluxo de Onboarding (Flags de Regularidade) ---
+    is_terms_accepted = Column(Boolean, default=False, doc="1. Aceite dos termos de uso")
+    is_payment_active = Column(Boolean, default=False, doc="2. Status da assinatura/pagamento")
+    is_data_completed = Column(Boolean, default=False, doc="3. Perfil da empresa 100% preenchido")
+    is_contract_signed = Column(Boolean, default=False, doc="4. Procuração digital assinada")
+    is_admin_verified = Column(Boolean, default=False, doc="5. Verificação manual da equipe LicitaDoc")
     
-    # --- Flags de Regularidade (Onboarding) ---
-    is_terms_accepted = Column(Boolean, default=False)    # 1. Aceite dos termos de uso
-    is_payment_active = Column(Boolean, default=False)    # 2. Pagamento 
-    is_data_completed = Column(Boolean, default=False)    # 3. Dados completos da empresa
-    is_contract_signed = Column(Boolean, default=False)   # 4. Assinatura do Contrato/Procuração 
-    is_admin_verified = Column(Boolean, default=False)    # 5. Aprovação da Equipa Admin
+    # Registro de pendências apontadas pela moderação
+    admin_pendencies = Column(Text, nullable=True)
     
-    # --- Validação da Equipa Admin ---
-    admin_pendencies = Column(String, nullable=True)      # Caso tenha pendências, o admin informa aqui
+    # --- Relacionamentos (ORM) ---
+    # Vinculo com o criador
+    owner = relationship(
+        "app.models.user_model.User", 
+        back_populates="owned_companies", 
+        foreign_keys=[owner_id]
+    )
+    
+    # Membros da empresa (N:N via tabela associativa)
+    members = relationship(
+        "app.models.user_model.UserCompanyLink", 
+        back_populates="company", 
+        cascade="all, delete-orphan"
+    )
+    
+    # Documentos e Certidões vinculados
+    documents = relationship(
+        "app.models.document_model.Document", 
+        back_populates="company", 
+        cascade="all, delete-orphan"
+    )
     
     @property
     def is_regular(self):
-        """Retorna True apenas se cumprir todos os requisitos (Sua pontuação 15)"""
+        """
+        Lógica de Negócio: Retorna True apenas se a empresa cumprir os 
+        requisitos críticos de operação (Contrato, Pagamento e Verificação Admin).
+        """
         return self.is_contract_signed and self.is_payment_active and self.is_admin_verified
