@@ -3,11 +3,12 @@ import uuid
 from app.models.message_model import Message
 from app.models.company_model import Company
 from app.models.user_model import User
+from app.tests.conftest import generate_valid_cnpj
 
 @pytest.fixture
 def message_setup(db_session):
     uid = uuid.uuid4().hex[:6]
-    company = Company(cnpj=f"11221122{uid}", razao_social="Empresa Mensagens")
+    company = Company(cnpj=generate_valid_cnpj(), razao_social="Empresa Mensagens")
     user = User(email=f"sender_{uid}@example.com", password_hash="123")
     db_session.add(company)
     db_session.add(user)

@@ -3,10 +3,10 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from app.models.company_model import Company
 from app.models.user_model import User
+from app.tests.conftest import generate_valid_cnpj
 
 def test_create_company_happy_path(db_session):
-    uid = uuid.uuid4().hex[:6]
-    cnpj = f"12345678{uid}"
+    cnpj = generate_valid_cnpj()
     company = Company(
         cnpj=cnpj,
         razao_social="Empresa Teste LTDA",
@@ -29,8 +29,7 @@ def test_create_company_happy_path(db_session):
     assert company_in_db.id is not None
 
 def test_company_duplicate_cnpj(db_session):
-    uid = uuid.uuid4().hex[:6]
-    cnpj = f"11111111{uid}"
+    cnpj = generate_valid_cnpj()
     c1 = Company(cnpj=cnpj, razao_social="Empresa 1")
     c2 = Company(cnpj=cnpj, razao_social="Empresa 2")
     
@@ -53,8 +52,7 @@ def test_company_null_razao_social(db_session):
     db_session.rollback()
 
 def test_company_is_regular_logic(db_session):
-    uid = uuid.uuid4().hex[:6]
-    cnpj = f"33333333{uid}"
+    cnpj = generate_valid_cnpj()
     company = Company(cnpj=cnpj, razao_social="Empresa Regularidade")
     db_session.add(company)
     db_session.commit()
@@ -77,7 +75,7 @@ def test_company_is_regular_logic(db_session):
 def test_company_owner_relationship(db_session):
     uid = uuid.uuid4().hex[:6]
     email = f"owner_{uid}@example.com"
-    cnpj = f"44444444{uid}"
+    cnpj = generate_valid_cnpj()
     owner = User(email=email, password_hash="123")
     db_session.add(owner)
     db_session.commit()

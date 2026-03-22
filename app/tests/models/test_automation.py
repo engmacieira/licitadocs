@@ -7,11 +7,12 @@ from app.models.company_model import Company
 from app.models.document_type_model import DocumentType
 from app.models.user_model import User
 from app.models.document_category_model import DocumentCategory
+from app.tests.conftest import generate_valid_cnpj
 
 @pytest.fixture
 def base_setup(db_session):
     uid = uuid.uuid4().hex[:6]
-    company = Company(cnpj=f"99887766{uid}", razao_social="Empresa Automação")
+    company = Company(cnpj=generate_valid_cnpj(), razao_social="Empresa Automação")
     user = User(email=f"req_user_{uid}@example.com", password_hash="123")
     cat = DocumentCategory(name=f"Fiscal_{uid}", slug=f"fiscal_{uid}")
     db_session.add(company)

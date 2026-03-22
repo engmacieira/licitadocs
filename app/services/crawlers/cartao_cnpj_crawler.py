@@ -5,6 +5,7 @@ Consome a BrasilAPI (Gratuita) e gera um PDF estruturado em memória.
 import requests
 from app.services.crawlers.base_crawler import BaseCrawler
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 
 class CartaoCNPJCrawler(BaseCrawler):
     def fetch(self) -> dict:
@@ -34,7 +35,7 @@ class CartaoCNPJCrawler(BaseCrawler):
             
             # Título
             pdf.set_font("helvetica", "B", 14)
-            pdf.cell(0, 10, "COMPROVANTE DE INSCRIÇÃO E SITUAÇÃO CADASTRAL", ln=True, align="C")
+            pdf.cell(0, 10, "COMPROVANTE DE INSCRIÇÃO E SITUAÇÃO CADASTRAL", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
             pdf.ln(5)
             
             # Função auxiliar para criar as linhas da tabela
@@ -44,7 +45,7 @@ class CartaoCNPJCrawler(BaseCrawler):
                 pdf.set_font("helvetica", "", 10)
                 # Pega apenas os primeiros 75 caracteres para não quebrar a linha do PDF
                 valor_str = str(valor)[:75] if valor else "N/A"
-                pdf.cell(0, 8, f" {valor_str}", border=1, ln=True)
+                pdf.cell(0, 8, f" {valor_str}", border=1, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
             # Preencher os dados
             add_linha("CNPJ", dados.get("cnpj", ""))

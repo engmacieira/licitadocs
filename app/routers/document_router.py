@@ -5,7 +5,7 @@ Controla o upload, download, listagem unificada e o catálogo de tipos de certid
 import os
 from datetime import date, datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -107,7 +107,7 @@ def get_irregular_documents(
 @router.post(
     "/upload", 
     response_model=DocumentResponse, 
-    status_code=status.HTTP_201_CREATED,
+    status_code=http_status.HTTP_201_CREATED,
     summary="Upload de Documento ou Certidão"
 )
 def upload_document(
@@ -150,7 +150,7 @@ def upload_document(
         file.file.seek(0)
         
         if file_size > MAX_FILE_SIZE:
-            raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail="Ficheiro maior que 5MB.")
+            raise HTTPException(status_code=http_status.HTTP_413_CONTENT_TOO_LARGE, detail="Ficheiro maior que 5MB.")
 
         try:
             file_path, _ = save_upload_file(file, "vault")
@@ -198,7 +198,7 @@ def upload_document(
             return DocumentResponse(
                 id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
                 is_structured=True, type_id=type_id, authentication_code=authentication_code,
-                is_client_upload=False
+                is_client_upload=False, company_id=str(cert.company_id)
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -234,7 +234,8 @@ def upload_document(
 
             return DocumentResponse(
                 id=doc.id, title=doc.title, filename=doc.filename, status=doc.status, 
-                created_at=doc.created_at, is_structured=False, is_client_upload=is_client
+                created_at=doc.created_at, is_structured=False, is_client_upload=is_client,
+                company_id=str(doc.company_id)
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -262,7 +263,7 @@ def download_document(
 
 @router.delete(
     "/{item_id}", 
-    status_code=status.HTTP_204_NO_CONTENT,
+    status_code=http_status.HTTP_204_NO_CONTENT,
     summary="Eliminar Documento do Cofre"
 )
 def delete_document(

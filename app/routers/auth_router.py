@@ -58,6 +58,13 @@ def register(
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="E-mail já cadastrado no sistema.")
 
+    if cpf and UserRepository.get_by_cpf(db, cpf):
+        raise HTTPException(status_code=400, detail="CPF já cadastrado no sistema.")
+
+    from app.repositories.company_repository import CompanyRepository
+    if CompanyRepository.get_by_cnpj(db, cnpj):
+        raise HTTPException(status_code=400, detail="CNPJ já cadastrado no sistema.")
+
     try:
         # 2. Cria Usuário (Apenas instanciando o Model para garantir a Transação Atômica)
         new_user = User(

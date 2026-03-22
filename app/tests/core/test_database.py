@@ -4,7 +4,7 @@ from app.core.database import Base, SoftDeleteMixin, generate_uuid, get_db
 from sqlalchemy.orm import Session
 
 # Model for testing SoftDeleteMixin
-class TestModel(Base, SoftDeleteMixin):
+class DatabaseTestModel(Base, SoftDeleteMixin):
     __tablename__ = "test_model"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
@@ -18,8 +18,8 @@ def test_generate_uuid():
 
 def test_soft_delete_mixin_columns():
     """Edge Case: Verify SoftDeleteMixin adds deleted_at column."""
-    assert hasattr(TestModel, "deleted_at")
-    assert TestModel.deleted_at.property.columns[0].name == "deleted_at"
+    assert hasattr(DatabaseTestModel, "deleted_at")
+    assert DatabaseTestModel.deleted_at.property.columns[0].name == "deleted_at"
 
 def test_get_db():
     """Happy Path: Verify get_db yields a session and closes it."""

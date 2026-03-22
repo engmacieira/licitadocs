@@ -59,6 +59,11 @@ class UserRepository(BaseRepository[User]):
         return cls.get_active_query(db).filter(cls.model.email == email).first()
         
     @classmethod
+    def get_by_cpf(cls, db: Session, cpf: str) -> Optional[User]:
+        """Busca usuário por CPF (Único)."""
+        return cls.get_active_query(db).filter(cls.model.cpf == cpf).first()
+
+    @classmethod
     def get_by_id(cls, db: Session, user_id: str) -> Optional[User]:
         """Busca usuário por ID (mantido explícito para clareza)."""
         # Chama a inteligência do BaseRepository que já filtra os deletados

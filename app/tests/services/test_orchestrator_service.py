@@ -7,6 +7,7 @@ from app.models.document_automation_model import DocumentAutomationConfig
 from app.models.company_model import Company
 from app.models.certificate_model import Certificate
 from app.models.document_type_model import DocumentType
+from app.tests.conftest import generate_valid_cnpj
 
 @pytest.fixture
 def mock_db():
@@ -26,7 +27,7 @@ def test_run_daily_scan_happy_path(mock_create_cert, mock_get_crawler, mock_sess
     mock_config.document_type_id = "type-123"
     mock_db.query.return_value.filter.return_value.all.side_effect = [
         [mock_config], # active_configs
-        [MagicMock(spec=Company, id="comp-1", cnpj="123", razao_social="C1")] # companies
+        [MagicMock(spec=Company, id="comp-1", cnpj=generate_valid_cnpj(), razao_social="C1")] # companies
     ]
     
     # 2. No last doc (force trigger)
@@ -72,7 +73,7 @@ def test_run_daily_scan_crawler_error(mock_get_crawler, mock_session_local, mock
     
     mock_db.query.return_value.filter.return_value.all.side_effect = [
         [mock_config],
-        [MagicMock(spec=Company, id="comp-1", cnpj="123")]
+        [MagicMock(spec=Company, id="comp-1", cnpj=generate_valid_cnpj())]
     ]
     mock_db.query.return_value.filter.return_value.order_by.return_value.first.return_value = None
     
@@ -94,7 +95,7 @@ def test_run_daily_scan_doc_not_expiring(mock_session_local, mock_db):
     mock_config.strategy_name = "TEST_STRA"
     mock_db.query.return_value.filter.return_value.all.side_effect = [
         [mock_config],
-        [MagicMock(spec=Company, id="comp-1", cnpj="123")]
+        [MagicMock(spec=Company, id="comp-1", cnpj=generate_valid_cnpj())]
     ]
     
     # Last doc expires in 10 days (threshold is 5)

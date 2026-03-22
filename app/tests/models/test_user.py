@@ -3,11 +3,12 @@ import uuid
 from sqlalchemy.exc import IntegrityError
 from app.models.user_model import User, UserRole, UserCompanyLink, UserCompanyRole
 from app.models.company_model import Company
+from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
 
 def test_create_user_happy_path(db_session):
     uid = uuid.uuid4().hex[:6]
     email = f"test_{uid}@example.com"
-    cpf = f"123456{uid}"
+    cpf = generate_valid_cpf()
     new_user = User(
         email=email,
         password_hash="hashed_password",
@@ -68,7 +69,7 @@ def test_user_null_email_error(db_session):
 def test_user_company_link(db_session):
     uid = uuid.uuid4().hex[:6]
     email = f"member_{uid}@example.com"
-    cnpj = f"12345678{uid}"
+    cnpj = generate_valid_cnpj()
     # Criar usuário
     user = User(email=email, password_hash="123")
     # Criar empresa
