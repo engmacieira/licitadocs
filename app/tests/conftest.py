@@ -21,6 +21,7 @@ from app.models.document_automation_model import DocumentAutomationConfig
 from app.models.emission_rule_model import EmissionRule
 from app.models.emission_request_model import EmissionRequest
 from app.models.message_model import Message
+from app.models.ai_usage_model import AIUsage
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 

@@ -6,11 +6,16 @@ Utiliza RAG para alimentar a IA com o status real dos documentos da empresa.
 
 import logging
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
+from datetime import date
 from app.models.user_model import User
 from app.repositories.document_repository import DocumentRepository
+from app.repositories.ai_quota_repository import AIQuotaRepository
 from app.core.ai_client import AIClient
 
 logger = logging.getLogger(__name__)
+
+DAILY_TOKEN_LIMIT = 30000
 
 class AIService:
     @staticmethod
@@ -30,6 +35,15 @@ class AIService:
         
         if not company_id:
              return "Não consegui identificar a sua empresa para consultar os documentos. Por favor, contate o suporte."
+
+        # 1.5. Verificação de Cota Diária (Financial DoS Protection)
+        today = date.today()
+        current_usage = AIQuotaRepository.get_daily_usage(db, company_id, today)
+        if current_usage >= DAILY_TOKEN_LIMIT:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Limite diário de uso da inteligência artificial foi atingido. Tente novamente amanhã."
+            )
 
         # 2. Busca de Contexto (RAG)
         try:
@@ -84,11 +98,16 @@ class AIService:
         # 4. Execução via Core Client
         try:
             ai_instance = AIClient() 
-            response = ai_instance.generate_chat_response(
+            response_text, tokens_used = ai_instance.generate_chat_response(
                 message=f"<user_input>\n{user_message}\n</user_input>",
                 context=system_prompt
             )
-            return str(response)
+            
+            # Registrar uso financeiro/tokens
+            if tokens_used > 0:
+                AIQuotaRepository.add_usage(db, company_id, tokens_used, today)
+                
+            return str(response_text)
         except Exception as e:
             logger.error(f"❌ [AI_SERVICE] Falha na integração LLM: {str(e)}")
             return "O servidor de IA está instável. Tente novamente em instantes. 🙏"

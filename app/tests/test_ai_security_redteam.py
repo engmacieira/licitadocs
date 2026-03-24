@@ -65,7 +65,7 @@ def test_prompt_injection_jailbreak(client, test_company, auth_headers):
     
     # Vamos interceptar APENAS o client interno (AIClient) para inspecionar como a mensagem é enviada ao modelo
     with patch("app.core.ai_client.AIClient.generate_chat_response") as mock_llm_call:
-        mock_llm_call.return_value = "Mocked LLM Response"
+        mock_llm_call.return_value = ("Mocked LLM Response", 100)
         
         response = client.post("/ai/chat", json=payload, headers=custom_headers)
         
@@ -96,7 +96,7 @@ def test_empty_context_manipulation(client, test_company, auth_headers):
     with patch("app.repositories.document_repository.DocumentRepository.get_unified_by_company", return_value=[]):
         # Capturamos o system_prompt enviado ao LLM para garantir que a fallback string existe nele
         with patch("app.core.ai_client.AIClient.generate_chat_response") as mock_llm_call:
-            mock_llm_call.return_value = "Mocked Response"
+            mock_llm_call.return_value = ("Mocked Response", 100)
             
             response = client.post("/ai/chat", json=payload, headers=custom_headers)
             

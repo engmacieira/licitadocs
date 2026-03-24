@@ -26,6 +26,7 @@ load_dotenv()
 # ------------------------------------------------------------------
 from app.core.database import Base, SoftDeleteMixin
 from app.models import (
+    ai_usage_model,
     certificate_model,
     company_model, 
     document_automation_model,

@@ -78,14 +78,36 @@ export function ChatWidget() {
                 content: data.response
             }]);
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast.error("Assistente indisponível.");
-            setMessages(prev => [...prev, {
-                id: Date.now() + 1,
-                type: 'bot',
-                content: <span className="text-red-500 font-medium">Desculpe, tive um problema de conexão. Pode tentar novamente?</span>
-            }]);
+            
+            // Tratamento específico do Financial DoS / Rate Limit
+            if (error.response?.status === 429 || error.response?.status === 402) {
+                toast.error("Limite diário atingido");
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    type: 'bot',
+                    content: (
+                        <div className="flex flex-col gap-2">
+                            <span className="text-amber-600 font-semibold flex items-center gap-1.5">
+                                ⏳ Limite Diário Atingido
+                            </span>
+                            <span className="text-slate-600 text-sm leading-relaxed">
+                                Você utilizou toda a sua cota de inteligência artificial de hoje! Para garantirmos a melhor performance, há um limite de segurança.
+                                <br/><br/>
+                                Não se preocupe, a sua <strong>cota será renovada automaticamente amanhã</strong> e estarei pronto para ajudar novamente. ✨
+                            </span>
+                        </div>
+                    )
+                }]);
+            } else {
+                toast.error("Assistente indisponível.");
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    type: 'bot',
+                    content: <span className="text-red-500 font-medium">Desculpe, tive um problema de conexão. Pode tentar novamente?</span>
+                }]);
+            }
         } finally {
             setLoading(false);
         }

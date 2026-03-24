@@ -37,7 +37,7 @@ class AIClient:
             except Exception as e:
                 print(f"❌ [IA_CORE] Erro na inicialização do cliente GenAI: {e}")
 
-    def generate_chat_response(self, message: str, context: str = "") -> str:
+    def generate_chat_response(self, message: str, context: str = "") -> tuple[str, int]:
         """
         Envia uma instrução ao modelo Gemini e processa a resposta.
         
@@ -47,10 +47,10 @@ class AIClient:
                                      para basear a resposta (RAG).
             
         Returns:
-            str: Resposta textual processada ou mensagem de erro amigável.
+            tuple[str, int]: Resposta textual processada e número total de tokens consumidos.
         """
         if not self.client:
-            return "Erro Técnico: O motor de IA não foi configurado corretamente no servidor."
+            return "Erro Técnico: O motor de IA não foi configurado corretamente no servidor.", 0
 
         try:
             # Construção do Prompt (Mantendo a lógica de RAG Simplificado do LicitaDoc)
@@ -74,16 +74,20 @@ class AIClient:
                 )
             )
             
-            # Validação de saída
+            # Validação de saída extraindo token counts
+            tokens_used = 0
+            if response.usage_metadata and hasattr(response.usage_metadata, "total_token_count"):
+                tokens_used = response.usage_metadata.total_token_count
+
             if response.text:
-                return response.text
+                return response.text, tokens_used
             
-            return "A IA não conseguiu gerar uma resposta para este documento. Revise o conteúdo enviado."
+            return "A IA não conseguiu gerar uma resposta para este documento. Revise o conteúdo enviado.", tokens_used
             
         except Exception as e:
             # Log técnico detalhado para o desenvolvedor
             print(f"❌ [IA_CORE] Falha na chamada ao modelo {self.model_name}: {str(e)}")
-            return "Estou com dificuldades para analisar este documento agora. Por favor, tente novamente em instantes."
+            return "Estou com dificuldades para analisar este documento agora. Por favor, tente novamente em instantes.", 0
 
 # Instância única para importação global (Singleton Pattern)
 # Uso: from app.core.ai_client import ai_client

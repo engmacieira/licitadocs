@@ -28,17 +28,22 @@ export function ContractContent() {
             <p><strong>5.1.</strong> A CONTRATADA garante uma disponibilidade de acesso à plataforma (Uptime) de <strong>99% (noventa e nove por cento)</strong> ao mês.</p>
             <p><strong>5.2.</strong> As manutenções preventivas serão comunicadas com antecedência e realizadas, preferencialmente, em horários de menor tráfego.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 6ª – DA REMUNERAÇÃO</h3>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 6ª – DA POLÍTICA DE USO JUSTO E LIMITES DE PROCESSAMENTO (FAIR USE)</h3>
+            <p><strong>6.1. Limite Diário de Tokens:</strong> Com o objetivo de garantir a estabilidade da plataforma, a integridade da infraestrutura e o controle de custos operacionais, o uso das ferramentas de Inteligência Artificial e processamento avançado integradas ao LicitaDocs está sujeito a um limite técnico diário de <strong>30.000 (trinta mil) tokens</strong> por assinatura/CNPJ.</p>
+            <p><strong>6.2. Esgotamento da Franquia:</strong> Caso a CONTRATANTE atinja o limite máximo estipulado no item 9.1 dentro de um mesmo ciclo de 24 horas, o acesso às funcionalidades específicas que consomem tokens será automaticamente suspenso ou restringido pelo sistema até a renovação da franquia (às 00h00 do dia seguinte).</p>
+            <p><strong>6.3. Ciência e Exclusão de Responsabilidade:</strong> A CONTRATANTE declara ter plena ciência desta limitação técnica no ato da contratação. O bloqueio temporário de recursos por esgotamento do limite diário de tokens não configura falha na prestação do serviço, indisponibilidade do sistema (queda de SLA) ou quebra de contrato, não conferindo à CONTRATANTE qualquer direito a reembolso, desconto ou indenização.</p>
+
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 7ª – DA REMUNERAÇÃO</h3>
             <p><strong>6.1.</strong> Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA o valor correspondente ao plano anual escolhido no momento do cadastro.</p>
             <p><strong>6.2.</strong> Em caso de atraso no pagamento de parcelas (se aplicável), incidirá multa moratória de 2% e juros de 1% ao mês, sujeitando a CONTRATANTE à suspensão temporária do acesso ao cofre digital até a regularização.</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 7ª – DO PRAZO E CANCELAMENTO (CHURN)</h3>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 8ª – DO PRAZO E CANCELAMENTO (CHURN)</h3>
             <p><strong>7.1. Da Vigência:</strong> O presente contrato possui validade fixa e ininterrupta de <strong>1 (um) ano (12 meses)</strong>.</p>
             <p><strong>7.2. Do Aviso Prévio:</strong> A plataforma enviará notificações automáticas com <strong>60 (sessenta) dias de antecedência</strong> do vencimento.</p>
             <p><strong>7.3. Da Ausência de Renovação Automática:</strong> Não haverá renovação automática. Caberá à CONTRATANTE providenciar o pagamento de um novo ciclo.</p>
             <p><strong>7.4. Da Rescisão Antecipada:</strong> A CONTRATANTE poderá solicitar o cancelamento voluntário antes do término dos 12 meses. Neste caso, o reembolso do período não utilizado sofrerá deduções proporcionais de taxas (10%) e multa rescisória (50% sobre os meses cheios restantes).</p>
 
-            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 8ª – DA FORMALIZAÇÃO E FORO</h3>
+            <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 9ª – DA FORMALIZAÇÃO E FORO</h3>
             <p><strong>8.1. Da Assinatura Digital:</strong> A CONTRATANTE deverá realizar a assinatura eletrônica avançada ou via certificado digital ICP-Brasil para validação deste instrumento.</p>
             <p><strong>8.2. Das Alterações:</strong> A CONTRATADA poderá alterar os termos do serviço para adequações sistêmicas ou legais, comunicando com 15 dias de antecedência.</p>
             <p><strong>8.3. Do Foro de Eleição:</strong> Fica eleito o foro da Comarca de Lisboa para dirimir quaisquer dúvidas, renunciando a qualquer outro por mais privilegiado que seja.</p>
