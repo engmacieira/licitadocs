@@ -3,10 +3,12 @@ Router de Gestão de Documentos (Cofre Digital).
 Controla o upload, download, listagem unificada e o catálogo de tipos de certidões.
 """
 import os
+import io
+import zipfile
 from datetime import date, datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -249,17 +251,121 @@ def download_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    # O repositório já garante que não baixa ficheiros com Soft Delete
-    file_path = DocumentRepository.get_file_path(db, item_id)
+    """
+    Download de arquivo do cofre com validação de propriedade (Anti-IDOR/BOLA).
+    """
+    # 1. Busca os metadados para descobrir a quem pertence (Respeita Soft Delete)
+    doc = db.query(Document).filter(Document.id == item_id, Document.deleted_at.is_(None)).first()
+    if not doc:
+        doc = db.query(Certificate).filter(Certificate.id == item_id, Certificate.deleted_at.is_(None)).first()
     
-    if not file_path:
+    if not doc:
         raise HTTPException(status_code=404, detail="Documento não encontrado")
     
+    # 2. Validação de Segurança Multi-Tenant
+    if current_user.role != UserRole.ADMIN.value:
+        allowed_company_ids = [link.company_id for link in current_user.company_links if link.is_active]
+        if doc.company_id not in allowed_company_ids:
+             raise HTTPException(status_code=403, detail="Acesso negado: Este documento pertence a outra empresa.")
+
+    file_path = doc.file_path
+    
+    if not file_path or file_path == "SEM_ANEXO":
+        raise HTTPException(status_code=400, detail="Este registo não possui um anexo físico para download.")
+
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Ficheiro físico não encontrado no servidor.")
 
     filename = os.path.basename(file_path)
     return FileResponse(path=file_path, filename=filename, media_type='application/pdf')
+
+@router.get(
+    "/export/zip",
+    summary="Exportar Documentos Válidos em Lote (ZIP)",
+    description="Gera um arquivo .zip com todos os documentos vigentes e não arquivados da empresa."
+)
+def export_valid_documents_zip(
+    company_id: Optional[str] = Query(None, description="Filtra por empresa (Obrigatório para Admin)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Constrói um arquivo ZIP em memória contendo os anexos físicos
+    de todos os documentos com status 'valid' ou 'warning'.
+    """
+    # 1. Validação de Segurança Multi-Tenant (Reutilizando lógica da listagem)
+    target_company_id = company_id
+    allowed_company_ids = [link.company_id for link in current_user.company_links if link.is_active]
+
+    if current_user.role == UserRole.ADMIN.value:
+         if not target_company_id:
+             raise HTTPException(status_code=400, detail="Admins devem especificar o company_id para exportar os documentos.")
+    else:
+        if target_company_id:
+            if target_company_id not in allowed_company_ids:
+                raise HTTPException(status_code=403, detail="Acesso negado a esta empresa.")
+        elif allowed_company_ids:
+            target_company_id = allowed_company_ids[0]
+        else:
+            raise HTTPException(status_code=403, detail="Utilizador não possui empresa ativa vinculada.")
+
+    # 2. Busca todos os documentos unificados da empresa (legados + certidões estruturadas)
+    all_docs = DocumentRepository.get_unified_by_company(db, target_company_id)
+    
+    # 3. Filtragem de Regra de Negócio: Apenas Válidos e Vigentes
+    # Consideramos "valid" e "warning" (próximo de vencer) como aptos para download.
+    valid_statuses = ["valid", "warning"]
+    valid_docs = [doc for doc in all_docs if doc["status"] in valid_statuses]
+    
+    if not valid_docs:
+        raise HTTPException(status_code=404, detail="Nenhum documento válido/vigente encontrado para exportação.")
+
+    # 4. Geração do ZIP em Memória (Evita I/O pesado de disco)
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        added_files = set() # Controle para evitar nomes de arquivo duplicados no ZIP
+        
+        for doc in valid_docs:
+            # Recuperamos o path físico confiando no Repositório (que já blinda soft delete)
+            file_path = DocumentRepository.get_file_path(db, doc["id"])
+            
+            if file_path and file_path != "SEM_ANEXO" and os.path.exists(file_path):
+                original_filename = doc["filename"]
+                base_name, ext = os.path.splitext(original_filename)
+                
+                # Previne colisão caso a empresa tenha dois "contrato.pdf" no banco
+                zip_filename = original_filename
+                counter = 1
+                while zip_filename in added_files:
+                    zip_filename = f"{base_name}_{counter}{ext}"
+                    counter += 1
+                    
+                added_files.add(zip_filename)
+                
+                # Escreve o arquivo no buffer ZIP
+                zip_file.write(file_path, arcname=zip_filename)
+
+    # 5. Verificação final: Tinha documento no banco, mas não havia arquivo no servidor?
+    if not added_files:
+         raise HTTPException(
+             status_code=404, 
+             detail="Documentos encontrados, mas os ficheiros físicos não existem no servidor de armazenamento."
+         )
+         
+    # Reposiciona o ponteiro do buffer para o início da leitura
+    zip_buffer.seek(0)
+    
+    # 6. Retorno como Streaming
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/x-zip-compressed",
+        headers={
+            # Header importante: O Front não dita o nome sozinho, o back sugere este fallback.
+            "Content-Disposition": "attachment; filename=documentos_validos.zip",
+            "Access-Control-Expose-Headers": "Content-Disposition" # Permite o front ler o cabeçalho
+        }
+    )
 
 @router.delete(
     "/{item_id}", 

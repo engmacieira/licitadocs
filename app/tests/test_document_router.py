@@ -300,3 +300,97 @@ def test_catalog_endpoints(client, auth_headers):
     # Tipos (Contém as categorias agrupadas)
     response = client.get("/documents/types", headers=auth_headers)
     assert response.status_code == 200
+
+# ==========================================
+# 📦 TESTES DE EXPORTAÇÃO EM LOTE (ZIP)
+# ==========================================
+
+def test_export_valid_documents_zip_success(client, auth_headers, test_company, db_session, tmp_path):
+    """Valida a exportação em lote (Happy Path): Arquivos corretos, ignorando expirados e renomeando duplicados."""
+    from app.models.document_model import Document, DocumentStatus
+    import zipfile
+    import io
+
+    # 1. Criar arquivos físicos temporários reais para o teste
+    file1_path = tmp_path / "teste1.pdf"
+    file1_path.write_text("conteudo pdf 1")
+
+    file2_path = tmp_path / "teste2.pdf"
+    file2_path.write_text("conteudo pdf 2")
+
+    # 2. Inserir no banco de dados
+    doc_valido = Document(
+        title="Doc Válido 1", filename="documento.pdf", file_path=str(file1_path),
+        company_id=test_company.id, status=DocumentStatus.VALID.value
+    )
+    # Mesmo nome de arquivo para testar a inteligência de renomeação do script
+    doc_warning = Document(
+        title="Doc Válido 2", filename="documento.pdf", file_path=str(file2_path), 
+        company_id=test_company.id, status=DocumentStatus.WARNING.value
+    )
+    # Status Expirado (Não deve entrar no ZIP)
+    doc_expirado = Document(
+        title="Doc Expirado", filename="velho.pdf", file_path=str(file1_path),
+        company_id=test_company.id, status=DocumentStatus.EXPIRED.value 
+    )
+
+    db_session.add_all([doc_valido, doc_warning, doc_expirado])
+    db_session.commit()
+
+    # 3. Chamar a rota
+    response = client.get(f"/documents/export/zip?company_id={test_company.id}", headers=auth_headers)
+
+    # 4. Asserções de Resposta
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/x-zip-compressed"
+    assert "attachment; filename=documentos_validos.zip" in response.headers["content-disposition"]
+
+    # 5. Descompactar em memória e validar o conteúdo
+    zip_buffer = io.BytesIO(response.content)
+    with zipfile.ZipFile(zip_buffer, "r") as zip_ref:
+        lista_arquivos = zip_ref.namelist()
+        
+        # Deve ter exatos 2 arquivos (o expirado ficou de fora)
+        assert len(lista_arquivos) == 2
+        
+        # Valida se renomeou o duplicado para não sobrescrever
+        assert "documento.pdf" in lista_arquivos
+        assert "documento_1.pdf" in lista_arquivos
+
+def test_export_valid_documents_zip_no_valid_docs(client, auth_headers, test_company, db_session):
+    """Valida o erro 404 quando o cliente não possui documentos válidos para exportar."""
+    from app.models.document_model import Document, DocumentStatus
+
+    # Cria apenas um documento expirado e um arquivado
+    doc1 = Document(
+        title="Expirado", filename="vencido.pdf", file_path="/fake",
+        company_id=test_company.id, status=DocumentStatus.EXPIRED.value
+    )
+    doc2 = Document(
+        title="Arquivado", filename="arq.pdf", file_path="/fake",
+        company_id=test_company.id, status="archived"
+    )
+    db_session.add_all([doc1, doc2])
+    db_session.commit()
+
+    response = client.get(f"/documents/export/zip?company_id={test_company.id}", headers=auth_headers)
+
+    assert response.status_code == 404
+    assert "Nenhum documento válido/vigente" in response.text
+
+def test_export_valid_documents_zip_no_physical_files(client, auth_headers, test_company, db_session):
+    """Valida erro 404 quando o banco aponta para arquivos físicos que não existem mais no disco."""
+    from app.models.document_model import Document, DocumentStatus
+
+    # Documento válido, mas com um caminho de disco inexistente
+    doc = Document(
+        title="Fantasma", filename="fantasma.pdf", file_path="/caminho/falso/que/nao/existe.pdf",
+        company_id=test_company.id, status=DocumentStatus.VALID.value
+    )
+    db_session.add(doc)
+    db_session.commit()
+
+    response = client.get(f"/documents/export/zip?company_id={test_company.id}", headers=auth_headers)
+
+    assert response.status_code == 404
+    assert "ficheiros físicos não existem no servidor" in response.text
