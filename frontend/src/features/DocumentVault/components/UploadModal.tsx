@@ -139,7 +139,7 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                                 <p className="text-sm text-slate-500">Configure e envie documentos para o cofre da empresa.</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                        <button onClick={onClose} aria-label="Fechar" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -170,8 +170,9 @@ export function UploadModal({ isOpen, onClose, onSuccess, targetCompanyId }: Upl
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-sm font-medium text-slate-700">Tipo de Documento *</label>
+                                    <label htmlFor="document-type" className="text-sm font-medium text-slate-700">Tipo de Documento *</label>
                                     <select
+                                        id="document-type"
                                         className="w-full h-12 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-sm"
                                         {...methods.register('typeId')}
                                     >

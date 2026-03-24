@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,11 +41,14 @@ export function TypeModal({ isOpen, onClose, onSuccess, categoryId, initialData 
     });
 
     const [isSaving, setIsSaving] = useState(false);
+    const isSubmitting = useRef(false); // Trava de submissão para evitar spam/bot
     const isEdit = !!initialData;
     const isAutomatable = watch('automation_config.is_automatable');
 
     /** Submete a configuração do documento e as regras do robô para a API */
     const onSubmit = async (data: DocumentTypeCreateDTO) => {
+        if (isSubmitting.current) return;
+        isSubmitting.current = true;
         setIsSaving(true);
         try {
             if (isEdit && initialData) {
@@ -61,6 +64,7 @@ export function TypeModal({ isOpen, onClose, onSuccess, categoryId, initialData 
             toast.error(error.response?.data?.detail || "Erro ao salvar documento.");
         } finally {
             setIsSaving(false);
+            isSubmitting.current = false;
         }
     };
 

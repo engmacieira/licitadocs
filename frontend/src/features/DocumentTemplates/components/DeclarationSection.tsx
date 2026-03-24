@@ -47,6 +47,7 @@ const replacePlaceholdersOnScreen = (text: string, data: CompanyDocData) => {
     return text
         .replace(/\[RAZÃO SOCIAL\]/g, data.razaoSocial)
         .replace(/\[CNPJ\]/g, data.cnpj)
+        .replace(/\[ENDEREÇO COMPLETO\]/g, data.endereco)
         .replace(/\[CIDADE\/UF\]/g, data.cidadeUf)
         .replace(/\[DATA\]/g, data.dataAtual)
         .replace(/\[NOME REPRESENTANTE\]/g, data.nomeRepresentante);
@@ -100,7 +101,7 @@ export function DeclarationSection({ companyData }: DeclarationSectionProps) {
                     fileName="Declaracoes_Unificadas.pdf"
                     className="w-full"
                 >
-                    {({ loading }) => (
+                    {({ loading }: { loading: boolean }) => (
                         <Button className="w-full bg-blue-600 hover:bg-blue-700">
                             <Download className="h-4 w-4 mr-2" /> {loading ? 'A gerar PDF...' : 'Baixar PDF Caprichado'}
                         </Button>

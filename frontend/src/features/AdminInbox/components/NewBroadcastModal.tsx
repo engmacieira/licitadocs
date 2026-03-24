@@ -113,6 +113,7 @@ export function NewBroadcastModal({ isOpen, onClose, onSuccess }: NewBroadcastMo
                     </div>
 
                     <Input
+                        id="broadcast-subject"
                         label="Assunto do Aviso"
                         placeholder="Ex: Manutenção Programada no Sistema"
                         value={subject}
@@ -121,8 +122,9 @@ export function NewBroadcastModal({ isOpen, onClose, onSuccess }: NewBroadcastMo
                     />
 
                     <div>
-                        <label className="text-sm font-medium text-slate-700 block mb-1.5">Conteúdo do Aviso</label>
+                        <label htmlFor="broadcast-content" className="text-sm font-medium text-slate-700 block mb-1.5">Conteúdo do Aviso</label>
                         <textarea
+                            id="broadcast-content"
                             className="w-full rounded-lg border-slate-300 py-3 px-4 text-sm focus:ring-2 focus:ring-purple-500 min-h-[120px] resize-y"
                             placeholder="Escreva a mensagem que os clientes irão ler..."
                             value={content}

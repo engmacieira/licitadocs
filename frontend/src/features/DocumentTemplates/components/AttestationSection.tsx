@@ -51,16 +51,16 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
             <div className="space-y-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <p className="text-xs font-bold text-slate-500 uppercase mb-2">Dados de quem vai assinar o atestado:</p>
                 <div>
-                    <label className="text-xs font-medium text-slate-600 block mb-1">Empresa Cliente (Razão Social)</label>
-                    <input type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Ex: Prefeitura Municipal de Braúnas" className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500" />
+                    <label htmlFor="clientName" className="text-xs font-medium text-slate-600 block mb-1">Empresa Cliente (Razão Social)</label>
+                    <input id="clientName" type="text" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Ex: Prefeitura Municipal de Braúnas" className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500" />
                 </div>
                 <div>
-                    <label className="text-xs font-medium text-slate-600 block mb-1">CNPJ do Cliente</label>
-                    <input type="text" value={clientCnpj} onChange={e => setClientCnpj(e.target.value)} placeholder="Ex: 00.000.000/0001-00" className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500" />
+                    <label htmlFor="clientCnpj" className="text-xs font-medium text-slate-600 block mb-1">CNPJ do Cliente</label>
+                    <input id="clientCnpj" type="text" value={clientCnpj} onChange={e => setClientCnpj(e.target.value)} placeholder="Ex: 00.000.000/0001-00" className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-amber-500" />
                 </div>
                 <div>
-                    <label className="text-xs font-medium text-slate-600 block mb-1">Descrição do Serviço/Material fornecido</label>
-                    <textarea value={serviceDescription} onChange={e => setServiceDescription(e.target.value)} placeholder="Ex: materiais para sistemas de segurança eletrônica..." rows={2} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none resize-none focus:ring-2 focus:ring-amber-500" />
+                    <label htmlFor="serviceDescription" className="text-xs font-medium text-slate-600 block mb-1">Descrição do Serviço/Material fornecido</label>
+                    <textarea id="serviceDescription" value={serviceDescription} onChange={e => setServiceDescription(e.target.value)} placeholder="Ex: materiais para sistemas de segurança eletrônica..." rows={2} className="w-full p-2 text-sm border border-slate-300 rounded-lg outline-none resize-none focus:ring-2 focus:ring-amber-500" />
                 </div>
             </div>
 
@@ -74,7 +74,7 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
                     fileName="Atestado_Capacidade.pdf"
                     className="w-full"
                 >
-                    {({ loading }) => (
+                    {({ loading }: { loading: boolean }) => (
                         <Button className="w-full bg-amber-600 hover:bg-amber-700 border-none">
                             <Download className="h-4 w-4 mr-2" /> {loading ? 'A gerar PDF...' : 'Baixar PDF Caprichado'}
                         </Button>

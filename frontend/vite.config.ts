@@ -8,6 +8,13 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  resolve: {
+    alias: {
+      '@react-pdf/renderer': '/src/test/mocks/react-pdf.ts',
+      'docx': '/src/test/mocks/empty-mock.ts',
+      'file-saver': '/src/test/mocks/empty-mock.ts',
+    },
+  },
   server: {
     proxy: {
       '/api': {

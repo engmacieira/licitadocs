@@ -31,8 +31,9 @@ export function RegularityAnalysis() {
 
             <div className="space-y-3 flex-1">
                 <div>
-                    <label className={`text-xs font-medium block mb-1 ${header.color}`}>Status do Documento *</label>
+                    <label htmlFor="document-status" className={`text-xs font-medium block mb-1 ${header.color}`}>Status do Documento *</label>
                     <select
+                        id="document-status"
                         className={`w-full h-10 px-3 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 outline-none ${currentStatus === 'error' ? 'focus:ring-red-300 border-red-300' : currentStatus === 'irregular' ? 'focus:ring-amber-300 border-amber-300' : 'focus:ring-green-300 border-green-200'}`}
                         {...register('status')}
                     >
@@ -43,15 +44,17 @@ export function RegularityAnalysis() {
                 </div>
 
                 <div>
-                    <label className={`text-xs font-medium block mb-1 ${header.color}`}>
+                    <label htmlFor="document-notes" className={`text-xs font-medium block mb-1 ${header.color}`}>
                         Observações {currentStatus !== 'valid' && '*'}
                     </label>
                     <textarea
+                        id="document-notes"
                         placeholder={currentStatus === 'valid' ? "Opcional: Ex: Autenticado via QR Code..." : "Obrigatório: Descreva o motivo da irregularidade ou erro..."}
                         className={`w-full text-sm p-3 rounded-lg border bg-white focus:ring-2 outline-none resize-none h-20 ${currentStatus === 'error' ? 'border-red-200 focus:ring-red-500' : currentStatus === 'irregular' ? 'border-amber-200 focus:ring-amber-500' : 'border-green-200 focus:ring-green-500'}`}
                         {...register('notes')}
                     />
                 </div>
+
             </div>
         </div>
     );

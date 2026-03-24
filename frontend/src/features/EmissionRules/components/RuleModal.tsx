@@ -41,19 +41,41 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
 
     /** Prepara os dados iniciais do modal ao abrir. */
     useEffect(() => {
-        if (isOpen) {
-            reset();
-            if (editingRule) {
-                setValue('document_type_id', editingRule.document_type_id);
-                if (editingRule.state) setValue('state', editingRule.state);
-                // Delay para garantir que o estado do IBGE carrega antes de setar a cidade
-                setTimeout(() => { if (editingRule.city) setValue('city', editingRule.city); }, 400);
+        if (isOpen && editingRule && ufs.length > 0) {
+            setValue('state', editingRule.state || '');
+        }
+    }, [isOpen, editingRule, ufs, setValue]);
 
-                setValue('emission_link', editingRule.emission_link || '');
-                setValue('contact_email', editingRule.contact_email || '');
-                setValue('contact_phone', editingRule.contact_phone || '');
-                setValue('contact_whatsapp', editingRule.contact_whatsapp || '');
-                setValue('operation_notes', editingRule.operation_notes || '');
+    useEffect(() => {
+        if (isOpen && editingRule && ibgeCities.length > 0) {
+            setValue('city', editingRule.city || '');
+        }
+    }, [isOpen, editingRule, ibgeCities, setValue]);
+
+    useEffect(() => {
+        if (isOpen) {
+            if (editingRule) {
+                reset({
+                    document_type_id: editingRule.document_type_id,
+                    state: editingRule.state || '',
+                    city: editingRule.city || '',
+                    emission_link: editingRule.emission_link || '',
+                    contact_email: editingRule.contact_email || '',
+                    contact_phone: editingRule.contact_phone || '',
+                    contact_whatsapp: editingRule.contact_whatsapp || '',
+                    operation_notes: editingRule.operation_notes || '',
+                });
+            } else {
+                reset({
+                    document_type_id: '',
+                    state: '',
+                    city: '',
+                    emission_link: '',
+                    contact_email: '',
+                    contact_phone: '',
+                    contact_whatsapp: '',
+                    operation_notes: '',
+                });
             }
 
             // Otimização: Só carrega UFs se necessário
@@ -61,7 +83,7 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
                 loadUFs();
             }
         }
-    }, [isOpen, editingRule, activeTab, setValue, reset]);
+    }, [isOpen, editingRule, activeTab, reset]);
 
     /** Carrega Municípios sempre que um Estado é selecionado (se a aba for municipal). */
     useEffect(() => {
@@ -152,10 +174,11 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
 
                 <form onSubmit={handleSubmit(onSubmit)} className="p-6 overflow-y-auto space-y-6">
                     <div>
-                        <label className="text-sm font-medium text-slate-700 mb-1 block">Tipo de Documento *</label>
+                        <label htmlFor="rule-doc-type" className="text-sm font-medium text-slate-700 mb-1 block">Tipo de Documento *</label>
                         <select
                             className="w-full h-11 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                             {...register('document_type_id', { required: true })}
+                            id="rule-doc-type"
                         >
                             <option value="">Selecione o documento exigido...</option>
                             {docTypes.map(doc => (
@@ -167,10 +190,11 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
                     {(activeTab === 'STATE' || activeTab === 'MUNICIPAL') && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-100 rounded-xl">
                             <div>
-                                <label className="text-sm font-medium text-slate-700 mb-1 block">Estado (UF) *</label>
+                                <label htmlFor="rule-state" className="text-sm font-medium text-slate-700 mb-1 block">Estado (UF) *</label>
                                 <select
                                     className="w-full h-11 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                                     {...register('state', { required: true })}
+                                    id="rule-state"
                                 >
                                     <option value="">Selecione...</option>
                                     {ufs.map(uf => <option key={uf.sigla} value={uf.sigla}>{uf.sigla} - {uf.nome}</option>)}
@@ -178,10 +202,11 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
                             </div>
                             {activeTab === 'MUNICIPAL' && (
                                 <div>
-                                    <label className="text-sm font-medium text-slate-700 mb-1 block">Município *</label>
+                                    <label htmlFor="rule-city" className="text-sm font-medium text-slate-700 mb-1 block">Município *</label>
                                     <select
                                         className="w-full h-11 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:bg-slate-100 disabled:text-slate-400"
                                         {...register('city', { required: true })}
+                                        id="rule-city"
                                         disabled={!selectedState}
                                     >
                                         <option value="">{selectedState ? "Selecione..." : "Selecione UF primeiro"}</option>
@@ -194,20 +219,21 @@ export function RuleModal({ isOpen, onClose, onSuccess, activeTab, editingRule, 
 
                     <div className="space-y-4">
                         <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">Detalhes Operacionais</h3>
-                        <Input label="Portal Web (Link de Emissão)" placeholder="https://..." {...register('emission_link')} />
+                        <Input label="Portal Web (Link de Emissão)" placeholder="https://..." {...register('emission_link')} id="rule-emission-link" />
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Input label="E-mail de Contato" placeholder="email@orgao.gov.br" {...register('contact_email')} />
-                            <Input label="Telefone" placeholder="(00) 0000-0000" {...register('contact_phone')} />
-                            <Input label="WhatsApp" placeholder="(00) 90000-0000" {...register('contact_whatsapp')} />
+                            <Input label="E-mail de Contato" placeholder="email@orgao.gov.br" {...register('contact_email')} id="rule-contact-email" />
+                            <Input label="Telefone" placeholder="(00) 0000-0000" {...register('contact_phone')} id="rule-contact-phone" />
+                            <Input label="WhatsApp" placeholder="(00) 90000-0000" {...register('contact_whatsapp')} id="rule-contact-whatsapp" />
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium text-slate-700 mb-1 block">Instruções Manuais (Notas)</label>
+                            <label htmlFor="rule-notes" className="text-sm font-medium text-slate-700 mb-1 block">Instruções Manuais (Notas)</label>
                             <textarea
                                 placeholder="Ex: Para emitir, precisa enviar e-mail com o Contrato Social em anexo..."
                                 className="w-full border border-slate-200 rounded-lg p-3 text-sm h-24 outline-none focus:ring-2 focus:ring-blue-500 shadow-sm resize-none"
                                 {...register('operation_notes')}
+                                id="rule-notes"
                             />
                         </div>
                     </div>

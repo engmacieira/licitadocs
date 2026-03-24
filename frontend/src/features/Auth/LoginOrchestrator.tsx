@@ -92,7 +92,7 @@ export function LoginOrchestrator() {
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit(handleLogin)} className="space-y-6">
+                    <form onSubmit={handleSubmit(handleLogin)} className="space-y-6" noValidate>
                         <div className="space-y-5">
                             <Input
                                 id="email"

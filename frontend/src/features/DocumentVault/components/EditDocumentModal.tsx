@@ -98,7 +98,7 @@ export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: Edit
                                 <p className="text-sm text-slate-500">Atualize metadados ou altere o status de regularidade.</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                        <button onClick={onClose} aria-label="Fechar" className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
