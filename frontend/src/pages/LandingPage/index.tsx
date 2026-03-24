@@ -1,18 +1,22 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { FileCheck, ShieldCheck, Zap, ArrowRight, ChevronRight } from 'lucide-react';
+// Importamos os novos ícones alinhados com a nova copy (Compass e Award)
+import { FileCheck, Compass, Award, ArrowRight, ChevronRight } from 'lucide-react';
 
 /**
  * Página de aterragem (Landing Page) pública da aplicação.
- * Apresenta a proposta de valor do LicitaDocs e direciona o utilizador 
- * para os fluxos de autenticação (Login), registo ou demonstração.
+ * * ESTRATÉGIA DE UX & COPY:
+ * - Foco na Autoridade: Destaca os 10+ anos de experiência da equipe (humanização > automação fria).
+ * - Foco no Iniciante: Promete direcionamento e fim da confusão burocrática.
+ * - Foco no Retorno Financeiro: A "Blindagem Contratual" de 12 meses garante que
+ * a empresa não sofra bloqueios de pagamento do órgão público por certidões vencidas.
  */
 export function LandingPage() {
     const navigate = useNavigate();
 
     return (
         <div className="min-h-screen bg-white flex flex-col">
-            {/* Header / Nav */}
+            {/* --- HEADER / NAVEGAÇÃO --- */}
             <header className="border-b border-slate-100 sticky top-0 bg-white/80 backdrop-blur-md z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -30,21 +34,25 @@ export function LandingPage() {
                 </div>
             </header>
 
-            {/* Hero Section */}
+            {/* --- HERO SECTION (TOPO DA PÁGINA) --- */}
             <main className="flex-1">
                 <section className="pt-20 pb-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+
+                    {/* Copy H1: Promessa clara focada no alívio da dor burocrática */}
                     <h1 className="text-5xl font-extrabold text-slate-900 tracking-tight mb-6">
-                        Suas certidões sempre em dia, <br />
-                        <span className="text-blue-600">sem você mover um dedo.</span>
+                        Suas certidões sempre em dia. <br />
+                        <span className="text-blue-600">Nós cuidamos da burocracia para você.</span>
                     </h1>
+
+                    {/* Copy P: Expectativa alinhada. Foco na ferramenta documental construída por especialistas. */}
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10">
-                        A plataforma que emite automaticamente novas certidões antes do vencimento.
-                        Não enviamos alertas para te dar trabalho: entregamos o documento pronto.
+                        A plataforma de gestão documental criada por quem tem mais de 10 anos de experiência em licitações. Mantemos suas certidões organizadas e atualizadas durante todo o contrato, evitando faturas retidas. Tudo isso por menos de R$ 15 ao mês.
                     </p>
 
+                    {/* CTAs (Call to Actions): Nomenclaturas focadas em valor */}
                     <div className="flex justify-center gap-4">
                         <Button size="lg" onClick={() => navigate('/register')}>
-                            Quero Contratar <ArrowRight className="ml-2 h-5 w-5" />
+                            Assinar Agora <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
                         <Button variant="outline" size="lg" onClick={() => navigate('/demonstracao')}>
                             Como Funciona? <ChevronRight className="ml-2 h-4 w-4 text-slate-400" />
@@ -52,35 +60,44 @@ export function LandingPage() {
                     </div>
                 </section>
 
-                {/* Features Section */}
+                {/* --- SEÇÃO DE BENEFÍCIOS (FEATURES) --- */}
                 <section id="features" className="bg-slate-50 py-20">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                        {/* Grid contendo os 3 pilares da proposta de valor */}
                         <div className="grid md:grid-cols-3 gap-8">
-                            {/* CORREÇÃO 2: Ajuste na promessa de valor (De "Avisar" para "Fazer por você") */}
+
+                            {/* PILAR 1: Foco em empresas iniciantes (Mapeamento) */}
                             <FeatureCard
-                                icon={<Zap className="h-8 w-8 text-blue-600" />}
-                                title="Renovação Automática"
-                                description="Esqueça datas de validade. O robô busca a nova certidão na fonte assim que a atual vence. Você entra apenas para baixar."
+                                icon={<Compass className="h-8 w-8 text-blue-600" />}
+                                title="Mapeamento Descomplicado"
+                                description="Está começando agora e não sabe quais certidões precisa? Nossa equipe avalia o seu CNPJ e organiza exatamente o que os órgãos públicos vão exigir. Sem confusão, direto ao ponto."
                             />
+
+                            {/* PILAR 2: Foco em autoridade e segurança (Experiência Humana) */}
                             <FeatureCard
-                                icon={<ShieldCheck className="h-8 w-8 text-blue-600" />}
-                                title="Sempre Habilitado"
-                                description="Elimine o risco de inabilitação por esquecimento. Seu repositório de documentos estará sempre com as versões vigentes."
+                                icon={<Award className="h-8 w-8 text-blue-600" />}
+                                title="Gestão Especializada"
+                                description="Não somos apenas um software. Seu cofre é gerenciado por quem entende. São mais de 10 anos de experiência real nos bastidores de contratos e licitações trabalhando a seu favor."
                             />
+
+                            {/* PILAR 3: Foco na dor financeira (Manutenção dos 12 meses) */}
                             <FeatureCard
                                 icon={<FileCheck className="h-8 w-8 text-blue-600" />}
-                                title="Auditoria Completa"
-                                description="Histórico imutável de todas as certidões já emitidas. Segurança jurídica e organização para sua empresa."
+                                title="Blindagem de Pagamentos"
+                                description="A lei exige regularidade fiscal durante toda a execução do contrato. Nós atualizamos seus documentos antes do vencimento para garantir que o órgão público nunca bloqueie suas faturas."
                             />
                         </div>
                     </div>
                 </section>
             </main>
 
-            {/* Footer Simples */}
+            {/* --- FOOTER SIMPLES --- */}
             <footer className="bg-white border-t border-slate-100 py-8">
                 <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-                    © 2026 LicitaDocs. Todos os direitos reservados.
+                    © 2026 LicitaDocs. Todos os direitos reservados. <br className="sm:hidden" />
+                    <span className="hidden sm:inline"> • </span>
+                    Tecnologia e Experiência em Licitações Públicas.
                 </div>
             </footer>
         </div>
@@ -92,11 +109,11 @@ export function LandingPage() {
  * @interface FeatureCardProps
  */
 interface FeatureCardProps {
-    /** Ícone representativo da funcionalidade (ex: componente Lucide React). */
+    /** Ícone representativo da funcionalidade (componente Lucide React). */
     icon: React.ReactNode;
-    /** Título de destaque da funcionalidade. */
+    /** Título de destaque da funcionalidade (focado no benefício). */
     title: string;
-    /** Texto descritivo que detalha o benefício para o utilizador. */
+    /** Texto descritivo que detalha o valor entregue para o cliente. */
     description: string;
 }
 
@@ -109,7 +126,7 @@ function FeatureCard({ icon, title, description }: FeatureCardProps) {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
             <div className="mb-4">{icon}</div>
             <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
-            <p className="text-slate-600">{description}</p>
+            <p className="text-slate-600 leading-relaxed">{description}</p>
         </div>
     );
 }
