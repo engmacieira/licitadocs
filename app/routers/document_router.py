@@ -309,8 +309,12 @@ def export_valid_documents_zip(
         else:
             raise HTTPException(status_code=403, detail="Utilizador não possui empresa ativa vinculada.")
 
-    # 2. Busca todos os documentos unificados da empresa (legados + certidões estruturadas)
-    all_docs = DocumentRepository.get_unified_by_company(db, target_company_id)
+    # 2. Busca os documentos da empresa, IGNORANDO uploads pendentes do cliente
+    all_docs = DocumentRepository.get_unified_by_company(
+        db=db, 
+        company_id=target_company_id, 
+        is_client_upload=False
+    )
     
     # 3. Filtragem de Regra de Negócio: Apenas Válidos e Vigentes
     # Consideramos "valid" e "warning" (próximo de vencer) como aptos para download.

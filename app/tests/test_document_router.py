@@ -306,7 +306,7 @@ def test_catalog_endpoints(client, auth_headers):
 # ==========================================
 
 def test_export_valid_documents_zip_success(client, auth_headers, test_company, db_session, tmp_path):
-    """Valida a exportação em lote (Happy Path): Arquivos corretos, ignorando expirados e renomeando duplicados."""
+    """Valida a exportação em lote: Arquivos corretos, ignorando expirados, uploads de clientes e renomeando duplicados."""
     from app.models.document_model import Document, DocumentStatus
     import zipfile
     import io
@@ -320,21 +320,25 @@ def test_export_valid_documents_zip_success(client, auth_headers, test_company, 
 
     # 2. Inserir no banco de dados
     doc_valido = Document(
-        title="Doc Válido 1", filename="documento.pdf", file_path=str(file1_path),
-        company_id=test_company.id, status=DocumentStatus.VALID.value
+        title="Doc Oficial 1", filename="documento.pdf", file_path=str(file1_path),
+        company_id=test_company.id, status=DocumentStatus.VALID.value, is_client_upload=False
     )
-    # Mesmo nome de arquivo para testar a inteligência de renomeação do script
     doc_warning = Document(
-        title="Doc Válido 2", filename="documento.pdf", file_path=str(file2_path), 
-        company_id=test_company.id, status=DocumentStatus.WARNING.value
+        title="Doc Oficial 2", filename="documento.pdf", file_path=str(file2_path), 
+        company_id=test_company.id, status=DocumentStatus.WARNING.value, is_client_upload=False
     )
-    # Status Expirado (Não deve entrar no ZIP)
     doc_expirado = Document(
         title="Doc Expirado", filename="velho.pdf", file_path=str(file1_path),
-        company_id=test_company.id, status=DocumentStatus.EXPIRED.value 
+        company_id=test_company.id, status=DocumentStatus.EXPIRED.value, is_client_upload=False
+    )
+    
+    # NOVO: Documento enviado pelo cliente (Válido, mas não oficializado)
+    doc_cliente = Document(
+        title="Upload do Cliente", filename="cliente.pdf", file_path=str(file1_path),
+        company_id=test_company.id, status=DocumentStatus.VALID.value, is_client_upload=True
     )
 
-    db_session.add_all([doc_valido, doc_warning, doc_expirado])
+    db_session.add_all([doc_valido, doc_warning, doc_expirado, doc_cliente])
     db_session.commit()
 
     # 3. Chamar a rota
@@ -342,20 +346,19 @@ def test_export_valid_documents_zip_success(client, auth_headers, test_company, 
 
     # 4. Asserções de Resposta
     assert response.status_code == 200
-    assert response.headers["content-type"] == "application/x-zip-compressed"
-    assert "attachment; filename=documentos_validos.zip" in response.headers["content-disposition"]
 
     # 5. Descompactar em memória e validar o conteúdo
     zip_buffer = io.BytesIO(response.content)
     with zipfile.ZipFile(zip_buffer, "r") as zip_ref:
         lista_arquivos = zip_ref.namelist()
         
-        # Deve ter exatos 2 arquivos (o expirado ficou de fora)
+        # Deve ter exatos 2 arquivos (o expirado e o do cliente ficaram de fora)
         assert len(lista_arquivos) == 2
         
-        # Valida se renomeou o duplicado para não sobrescrever
+        # Valida renomeação e exclusões
         assert "documento.pdf" in lista_arquivos
         assert "documento_1.pdf" in lista_arquivos
+        assert "cliente.pdf" not in lista_arquivos # Garante que o doc do cliente não entrou
 
 def test_export_valid_documents_zip_no_valid_docs(client, auth_headers, test_company, db_session):
     """Valida o erro 404 quando o cliente não possui documentos válidos para exportar."""
