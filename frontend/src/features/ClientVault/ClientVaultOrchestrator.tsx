@@ -26,6 +26,7 @@ export function ClientVaultOrchestrator() {
     // --- ESTADOS ---
     const [documents, setDocuments] = useState<DocumentDTO[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isDownloadingZip, setIsDownloadingZip] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const isAdmin = user?.role === 'admin';
@@ -77,12 +78,33 @@ export function ClientVaultOrchestrator() {
         });
     }, [documents, searchTerm]);
 
+    /**
+     * Aciona o serviço para baixar todos os documentos válidos em um único ZIP.
+     */
+    const handleDownloadZip = async () => {
+        setIsDownloadingZip(true);
+        try {
+            const companyId = isAdmin ? undefined : currentCompany?.id;
+            const fileName = `Documentos_${currentCompany?.razao_social?.replace(/\s+/g, '_') || 'Empresa'}.zip`;
+
+            await documentService.downloadAllValidZip(companyId, fileName);
+            toast.success("Download do pacote concluído!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Não foi possível gerar o arquivo ZIP. Tente novamente.");
+        } finally {
+            setIsDownloadingZip(false);
+        }
+    };
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
             {/* Cabeçalho e Pesquisa Isolados */}
             <VaultHeader
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
+                onDownloadZip={filteredDocs.length > 0 ? handleDownloadZip : undefined}
+                isDownloading={isDownloadingZip}
             />
 
             {/* Conteúdo Principal do Cofre */}

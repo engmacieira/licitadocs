@@ -32,7 +32,7 @@ describe('documentService', () => {
 
     it('getAll should handle companyId query param', async () => {
         vi.mocked(api.get).mockResolvedValue({ data: [] });
-        
+
         await documentService.getAll('comp-1');
         expect(api.get).toHaveBeenCalledWith('/documents/?company_id=comp-1');
 
@@ -43,7 +43,7 @@ describe('documentService', () => {
     it('upload should send FormData with all possible options', async () => {
         vi.mocked(api.post).mockResolvedValueOnce({ data: { id: 'doc-1' } });
         const mockFile = new File([''], 'test.pdf', { type: 'application/pdf' });
-        
+
         const options = {
             title: 'Test Doc',
             typeId: 'type-1',
@@ -80,8 +80,8 @@ describe('documentService', () => {
         // Spy on DOM methods
         const link = document.createElement('a');
         const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => link);
-        const clickSpy = vi.spyOn(link, 'click').mockImplementation(() => {});
-        const removeSpy = vi.spyOn(link, 'remove').mockImplementation(() => {});
+        const clickSpy = vi.spyOn(link, 'click').mockImplementation(() => { });
+        const removeSpy = vi.spyOn(link, 'remove').mockImplementation(() => { });
         const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(link);
 
         await documentService.downloadDocument('doc-1', 'test_file.txt');
@@ -144,5 +144,34 @@ describe('documentService', () => {
         vi.mocked(api.patch).mockResolvedValueOnce({});
         await documentService.updateDocument('1', { status: 'archived' });
         expect(api.patch).toHaveBeenCalledWith('/documents/1', { status: 'archived' });
+    });
+
+    it('downloadAllValidZip should trigger a batch zip download', async () => {
+        const mockBlob = new Blob(['zip content'], { type: 'application/zip' });
+        vi.mocked(api.get).mockResolvedValueOnce({ data: mockBlob });
+
+        // Spies no DOM para simular o comportamento de download
+        const link = document.createElement('a');
+        const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => link);
+        const clickSpy = vi.spyOn(link, 'click').mockImplementation(() => { });
+        const removeSpy = vi.spyOn(link, 'remove').mockImplementation(() => { });
+        const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(link);
+
+        await documentService.downloadAllValidZip('comp-1', 'documentos_validos.zip');
+
+        // Verifica se a chamada API foi correta
+        expect(api.get).toHaveBeenCalledWith('/documents/export/zip?company_id=comp-1', { responseType: 'blob' });
+
+        // Verifica o fluxo de download nativo
+        expect(window.URL.createObjectURL).toHaveBeenCalled();
+        expect(createElementSpy).toHaveBeenCalledWith('a');
+        expect(link.download).toBe('documentos_validos.zip');
+        expect(appendSpy).toHaveBeenCalled();
+        expect(clickSpy).toHaveBeenCalled();
+        expect(removeSpy).toHaveBeenCalled();
+
+        // Limpeza dos mocks do DOM
+        createElementSpy.mockRestore();
+        appendSpy.mockRestore();
     });
 });

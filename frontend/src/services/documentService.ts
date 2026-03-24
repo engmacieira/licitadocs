@@ -200,6 +200,28 @@ export const documentService = {
         window.URL.revokeObjectURL(url);
     },
 
+    /**
+     * Solicita ao backend a geração de um arquivo ZIP contendo todos os documentos válidos.
+     * @param {string} [companyId] - ID da empresa (necessário para admins).
+     * @param {string} [filename] - Nome do arquivo a ser salvo.
+     */
+    downloadAllValidZip: async (companyId?: string, filename: string = 'documentos.zip'): Promise<void> => {
+        const url = companyId ? `/documents/export/zip?company_id=${companyId}` : '/documents/export/zip';
+
+        // Solicita a resposta em formato binário (Blob)
+        const { data } = await api.get(url, { responseType: 'blob' });
+
+        // Cria o link temporário para forçar o download no navegador
+        const blobUrl = window.URL.createObjectURL(new Blob([data]));
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+    },
+
     // --- Gestão de Categorias (CRUD) ---
     createCategory: async (payload: DocumentCategoryCreateDTO): Promise<DocumentCategoryDTO> => {
         const { data } = await api.post<DocumentCategoryDTO>('/documents/categories', payload);

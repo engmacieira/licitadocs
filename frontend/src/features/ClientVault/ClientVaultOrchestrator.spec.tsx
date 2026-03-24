@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 vi.mock('../../services/documentService', () => ({
     documentService: {
         getAll: vi.fn(),
+        downloadAllValidZip: vi.fn(),
     },
 }));
 
@@ -20,6 +21,7 @@ vi.mock('../../contexts/AuthContext', () => ({
 vi.mock('sonner', () => ({
     toast: {
         error: vi.fn(),
+        success: vi.fn(),
     },
 }));
 
@@ -68,10 +70,10 @@ describe('ClientVaultOrchestrator', () => {
     });
 
     it('deve exibir o estado de loading inicial', async () => {
-        (documentService.getAll as any).mockReturnValue(new Promise(() => {})); // Nunca resolve para testar loading
-        
+        (documentService.getAll as any).mockReturnValue(new Promise(() => { })); // Nunca resolve para testar loading
+
         render(<ClientVaultOrchestrator />);
-        
+
         // Verifica se existem Skeletons (o orchestrator renderiza 3)
         const skeletons = document.querySelectorAll('.animate-pulse');
         expect(skeletons.length).toBeGreaterThan(0);
@@ -176,5 +178,44 @@ describe('ClientVaultOrchestrator', () => {
         render(<ClientVaultOrchestrator />);
 
         expect(documentService.getAll).toHaveBeenCalledWith(undefined);
+    });
+
+    it('deve acionar o download do ZIP e exibir toast de sucesso', async () => {
+        (documentService.getAll as any).mockResolvedValue(mockDocuments);
+        (documentService.downloadAllValidZip as any).mockResolvedValue(undefined);
+        const user = userEvent.setup();
+
+        render(<ClientVaultOrchestrator />);
+
+        // Aguarda a renderização dos documentos
+        await waitFor(() => {
+            expect(screen.getByText('Certidão Negativa de Débitos')).toBeInTheDocument();
+        });
+
+        const downloadBtn = screen.getByRole('button', { name: /Baixar Tudo/i });
+        await user.click(downloadBtn);
+
+        // Verifica se chamou a função do serviço com os parâmetros corretos
+        expect(documentService.downloadAllValidZip).toHaveBeenCalledWith('company-123', expect.any(String));
+
+        // Verifica o toast
+        expect(toast.success).toHaveBeenCalledWith("Download do pacote concluído!");
+    });
+
+    it('deve exibir toast de erro se o download do ZIP falhar', async () => {
+        (documentService.getAll as any).mockResolvedValue(mockDocuments);
+        (documentService.downloadAllValidZip as any).mockRejectedValue(new Error('Network Error'));
+        const user = userEvent.setup();
+
+        render(<ClientVaultOrchestrator />);
+
+        await waitFor(() => {
+            expect(screen.getByText('Certidão Negativa de Débitos')).toBeInTheDocument();
+        });
+
+        const downloadBtn = screen.getByRole('button', { name: /Baixar Tudo/i });
+        await user.click(downloadBtn);
+
+        expect(toast.error).toHaveBeenCalledWith("Não foi possível gerar o arquivo ZIP. Tente novamente.");
     });
 });
