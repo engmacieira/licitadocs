@@ -12,6 +12,7 @@ class ChatRequest(BaseModel):
     """
     message: str = Field(
         ...,
+        max_length=1000,
         description="A pergunta ou instrução do usuário para a IA",
         examples=["O edital pede 'Prova de Regularidade com o FGTS'. O que é isso?"]
     )

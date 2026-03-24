@@ -5,12 +5,16 @@ Controla o upload, download, listagem unificada e o catálogo de tipos de certid
 import os
 import io
 import zipfile
+import stat
+import aiofiles
+from stream_zip import async_stream_zip, ZIP_64
 from datetime import date, datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import limiter
 from app.core.database import get_db
 from app.dependencies import get_current_active_user, require_role
 from app.utils.file_helper import save_upload_file # Mudança para o nosso utilitário padronizado
@@ -244,9 +248,12 @@ def upload_document(
 
 @router.get(
     "/{item_id}/download",
-    summary="Download de Documento"
+    summary="Download de Documento",
+    description="Protegido com Rate Limiting: Máximo de 60 downloads por minuto por IP."
 )
+@limiter.limit("60/minute")
 def download_document(
+    request: Request,
     item_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
@@ -282,18 +289,19 @@ def download_document(
 @router.get(
     "/export/zip",
     summary="Exportar Documentos Válidos em Lote (ZIP)",
-    description="Gera um arquivo .zip com todos os documentos vigentes e não arquivados da empresa."
+    description="Gera um arquivo .zip com todos os documentos vigentes e não arquivados da empresa em streaming."
 )
-def export_valid_documents_zip(
+async def export_valid_documents_zip(
     company_id: Optional[str] = Query(None, description="Filtra por empresa (Obrigatório para Admin)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """
-    Constrói um arquivo ZIP em memória contendo os anexos físicos
-    de todos os documentos com status 'valid' ou 'warning'.
+    Constrói um arquivo ZIP em fluxo (stream) contendo os anexos físicos
+    de todos os documentos com status 'valid' ou 'warning', evitando estourar a RAM
+    usando complexidade espacial O(1).
     """
-    # 1. Validação de Segurança Multi-Tenant (Reutilizando lógica da listagem)
+    # 1. Validação de Segurança Multi-Tenant
     target_company_id = company_id
     allowed_company_ids = [link.company_id for link in current_user.company_links if link.is_active]
 
@@ -317,57 +325,77 @@ def export_valid_documents_zip(
     )
     
     # 3. Filtragem de Regra de Negócio: Apenas Válidos e Vigentes
-    # Consideramos "valid" e "warning" (próximo de vencer) como aptos para download.
     valid_statuses = ["valid", "warning"]
     valid_docs = [doc for doc in all_docs if doc["status"] in valid_statuses]
     
     if not valid_docs:
         raise HTTPException(status_code=404, detail="Nenhum documento válido/vigente encontrado para exportação.")
 
-    # 4. Geração do ZIP em Memória (Evita I/O pesado de disco)
-    zip_buffer = io.BytesIO()
-    
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        added_files = set() # Controle para evitar nomes de arquivo duplicados no ZIP
-        
-        for doc in valid_docs:
-            # Recuperamos o path físico confiando no Repositório (que já blinda soft delete)
-            file_path = DocumentRepository.get_file_path(db, doc["id"])
-            
-            if file_path and file_path != "SEM_ANEXO" and os.path.exists(file_path):
-                original_filename = doc["filename"]
-                base_name, ext = os.path.splitext(original_filename)
-                
-                # Previne colisão caso a empresa tenha dois "contrato.pdf" no banco
-                zip_filename = original_filename
-                counter = 1
-                while zip_filename in added_files:
-                    zip_filename = f"{base_name}_{counter}{ext}"
-                    counter += 1
-                    
-                added_files.add(zip_filename)
-                
-                # Escreve o arquivo no buffer ZIP
-                zip_file.write(file_path, arcname=zip_filename)
+    # 4. Pré-carregar caminhos de arquivo baseados no Database de forma síncrona
+    # pra não prender Sessão do DB no generator assíncrono atrasado pela I/O de rede
+    files_metadata = []
+    for doc in valid_docs:
+        file_path = DocumentRepository.get_file_path(db, doc["id"])
+        if file_path and file_path != "SEM_ANEXO":
+            files_metadata.append({
+                "path": file_path,
+                "filename": doc["filename"]
+            })
 
-    # 5. Verificação final: Tinha documento no banco, mas não havia arquivo no servidor?
-    if not added_files:
+    if not files_metadata:
          raise HTTPException(
              status_code=404, 
              detail="Documentos encontrados, mas os ficheiros físicos não existem no servidor de armazenamento."
          )
-         
-    # Reposiciona o ponteiro do buffer para o início da leitura
-    zip_buffer.seek(0)
-    
-    # 6. Retorno como Streaming
+
+    # 5. Gerador Assíncrono de Arquivos para o stream_zip
+    async def get_files():
+        added_files = set()
+        for doc_meta in files_metadata:
+            file_path = doc_meta["path"]
+            original_filename = doc_meta["filename"]
+
+            # PREVENÇÃO DE RACE CONDITION (Soft validation)
+            if not os.path.exists(file_path):
+                continue
+
+            base_name, ext = os.path.splitext(original_filename)
+            zip_filename = original_filename
+            counter = 1
+            while zip_filename in added_files:
+                zip_filename = f"{base_name}_{counter}{ext}"
+                counter += 1
+            added_files.add(zip_filename)
+
+            modified_at = datetime.now()
+            perms = stat.S_IFREG | 0o600
+
+            # Função de leitura em blocos do arquivo físico (HARD Race condition failover)
+            async def get_chunks(fp=file_path, fname=original_filename):
+                try:
+                    async with aiofiles.open(fp, "rb") as f:
+                        while chunk := await f.read(65536):
+                            yield chunk
+                except FileNotFoundError:
+                    # Se for hard deleted no nanosegundo entre exists() e aiofiles.open()
+                    msg = f"Ficheiro {fname} indisponivel e deletado durante o download."
+                    yield msg.encode("utf-8")
+
+            # Yield seguindo os contratos do stream-zip
+            yield (zip_filename, modified_at, perms, ZIP_64, get_chunks())
+
+    # 6. Streamer final que re-passa os bytes montados da central do ZIP
+    async def zip_streamer():
+        async for chunk in async_stream_zip(get_files()):
+            yield chunk
+
+    # 7. Retorno como Streaming Nativo Assíncrono
     return StreamingResponse(
-        zip_buffer,
+        zip_streamer(),
         media_type="application/x-zip-compressed",
         headers={
-            # Header importante: O Front não dita o nome sozinho, o back sugere este fallback.
             "Content-Disposition": "attachment; filename=documentos_validos.zip",
-            "Access-Control-Expose-Headers": "Content-Disposition" # Permite o front ler o cabeçalho
+            "Access-Control-Expose-Headers": "Content-Disposition"
         }
     )
 

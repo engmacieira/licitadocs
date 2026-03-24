@@ -2,7 +2,7 @@
 Router de Inteligência Artificial (AI).
 Expõe o endpoint de comunicação com o Assistente Virtual Jurídico (Concierge).
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,6 +10,7 @@ from app.dependencies import get_current_user
 from app.models.user_model import User
 from app.services.ai_service import AIService
 from app.schemas.ai_schemas import ChatRequest, ChatResponse
+from app.core.rate_limit import limiter
 
 # A tag foi levemente ajustada para ficar mais descritiva no Swagger
 router = APIRouter(prefix="/ai", tags=["Inteligência Artificial (Concierge)"])
@@ -26,8 +27,10 @@ router = APIRouter(prefix="/ai", tags=["Inteligência Artificial (Concierge)"])
         "ignorando documentos removidos logicamente (Soft Delete)."
     )
 )
+@limiter.limit("5/minute")
 def chat_with_concierge(
-    request: ChatRequest,
+    request: Request,
+    chat_request: ChatRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -41,7 +44,7 @@ def chat_with_concierge(
     ia_reply = AIService.generate_concierge_response(
         db=db, 
         user=current_user, 
-        user_message=request.message
+        user_message=chat_request.message
     )
 
     return ChatResponse(response=ia_reply)

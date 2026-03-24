@@ -11,6 +11,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine, Base
 from app.core.security import SECRET_KEY
 
+from app.core.rate_limit import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
 # Importação dos Routers Refatorados
 from app.routers import (
     auth_router, 
@@ -53,6 +58,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # ==========================================
 # ⏰ BACKGROUND JOBS (CRON)
