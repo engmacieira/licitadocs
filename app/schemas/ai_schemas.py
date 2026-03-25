@@ -17,6 +17,11 @@ class ChatRequest(BaseModel):
         examples=["O edital pede 'Prova de Regularidade com o FGTS'. O que é isso?"]
     )
     
+    company_id: str = Field(
+        ...,
+        description="ID da empresa para a qual o contexto de documentos será buscado"
+    )
+    
     # Permite que o Pydantic aceite dados tanto pelo nome do campo quanto pelo alias (se houver)
     model_config = ConfigDict(populate_by_name=True)
 

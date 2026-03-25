@@ -3,6 +3,7 @@ Router de Autenticação e Onboarding.
 Controla as rotas de cadastro complexo (Multipart Form), login JWT e utilitários de acesso.
 """
 import os
+import contextlib
 from datetime import timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
@@ -12,6 +13,7 @@ from pydantic import BaseModel, EmailStr
 
 from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
+from app.dependencies import require_role
 
 # Models & Repos
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
@@ -20,6 +22,8 @@ from app.models.document_model import Document, DocumentStatus
 from app.utils.file_helper import save_upload_file
 from app.repositories.user_repository import UserRepository
 from app.schemas.user_schemas import Token
+
+DUMMY_HASH = get_password_hash("dummy")
 
 router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
 
@@ -40,7 +44,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
         "Se qualquer passo falhar, toda a operação é revertida (Rollback)."
     )
 )
-def register(
+async def register(
     email: EmailStr = Form(..., description="E-mail de acesso do usuário"),
     password: str = Form(..., description="Senha forte"),
     legal_name: str = Form(..., description="Razão Social da empresa"),
@@ -64,6 +68,8 @@ def register(
     from app.repositories.company_repository import CompanyRepository
     if CompanyRepository.get_by_cnpj(db, cnpj):
         raise HTTPException(status_code=400, detail="CNPJ já cadastrado no sistema.")
+
+    saved_files = []
 
     try:
         # 2. Cria Usuário (Apenas instanciando o Model para garantir a Transação Atômica)
@@ -100,13 +106,23 @@ def register(
         db.add(link)
 
         # 5. Processamento de Arquivos Físicos
-        def process_file(upload_file: UploadFile, title: str):
+        async def process_file(upload_file: UploadFile, title: str):
             if not upload_file: 
                 return
             
+            if not upload_file.filename.lower().endswith('.pdf'):
+                raise HTTPException(status_code=400, detail="Apenas arquivos PDF são permitidos.")
+            
+            upload_file.file.seek(0, 2)
+            size = upload_file.file.tell()
+            upload_file.file.seek(0)
+            if size > 5 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail="Arquivo muito grande. Máximo 5MB.")
+            
             try:
                 # Usa o file_helper otimizado para lidar com a gravação no disco
-                path, size = save_upload_file(upload_file, "companies")
+                path, size = await save_upload_file(upload_file, "companies")
+                saved_files.append(path)
                 
                 doc = Document(
                     title=title,
@@ -121,10 +137,10 @@ def register(
             except Exception as e:
                 raise ValueError(f"Falha ao salvar {title}: {str(e)}")
 
-        if social_contract: process_file(social_contract, "Contrato Social")
-        if cnpj_card: process_file(cnpj_card, "Cartão CNPJ")
-        if responsible_doc: process_file(responsible_doc, "Documento Identidade")
-        if proxy_doc: process_file(proxy_doc, "Procuração")
+        if social_contract: await process_file(social_contract, "Contrato Social")
+        if cnpj_card: await process_file(cnpj_card, "Cartão CNPJ")
+        if responsible_doc: await process_file(responsible_doc, "Documento Identidade")
+        if proxy_doc: await process_file(proxy_doc, "Procuração")
 
         # 6. Finaliza a Transação Atômica com Sucesso
         db.commit()
@@ -144,7 +160,17 @@ def register(
             }
         }
 
+    except HTTPException as e:
+        for path in saved_files:
+            with contextlib.suppress(OSError):
+                os.remove(path)
+        db.rollback()
+        raise e
     except Exception as e:
+        for path in saved_files:
+            with contextlib.suppress(OSError):
+                os.remove(path)
+                
         db.rollback() # 🛡️ BLINDAGEM: Se qualquer passo falhar, o banco volta ao estado inicial
         if "Email já cadastrado" in str(e):
             raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
@@ -165,12 +191,21 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     # Consome o UserRepository (já protegido contra Soft Delete)
     user = UserRepository.get_by_email(db, form_data.username)
     
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user:
+        verify_password(form_data.password, DUMMY_HASH)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    if not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="E-mail ou senha incorretos.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Acesso bloqueado. Conta inativa.")
 
@@ -195,7 +230,11 @@ class UserSimpleCreate(BaseModel):
     summary="Cadastro Simplificado (Testes/Admin)",
     description="Cria apenas a entidade Usuário (sem Empresa ou arquivos). Útil para testes ou criação de Staff."
 )
-def register_simple(user_in: UserSimpleCreate, db: Session = Depends(get_db)):
+def register_simple(
+    user_in: UserSimpleCreate, 
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
     if UserRepository.get_by_email(db, user_in.email):
         raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
     

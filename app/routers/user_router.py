@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import get_password_hash
 from app.dependencies import get_current_user
 from app.models.user_model import User
 from app.schemas.user_schemas import UserResponse, UserUpdate
@@ -51,10 +52,15 @@ def update_user_me(
     # Exclui campos não enviados (unset) para não substituir valores existentes por nulos
     user_data = user_in.model_dump(exclude_unset=True)
     
+    # 🛡️ Missão 1: Tratamento de Senha (Hashing)
+    if "password" in user_data:
+        password = user_data.pop("password")
+        current_user.password_hash = get_password_hash(password)
+    
     for field, value in user_data.items():
-        # 🛡️ BLINDAGEM DE SEGURANÇA: 
-        # O utilizador NUNCA pode alterar o seu próprio ID, Cargo (Role) ou Hash de Password por aqui.
-        if field not in ["id", "role", "password_hash"]:
+        # 🛡️ Missão 3: Bloqueio de Mass Assignment (Blindagem)
+        # O utilizador NUNCA pode alterar o seu próprio ID, Cargo (Role), Status ou Hash de Password.
+        if field not in ["id", "role", "password_hash", "is_active"]:
             setattr(current_user, field, value)
     
     db.add(current_user)
@@ -82,10 +88,14 @@ def read_my_companies(current_user: User = Depends(get_current_user)):
         if link.is_active: 
             company_data = link.company
             
-            # Montamos um dicionário mesclando os dados da empresa e o nível de acesso (Role) do link
+            # 🛡️ Missão 4: Limpeza de Retorno (Anti-Pattern ORM Fix)
+            # Evita expor o estado interno do SQLAlchemy (__dict__)
             company_dict = {
-                **company_data.__dict__,
                 "id": company_data.id,
+                "razao_social": company_data.razao_social,
+                "cnpj": company_data.cnpj,
+                "nome_fantasia": company_data.nome_fantasia,
+                "email_corporativo": company_data.email_corporativo,
                 "role": link.role,
                 "status": link.is_active,
                 "created_at": company_data.created_at

@@ -74,7 +74,6 @@ def test_message_repository_admin_view(db_session: Session, test_company, test_u
 def test_message_repository_database_errors(db_session: Session, monkeypatch):
     """Testa tratamento de DatabaseError no MessageRepository via mock."""
     from sqlalchemy.exc import DatabaseError
-    from fastapi import HTTPException
     
     def mock_error(*args, **kwargs):
         raise DatabaseError("statement", "params", "orig")
@@ -84,14 +83,11 @@ def test_message_repository_database_errors(db_session: Session, monkeypatch):
     # create usa db.commit() which causes the error
     monkeypatch.setattr(db_session, "commit", mock_error)
     
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(DatabaseError):
         MessageRepository.create(db_session, "any", "any", MessageCreate(content="error", message_type="chat"))
-    assert exc.value.status_code == 500
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(DatabaseError):
         MessageRepository.get_by_company(db_session, "any")
-    assert exc.value.status_code == 500
 
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(DatabaseError):
         MessageRepository.get_all_tickets_admin(db_session)
-    assert exc.value.status_code == 500

@@ -17,6 +17,7 @@ from app.models.certificate_model import Certificate
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.document_repository import DocumentRepository
+from app.schemas.dashboard_schemas import AdminStatsResponse, ClientStatsResponse
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard (Indicadores)"])
 
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard (Indicadores)"])
 # 📊 VISÃO DO ADMINISTRADOR
 # ==========================================
 
-@router.get("/admin/stats", summary="Estatísticas Globais (Admin)")
+@router.get("/admin/stats", summary="Estatísticas Globais (Admin)", response_model=AdminStatsResponse)
 def get_admin_dashboard_stats(
     db: Session = Depends(get_db),
     current_admin: User = Depends(get_current_active_admin)
@@ -42,12 +43,8 @@ def get_admin_dashboard_stats(
     total_certs = db.query(Certificate).filter(Certificate.deleted_at.is_(None)).count()
     total_documents = total_legacies + total_certs
 
-    # 2. Documentos Recentes (Mantido os legados aqui para simplificar a visão do backoffice)
-    recent_docs = db.query(Document)\
-        .filter(Document.deleted_at.is_(None))\
-        .order_by(Document.created_at.desc())\
-        .limit(5)\
-        .all()
+    # 2. Documentos Recentes (Unificados: Legados + Certidões)
+    recent_docs = DocumentRepository.get_recent_global(db, limit=5)
 
     # 3. Empresas Recentes
     recent_companies = CompanyRepository.get_active_query(db)\
@@ -68,7 +65,7 @@ def get_admin_dashboard_stats(
 # 📈 VISÃO DO CLIENTE (Multi-Tenancy)
 # ==========================================
 
-@router.get("/client/stats", summary="Estatísticas da Empresa (Cliente)")
+@router.get("/client/stats", summary="Estatísticas da Empresa (Cliente)", response_model=ClientStatsResponse)
 def get_client_dashboard_stats(
     company_id: Optional[str] = None, 
     db: Session = Depends(get_db),

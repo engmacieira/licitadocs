@@ -81,23 +81,26 @@ def get_current_active_admin(
 def verify_company_access(
     company_id: str, 
     user: User, 
+    db: Session = Depends(get_db),
     required_role: Optional[str] = None
 ) -> Optional[UserCompanyLink]:
     """
     Valida se o usuário tem permissão para acessar ou manipular dados de uma empresa.
     Implementa a 'Chave Mestra' para Administradores do LicitaDoc.
+    Garante o respeito ao Soft Delete e status do vínculo.
     """
     
     # 🗝️ ADMINISTRADORES: Passe livre para suporte e auditoria
     if user.role == UserRole.ADMIN.value:
         return None  
     
-    # CLIENTES: Verificação rigorosa do vínculo na tabela associativa
-    # Filtra apenas vínculos ativos e pertencentes à empresa solicitada
-    link = next(
-        (l for l in user.company_links if l.company_id == company_id and l.is_active), 
-        None
-    )
+    # CLIENTES: Verificação rigorosa no Banco de Dados (Blindagem contra Soft Delete)
+    link = db.query(UserCompanyLink).filter(
+        UserCompanyLink.user_id == user.id,
+        UserCompanyLink.company_id == company_id,
+        UserCompanyLink.is_active == True,
+        UserCompanyLink.deleted_at == None
+    ).first()
 
     if not link:
         raise HTTPException(

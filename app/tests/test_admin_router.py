@@ -143,3 +143,136 @@ def test_admin_document_management(client, db_session, test_company):
     # 4. Erros no download
     response = client.get(f"/admin/companies/{test_company.id}/documents/non_existent/download", headers=headers)
     assert response.status_code == 404
+
+def test_admin_upload_restrictions_malware_dos_vulnerability(client, db_session, test_company):
+    """Testa restrições de upload (extensão e tamanho) na rota administrativa."""
+    from app.core.security import create_access_token
+    from app.models.user_model import User
+    import io
+    
+    admin_email = f"admin_up_{os.urandom(4).hex()}@example.com"
+    admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
+    db_session.add(admin)
+    db_session.commit()
+    
+    token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # 1. Tenta enviar arquivo .exe (deve ser barrado)
+    file_content = b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00\xb8\x00\x00\x00"
+    file = ("malware.exe", io.BytesIO(file_content), "application/x-msdownload")
+    response = client.post(
+        f"/admin/companies/{test_company.id}/upload",
+        headers=headers,
+        files={"file": file}
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    # 2. Tenta enviar arquivo maior que 5MB (deve ser barrado)
+    large_content = b"0" * ((5 * 1024 * 1024) + 1)
+    file_large = ("large.pdf", io.BytesIO(large_content), "application/pdf")
+    response = client.post(
+        f"/admin/companies/{test_company.id}/upload",
+        headers=headers,
+        files={"file": file_large}
+    )
+    assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+
+def test_admin_toggle_company_status_not_owner(client, db_session, test_company):
+    """
+    Testa se desativar a empresa não afeta o dono se ele tiver outras empresas.
+    Cria Empresa B do mesmo dono e valida que o dono e Empresa B continuam ativos.
+    """
+    from app.core.security import create_access_token
+    from app.models.user_model import User
+    from app.models.company_model import Company
+    
+    admin_email = f"admin_tog_{os.urandom(4).hex()}@example.com"
+    admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
+    db_session.add(admin)
+    
+    # Criar uma segunda empresa para o mesmo dono de test_company
+    from app.tests.conftest import generate_valid_cnpj
+    owner_id = test_company.owner_id
+    company_b = Company(
+        cnpj=generate_valid_cnpj(),
+        razao_social="Empresa B",
+        owner_id=owner_id,
+        is_active=True
+    )
+    db_session.add(company_b)
+    db_session.commit()
+    
+    token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Admin desativa Empresa A (test_company)
+    response = client.patch(f"/admin/companies/{test_company.id}/toggle-status", headers=headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["is_active"] is False
+    
+    # Valida no banco as propriedades
+    db_session.expire_all()
+    owner = db_session.query(User).filter_by(id=owner_id).first()
+    comp_a = db_session.query(Company).filter_by(id=test_company.id).first()
+    comp_b = db_session.query(Company).filter_by(id=company_b.id).first()
+    
+    assert comp_a.is_active is False
+    assert comp_b.is_active is True
+    assert owner.is_active is True  # O dono precisa continuar ativo
+
+def test_admin_download_document_idor_vulnerability(client, db_session, test_company):
+    """Testa se um arquivo pertencente à empresa A pode ser baixado usando a URL da empresa B (IDOR)."""
+    from app.core.security import create_access_token
+    from app.models.user_model import User
+    from app.models.company_model import Company
+    from app.models.document_model import Document
+    import io
+
+    # 1. Criar empresa B e documento para empresa A
+    from app.tests.conftest import generate_valid_cnpj
+    company_b = Company(
+        cnpj=generate_valid_cnpj(),
+        razao_social="Empresa B",
+        is_active=True
+    )
+    db_session.add(company_b)
+    
+    # Documento real para Empresa A
+    doc_a = Document(
+        company_id=test_company.id,
+        title="Doc Emp A",
+        filename="dummy_a.pdf",
+        file_path="dummy_path_a"
+    )
+    db_session.add(doc_a)
+    
+    admin_email = f"admin_idor_{os.urandom(4).hex()}@example.com"
+    admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
+    db_session.add(admin)
+    db_session.commit()
+    
+    token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Admin tenta baixar Doc_A através da rota da Company_B
+    response = client.get(f"/admin/companies/{company_b.id}/documents/{doc_a.id}/download", headers=headers)
+    # Como document_repository.get_file_path agora valida company_id, deve retornar 404/403
+    assert response.status_code in [status.HTTP_404_NOT_FOUND, status.HTTP_403_FORBIDDEN]
+
+def test_admin_list_companies_pagination_dos_vulnerability(client, db_session):
+    """Testa se valores absurdos em paginação são bloqueados (Mitigação de DoS)."""
+    from app.core.security import create_access_token
+    from app.models.user_model import User
+    
+    admin_email = f"admin_dos_{os.urandom(4).hex()}@example.com"
+    admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
+    db_session.add(admin)
+    db_session.commit()
+    
+    token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # 1. Request com limit acima do max_limit
+    response = client.get("/admin/companies?limit=1000000", headers=headers)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

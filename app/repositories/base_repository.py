@@ -6,7 +6,8 @@ Soft Delete para todas as consultas do sistema.
 
 from typing import TypeVar, Generic, Type, Optional, List, Any
 from sqlalchemy.orm import Session
-from datetime import datetime
+from sqlalchemy import inspect
+from datetime import datetime, timezone
 
 # Define um tipo genérico para os Modelos do SQLAlchemy
 ModelType = TypeVar("ModelType")
@@ -31,8 +32,22 @@ class BaseRepository(Generic[ModelType]):
 
     @classmethod
     def get_by_id(cls, db: Session, id: Any) -> Optional[ModelType]:
-        """Busca padrão por ID respeitando o Soft Delete."""
-        return cls.get_active_query(db).filter(cls.model.id == id).first()
+        """
+        Busca dinâmica por ID respeitando o Soft Delete.
+        Identifica automaticamente a coluna de Chave Primária.
+        """
+        # Se o modelo tiver atributo 'id', usa ele diretamente (Performance)
+        if hasattr(cls.model, 'id'):
+            return cls.get_active_query(db).filter(cls.model.id == id).first()
+        
+        # Fallback dinâmico para PKs com nomes diferentes de 'id'
+        try:
+            mapper = inspect(cls.model)
+            pk_column = mapper.primary_key[0]
+            return cls.get_active_query(db).filter(pk_column == id).first()
+        except (AttributeError, IndexError):
+            # Fallback seguro: Caso o modelo não possua uma PK bem definida ou identidada
+            return None
 
     @classmethod
     def get_all(cls, db: Session, skip: int = 0, limit: int = 100) -> List[ModelType]:
@@ -40,23 +55,20 @@ class BaseRepository(Generic[ModelType]):
         return cls.get_active_query(db).offset(skip).limit(limit).all()
 
     @classmethod
-    def soft_delete(cls, db: Session, id: Any) -> bool:
+    def soft_delete(cls, db: Session, id: Any) -> Any:
         """
-        Executa a exclusão lógica (Soft Delete) marcando a data e hora atual.
-        Se o modelo não suportar, faz o Hard Delete como fallback.
+        Executa a exclusão lógica (Soft Delete) marcando a data e hora atual (UTC Aware).
+        Retorna o objeto modificado ou None se não encontrado.
+        A responsabilidade do commit() é da camada superior (Unit of Work).
         """
         obj = cls.get_by_id(db, id)
         if not obj:
-            return False
+            return None
             
-        try:
-            if hasattr(obj, 'deleted_at'):
-                obj.deleted_at = datetime.now() # Marca como deletado
-            else:
-                db.delete(obj) # Fallback para tabelas associativas
-                
-            db.commit()
-            return True
-        except Exception as e:
-            db.rollback()
-            raise ValueError(f"Erro ao deletar registro: {str(e)}")
+        if hasattr(obj, 'deleted_at'):
+            obj.deleted_at = datetime.now(timezone.utc) # Timezone Awareness (UTC)
+        else:
+            db.delete(obj) # Fallback para tabelas sem Soft Delete
+            
+        db.flush() # Sincroniza o estado com a sessão sem efetivar a transação
+        return obj

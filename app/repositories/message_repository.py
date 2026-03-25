@@ -5,7 +5,7 @@ Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
 """
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DatabaseError
-from fastapi import HTTPException
+from typing import List
 
 from app.repositories.base_repository import BaseRepository
 from app.models.message_model import Message
@@ -36,7 +36,18 @@ class MessageRepository(BaseRepository[Message]):
             return new_message
         except DatabaseError as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao salvar a mensagem/ticket.")
+            raise e
+
+    @classmethod
+    def create_bulk(cls, db: Session, messages: List[Message]) -> List[Message]:
+        """Cria várias mensagens em um único lote (bulk insert) para evitar N+1/DoS."""
+        try:
+            db.add_all(messages)
+            db.commit()
+            return messages
+        except DatabaseError as e:
+            db.rollback()
+            raise e
 
     @classmethod
     def get_by_company(cls, db: Session, company_id: str):
@@ -46,8 +57,8 @@ class MessageRepository(BaseRepository[Message]):
             return cls.get_active_query(db).filter(
                 cls.model.company_id == company_id
             ).order_by(cls.model.created_at.asc()).all()
-        except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao buscar mensagens.")
+        except DatabaseError as e:
+            raise e
 
     @classmethod
     def mark_as_read(cls, db: Session, message_id: str) -> Message:
@@ -60,9 +71,9 @@ class MessageRepository(BaseRepository[Message]):
                 db.commit()
                 db.refresh(message)
             return message
-        except DatabaseError:
+        except DatabaseError as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao atualizar a mensagem.")
+            raise e
 
     @classmethod
     def resolve_ticket(cls, db: Session, message_id: str) -> Message:
@@ -75,9 +86,9 @@ class MessageRepository(BaseRepository[Message]):
                 db.commit()
                 db.refresh(message)
             return message
-        except DatabaseError:
+        except DatabaseError as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao resolver o ticket.")
+            raise e
         
     @classmethod
     def get_all_tickets_admin(cls, db: Session):
@@ -87,5 +98,5 @@ class MessageRepository(BaseRepository[Message]):
             return cls.get_active_query(db).filter(
                 cls.model.message_type != "system"
             ).order_by(cls.model.created_at.desc()).all()
-        except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao buscar todos os tickets.")
+        except DatabaseError as e:
+            raise e

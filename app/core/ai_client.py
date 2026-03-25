@@ -5,9 +5,13 @@ para suporte ao 'Tira-Dúvidas' de certidões.
 """
 
 import os
+import logging
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+
+# Configuração de Logger para o CORE de IA
+logger = logging.getLogger(__name__)
 
 # Garantir carregamento das variáveis para instâncias isoladas
 load_dotenv()
@@ -29,13 +33,13 @@ class AIClient:
         self.model_name = "gemini-2.0-flash"
         
         if not self.api_key:
-            print("⚠️ [IA_CORE] AVISO: GOOGLE_API_KEY ausente. Funcionalidades de IA desativadas.")
+            logger.warning("⚠️ [IA_CORE] AVISO: GOOGLE_API_KEY ausente. Funcionalidades de IA desativadas.")
         else:
             try:
                 # Inicialização da SDK v2 para suporte ao Gemini 2.0
                 self.client = genai.Client(api_key=self.api_key)
             except Exception as e:
-                print(f"❌ [IA_CORE] Erro na inicialização do cliente GenAI: {e}")
+                logger.error(f"❌ [IA_CORE] Erro na inicialização do cliente GenAI") # Suprimindo str(e) se sensivel
 
     def generate_chat_response(self, message: str, context: str = "") -> tuple[str, int]:
         """
@@ -85,8 +89,8 @@ class AIClient:
             return "A IA não conseguiu gerar uma resposta para este documento. Revise o conteúdo enviado.", tokens_used
             
         except Exception as e:
-            # Log técnico detalhado para o desenvolvedor
-            print(f"❌ [IA_CORE] Falha na chamada ao modelo {self.model_name}: {str(e)}")
+            # Log técnico higienizado para produção
+            logger.error(f"❌ [IA_CORE] Falha na chamada ao modelo {self.model_name}")
             return "Estou com dificuldades para analisar este documento agora. Por favor, tente novamente em instantes.", 0
 
 # Instância única para importação global (Singleton Pattern)

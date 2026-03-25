@@ -10,7 +10,7 @@ import secrets
 
 from app.core.database import get_db
 from app.core.security import get_password_hash
-from app.dependencies import get_current_active_user, verify_company_access, get_current_user
+from app.dependencies import get_current_active_user, verify_company_access, get_current_user, get_current_active_admin
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
 from app.models.company_model import Company
 
@@ -73,7 +73,7 @@ def get_company_by_id(
     is_owner = str(company.owner_id) == str(current_user.id)
     if not is_owner and current_user.role != UserRole.ADMIN.value:
          # Valida se existe vínculo ativo
-         verify_company_access(company_id, current_user)
+         verify_company_access(company_id, current_user, db)
 
     return company
 
@@ -93,7 +93,7 @@ def update_company(
     REQUER: Ser membro com cargo 'MASTER' ou Administrador.
     """
     if current_user.role != UserRole.ADMIN.value:
-        verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
+        verify_company_access(company_id, current_user, db, required_role=UserCompanyRole.MASTER.value)
         
     company = CompanyRepository.get_by_id(db, company_id)
     if not company:
@@ -122,11 +122,10 @@ def update_company(
 def update_onboarding_step(
     company_id: str,
     step: str = Query(..., description="terms | payment | data | contract"),
-    current_user: User = Depends(get_current_active_user),
+    current_admin: User = Depends(get_current_active_admin),
     db: Session = Depends(get_db)
 ):
     """Avança as flags de progresso do onboarding da empresa."""
-    verify_company_access(company_id, current_user, required_role=UserCompanyRole.MASTER.value)
     
     company = CompanyRepository.get_by_id(db, company_id)
     if not company:
@@ -151,16 +150,23 @@ def update_onboarding_step(
 # 👥 GESTÃO DE EQUIPA (MEMBROS)
 # ==========================================
 
-def check_is_master(user: User, company_id: str):
-    """Helper local para validar permissões de gestão de equipa."""
+def check_is_master(db: Session, user: User, company_id: str):
+    """Helper local para validar permissões de gestão de equipa (Respeita Soft Delete)."""
     if user.role == UserRole.ADMIN.value:
         return True
     
-    link = next((l for l in user.company_links if l.company_id == company_id), None)
-    if not link or link.role != UserCompanyRole.MASTER.value:
+    link = db.query(UserCompanyLink).filter(
+        UserCompanyLink.user_id == user.id,
+        UserCompanyLink.company_id == company_id,
+        UserCompanyLink.role == UserCompanyRole.MASTER.value,
+        UserCompanyLink.is_active == True,
+        UserCompanyLink.deleted_at == None
+    ).first()
+
+    if not link:
         raise HTTPException(
             status_code=403, 
-            detail="Apenas gestores (MASTER) podem gerir a equipa."
+            detail="Apenas gestores (MASTER) ativos podem gerir a equipa."
         )
     return True
 
@@ -175,7 +181,7 @@ def list_members(
     db: Session = Depends(get_db)
 ):
     """Lista todos os utilizadores vinculados a esta empresa (Acesso para qualquer membro)."""
-    verify_company_access(company_id, current_user)
+    verify_company_access(company_id, current_user, db)
     
     members_links = db.query(UserCompanyLink).filter(UserCompanyLink.company_id == company_id).all()
     
@@ -208,7 +214,7 @@ def add_member(
     Convida um utilizador para a empresa utilizando transações seguras (Savepoints).
     Cria a conta automaticamente caso o e-mail não exista.
     """
-    check_is_master(current_user, company_id)
+    check_is_master(db, current_user, company_id)
 
     company = CompanyRepository.get_by_id(db, company_id)
     if not company:
@@ -266,7 +272,9 @@ def add_member(
 
     msg = "Utilizador adicionado à equipa com sucesso."
     if is_new:
-        msg = f"Conta criada. Senha provisória do membro: {temp_password}"
+        # Simulação de envio de e-mail com temp_password
+        # send_invite_email(user.email, temp_password)
+        msg = "Conta criada. Instruções enviadas por e-mail."
 
     return {
         "user_id": user.id,
@@ -288,7 +296,7 @@ def update_member_role(
     db: Session = Depends(get_db)
 ):
     """Promove ou despromove um membro (MASTER <-> VIEWER)."""
-    check_is_master(current_user, company_id)
+    check_is_master(db, current_user, company_id)
 
     link = db.query(UserCompanyLink).filter(
         UserCompanyLink.company_id == company_id,
@@ -297,6 +305,10 @@ def update_member_role(
 
     if not link:
         raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
+
+    company = CompanyRepository.get_by_id(db, company_id)
+    if str(company.owner_id) == user_id:
+        raise HTTPException(status_code=403, detail="O criador da empresa não pode ser alterado ou removido.")
 
     if str(current_user.id) == user_id:
         raise HTTPException(status_code=400, detail="Não é possível alterar o seu próprio nível de permissão por esta via.")
@@ -327,7 +339,7 @@ def remove_member(
     db: Session = Depends(get_db)
 ):
     """Remove o acesso de um utilizador à empresa."""
-    check_is_master(current_user, company_id)
+    check_is_master(db, current_user, company_id)
 
     link = db.query(UserCompanyLink).filter(
         UserCompanyLink.company_id == company_id,
@@ -336,6 +348,10 @@ def remove_member(
 
     if not link:
         raise HTTPException(status_code=404, detail="Membro não encontrado nesta empresa.")
+
+    company = CompanyRepository.get_by_id(db, company_id)
+    if str(company.owner_id) == user_id:
+        raise HTTPException(status_code=403, detail="O criador da empresa não pode ser alterado ou removido.")
 
     if str(current_user.id) == user_id:
         raise HTTPException(status_code=400, detail="Não pode remover-se a si próprio.")

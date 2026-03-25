@@ -4,9 +4,17 @@ Define os contratos para a criação e atualização de pedidos de busca de cert
 Atua como a interface de entrada para a fila de trabalho da Fábrica de Certidões.
 """
 
+import enum
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
+
+class EmissionRequestStatus(str, enum.Enum):
+    """Estados possíveis para uma solicitação de emissão."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    ERROR = "error"
 
 class EmissionRequestCreate(BaseModel):
     """
@@ -25,9 +33,9 @@ class EmissionRequestUpdate(BaseModel):
     Contrato para atualização do status da solicitação (PATCH).
     Utilizado pela operação ou pelos robôs para informar o progresso da busca.
     """
-    status: Optional[str] = Field(
+    status: Optional[EmissionRequestStatus] = Field(
         None, 
-        description="Novo estado da solicitação (Ex: 'processing', 'completed', 'error')"
+        description="Novo estado da solicitação"
     )
     estimated_date: Optional[date] = Field(
         None, 
@@ -35,4 +43,17 @@ class EmissionRequestUpdate(BaseModel):
     )
 
     model_config = ConfigDict(populate_by_name=True)
+
+class EmissionRequestResponse(BaseModel):
+    """
+    Esquema de resposta para o histórico de solicitações.
+    """
+    id: str
+    date: datetime = Field(..., alias="created_at")
+    company_id: str = Field(..., alias="companyId")
+    company_name: str = Field(..., alias="companyName")
+    estimated_date: Optional[str] = Field("", alias="estimatedDate")
+    status: EmissionRequestStatus
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 

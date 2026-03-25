@@ -24,8 +24,14 @@ if not DATABASE_URL:
     sys.exit(1)
 
 # 2. Engine & Session
-# Configurado para PostgreSQL (sem check_same_thread necessário)
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+# Configurado para PostgreSQL com pool resiliente (Enterprise Ready)
+engine = create_engine(
+    DATABASE_URL, 
+    pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=20,
+    pool_timeout=30
+)
 
 # Fábrica de sessões com controle transacional manual (ACID)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

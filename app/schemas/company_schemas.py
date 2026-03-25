@@ -12,24 +12,13 @@ from app.models.user_model import UserCompanyRole
 
 # --- Utilitários de Validação ---
 
-def validar_matematica_cpf(v: str) -> str:
-    """Valida a integridade matemática de um CPF (US-01/US-2601)."""
-    numeros = re.sub(r'\D', '', v)
-    if len(numeros) != 11 or numeros == numeros[0] * 11:
-        raise ValueError('CPF deve conter 11 dígitos e ser válido')
-
-    for j in range(9, 11):
-        soma = sum(int(numeros[i]) * ((j + 1) - i) for i in range(j))
-        resto = (soma * 10) % 11
-        if (resto if resto < 10 else 0) != int(numeros[j]):
-            raise ValueError('CPF inválido')
-    return numeros
+from app.utils.validators import validar_matematica_cpf
 
 # --- Schemas de Empresa ---
 
 class CompanyBase(BaseModel):
     """Base de dados cadastrais da Pessoa Jurídica."""
-    cnpj: str = Field(..., description="CNPJ apenas números")
+    cnpj: str = Field(..., max_length=18, description="CNPJ apenas números")
     name: str = Field(..., alias="razao_social", description="Razão Social da empresa")
     nome_fantasia: Optional[str] = Field(None, description="Nome Fantasia/Marca")
     inscricao_estadual: Optional[str] = None
@@ -55,6 +44,12 @@ class CompanyBase(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
+    @field_validator('responsavel_cpf', mode='before')
+    @classmethod
+    def validate_responsavel_cpf(cls, v: str) -> Optional[str]:
+        if not v: return None
+        return validar_matematica_cpf(v)
+
     @field_validator('cnpj', mode='before')
     @classmethod
     def validate_cnpj(cls, v: str) -> str:
@@ -79,8 +74,8 @@ class CompanyCreate(CompanyBase):
     """Schema para criação de novos Tenants."""
     pass
 
-class CompanyUpdate(BaseModel):
-    """Schema para atualização parcial. Todos os campos opcionais."""
+class CompanyUpdateClient(BaseModel):
+    """Schema para atualização por parte do cliente (Apenas dados seguros)."""
     name: Optional[str] = Field(None, alias="razao_social")
     nome_fantasia: Optional[str] = None
     email_corporativo: Optional[EmailStr] = None
@@ -94,17 +89,28 @@ class CompanyUpdate(BaseModel):
     complemento: Optional[str] = None
     bairro: Optional[str] = None
     cidade: Optional[str] = None
-    estado: Optional[str] = None
+    estado: Optional[str] = Field(None, min_length=2, max_length=2)
 
-    # Flags de Regularidade
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('responsavel_cpf', mode='before')
+    @classmethod
+    def validate_responsavel_cpf(cls, v: str) -> Optional[str]:
+        if not v: return None
+        return validar_matematica_cpf(v)
+
+class CompanyUpdateAdmin(CompanyUpdateClient):
+    """Schema para atualização por administradores (Inclui flags de negócio)."""
     is_terms_accepted: Optional[bool] = None
     is_payment_active: Optional[bool] = None
     is_data_completed: Optional[bool] = None
     is_contract_signed: Optional[bool] = None
     is_admin_verified: Optional[bool] = None
     admin_pendencies: Optional[str] = None
-    
-    model_config = ConfigDict(populate_by_name=True)
+
+class CompanyUpdate(CompanyUpdateAdmin):
+    """Retrocompatibilidade: mantém todos os campos."""
+    pass
 
 class CompanyResponse(CompanyBase):
     """Retorno completo da empresa."""
@@ -143,6 +149,12 @@ class CompanyMemberInvite(BaseModel):
     name: Optional[str] = Field(None, description="Nome do usuário")
     role: UserCompanyRole = Field(default=UserCompanyRole.VIEWER)
     cpf: Optional[str] = None
+
+    @field_validator('cpf', mode='before')
+    @classmethod
+    def validate_cpf(cls, v: str) -> Optional[str]:
+        if not v: return None
+        return validar_matematica_cpf(v)
 
 class MemberResponse(BaseModel):
     """Dados de um membro da equipe."""

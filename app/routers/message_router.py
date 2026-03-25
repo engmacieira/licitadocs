@@ -38,19 +38,35 @@ def send_message(
     Envia uma nova mensagem/ticket para a Inbox da empresa. 
     O remetente é extraído automaticamente do token de segurança para evitar falsificações.
     """
-    verify_company_access(company_id, current_user)
+    verify_company_access(company_id, current_user, db)
+    
+    # Mission 1: Prevenir Spoofing de Alertas
+    if current_user.role != UserRole.ADMIN.value:
+        message_in.message_type = "chat"
+
+    # Mission 2: Blindar o Sequestro de Threads / IDOR
+    if message_in.parent_id:
+        parent_msg = MessageRepository.get_by_id(db, message_in.parent_id)
+        if not parent_msg or parent_msg.company_id != company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Acesso negado à thread de outra empresa."
+            )
     
     # Substituído db.query direto pelo Repositório blindado contra Soft Delete
     company = CompanyRepository.get_by_id(db, company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada ou excluída.")
 
-    new_message = MessageRepository.create(db, company_id, current_user.id, message_in)
-    
-    response_data = new_message.__dict__.copy()
-    response_data["sender_name"] = getattr(current_user, "nome", None) or current_user.email.split("@")[0]
-    
-    return response_data
+    try:
+        new_message = MessageRepository.create(db, company_id, current_user.id, message_in)
+        
+        response_data = new_message.__dict__.copy()
+        response_data["sender_name"] = getattr(current_user, "nome", None) or current_user.email.split("@")[0]
+        
+        return response_data
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro interno ao registrar mensagem.")
 
 @router.get(
     "/{company_id}", 
@@ -66,20 +82,23 @@ def list_messages(
     Lista o histórico completo de mensagens ativas e tickets de uma empresa.
     Ignora mensagens que sofreram Soft Delete (Removidas pela moderação).
     """
-    verify_company_access(company_id, current_user)
+    verify_company_access(company_id, current_user, db)
     
-    messages = MessageRepository.get_by_company(db, company_id)
-    
-    results = []
-    for msg in messages:
-        msg_dict = msg.__dict__.copy()
-        if msg.sender:
-            msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or msg.sender.email.split("@")[0]
-        else:
-            msg_dict["sender_name"] = "Aviso do Sistema"
-        results.append(msg_dict)
+    try:
+        messages = MessageRepository.get_by_company(db, company_id)
         
-    return results
+        results = []
+        for msg in messages:
+            msg_dict = msg.__dict__.copy()
+            if msg.sender:
+                msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or msg.sender.email.split("@")[0]
+            else:
+                msg_dict["sender_name"] = "Aviso do Sistema"
+            results.append(msg_dict)
+            
+        return results
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao buscar histórico de mensagens.")
 
 @router.patch(
     "/{message_id}/read", 
@@ -97,10 +116,13 @@ def mark_as_read(
     if not message:
         raise HTTPException(status_code=404, detail="Mensagem não encontrada.")
         
-    verify_company_access(message.company_id, current_user)
+    verify_company_access(message.company_id, current_user, db)
     
-    MessageRepository.mark_as_read(db, message_id)
-    return {"status": "Mensagem lida com sucesso."}
+    try:
+        MessageRepository.mark_as_read(db, message_id)
+        return {"status": "Mensagem lida com sucesso."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao atualizar status de leitura.")
 
 @router.patch(
     "/{message_id}/resolve", 
@@ -118,17 +140,20 @@ def resolve_ticket(
     if not message:
         raise HTTPException(status_code=404, detail="Mensagem/Ticket não encontrado.")
         
-    verify_company_access(message.company_id, current_user)
+    verify_company_access(message.company_id, current_user, db)
     
-    resolved_message = MessageRepository.resolve_ticket(db, message_id)
-    
-    response_data = resolved_message.__dict__.copy()
-    if resolved_message.sender:
-        response_data["sender_name"] = getattr(resolved_message.sender, "nome", None) or resolved_message.sender.email.split("@")[0]
-    else:
-        response_data["sender_name"] = "Aviso do Sistema"
+    try:
+        resolved_message = MessageRepository.resolve_ticket(db, message_id)
         
-    return response_data
+        response_data = resolved_message.__dict__.copy()
+        if resolved_message.sender:
+            response_data["sender_name"] = getattr(resolved_message.sender, "nome", None) or resolved_message.sender.email.split("@")[0]
+        else:
+            response_data["sender_name"] = "Aviso do Sistema"
+            
+        return response_data
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao resolver ticket.")
 
 
 # ==========================================
@@ -145,14 +170,17 @@ def list_all_tickets_admin(
     db: Session = Depends(get_db)
 ):
     """Retorna todos os tickets de todas as empresas (exceto avisos de sistema) para a Inbox do Administrador."""
-    messages = MessageRepository.get_all_tickets_admin(db)
-    results = []
-    for msg in messages:
-        msg_dict = msg.__dict__.copy()
-        msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or (msg.sender.email.split("@")[0] if msg.sender else "Sistema")
-        msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
-        results.append(msg_dict)
-    return results
+    try:
+        messages = MessageRepository.get_all_tickets_admin(db)
+        results = []
+        for msg in messages:
+            msg_dict = msg.__dict__.copy()
+            msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or (msg.sender.email.split("@")[0] if msg.sender else "Sistema")
+            msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
+            results.append(msg_dict)
+        return results
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao buscar todos os tickets.")
 
 @router.get(
     "/admin/alerts", 
@@ -165,19 +193,22 @@ def list_all_alerts_admin(
 ):
     """Retorna todos os avisos automáticos disparados pela plataforma (Ex: Vencimentos, Irregularidades)."""
     # Substituído o db.query direto pela herança inteligente get_active_query
-    messages = MessageRepository.get_active_query(db)\
-        .filter(Message.message_type == "system")\
-        .order_by(Message.created_at.desc())\
-        .all()
-    
-    results = []
-    for msg in messages:
-        msg_dict = msg.__dict__.copy()
-        msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or "Sistema"
-        msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
-        results.append(msg_dict)
+    try:
+        messages = MessageRepository.get_active_query(db)\
+            .filter(Message.message_type == "system")\
+            .order_by(Message.created_at.desc())\
+            .all()
         
-    return results
+        results = []
+        for msg in messages:
+            msg_dict = msg.__dict__.copy()
+            msg_dict["sender_name"] = getattr(msg.sender, "nome", None) or "Sistema"
+            msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
+            results.append(msg_dict)
+            
+        return results
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao buscar alertas.")
 
 @router.post(
     "/admin/broadcast", 
@@ -204,13 +235,20 @@ def broadcast_alert(
     if not target_company_ids:
         raise HTTPException(status_code=400, detail="Nenhuma empresa selecionada (ou todas as empresas estão inativas).")
 
-    # Disparo em massa
+    # Mission 3: Resolve o DoS do Broadcast (Bulk Create)
+    messages_to_create = []
     for comp_id in target_company_ids:
-        msg_in = MessageCreate(
-            content=payload.content, 
-            message_type="system", 
+        new_msg = Message(
+            company_id=comp_id,
+            sender_id=current_admin.id,
+            content=payload.content,
+            message_type="system",
             subject=payload.subject
         )
-        MessageRepository.create(db, comp_id, current_admin.id, msg_in)
+        messages_to_create.append(new_msg)
 
-    return {"status": f"Aviso disparado com sucesso para {len(target_company_ids)} empresa(s)."}
+    try:
+        MessageRepository.create_bulk(db, messages_to_create)
+        return {"status": f"Aviso disparado com sucesso para {len(target_company_ids)} empresa(s)."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao realizar broadcast.")

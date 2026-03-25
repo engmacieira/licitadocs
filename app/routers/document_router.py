@@ -116,7 +116,7 @@ def get_irregular_documents(
     status_code=http_status.HTTP_201_CREATED,
     summary="Upload de Documento ou Certidão"
 )
-def upload_document(
+async def upload_document(
     title: Optional[str] = Form(None),
     type_id: Optional[str] = Form(None),
     authentication_code: Optional[str] = Form(None),
@@ -159,8 +159,17 @@ def upload_document(
             raise HTTPException(status_code=http_status.HTTP_413_CONTENT_TOO_LARGE, detail="Ficheiro maior que 5MB.")
 
         try:
-            file_path, _ = save_upload_file(file, "vault")
+            # Missão 1: Blindagem contra Malware (Magic Numbers)
+            # Validação do Magic Number do PDF (%PDF-)
+            header = await file.read(5)
+            await file.seek(0)
+            if header != b"%PDF-":
+                raise HTTPException(status_code=400, detail="O conteúdo do ficheiro não é um PDF válido (Assinatura inválida).")
+
+            file_path, _ = await save_upload_file(file, "vault")
             filename = file.filename
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail="Falha ao guardar ficheiro no disco.")
     else:
@@ -177,37 +186,39 @@ def upload_document(
                 company_id=final_company_id, expiration_date=expiration_date,
                 authentication_code=authentication_code
             )
-            
-            if status:
-                cert.status = status
-                db.commit()
-
-            # Automação de Alertas
-            if status in ["error", "irregular"]:
-                doc_type_obj = db.query(DocumentType).filter(DocumentType.id == type_id).first()
-                cat_name = doc_type_obj.category.name if doc_type_obj and doc_type_obj.category else "Categoria Geral"
-                doc_name = doc_type_obj.name if doc_type_obj else "Documento"
-
-                alert_msg = MessageCreate(
-                    subject=f"⚠️ Alerta de Irregularidade: {doc_name}",
-                    content=(
-                        "O documento recém-adicionado ao seu cofre apresentou irregularidades/pendências.\n"
-                        f"Documento: {cat_name} - {doc_name}\n"
-                        f"Observações do Analista: {notes or 'Sem observações adicionais.'}\n\n"
-                        "Favor regularizar o mais rápido possível."
-                    ),
-                    message_type="action_required",
-                    related_document_id=cert.id
-                )
-                MessageRepository.create(db, final_company_id, current_user.id, alert_msg)
-
-            return DocumentResponse(
-                id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
-                is_structured=True, type_id=type_id, authentication_code=authentication_code,
-                is_client_upload=False, company_id=str(cert.company_id)
-            )
         except Exception as e:
+            # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
+            if file_path and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
             raise HTTPException(status_code=500, detail=str(e))
+            
+        # Automação de Alertas
+        if status in ["error", "irregular"]:
+            doc_type_obj = db.query(DocumentType).filter(DocumentType.id == type_id).first()
+            cat_name = doc_type_obj.category.name if doc_type_obj and doc_type_obj.category else "Categoria Geral"
+            doc_name = doc_type_obj.name if doc_type_obj else "Documento"
+
+            alert_msg = MessageCreate(
+                subject=f"⚠️ Alerta de Irregularidade: {doc_name}",
+                content=(
+                    "O documento recém-adicionado ao seu cofre apresentou irregularidades/pendências.\n"
+                    f"Documento: {cat_name} - {doc_name}\n"
+                    f"Observações do Analista: {notes or 'Sem observações adicionais.'}\n\n"
+                    "Favor regularizar o mais rápido possível."
+                ),
+                message_type="action_required",
+                related_document_id=cert.id
+            )
+            MessageRepository.create(db, final_company_id, current_user.id, alert_msg)
+
+        return DocumentResponse(
+            id=cert.id, filename=cert.filename, status=cert.status, created_at=cert.created_at,
+            is_structured=True, type_id=type_id, authentication_code=authentication_code,
+            is_client_upload=False, company_id=str(cert.company_id)
+        )
             
     # 2. FLUXO: Documento Legado/Manual (Sem Type_ID)
     else:
@@ -244,6 +255,12 @@ def upload_document(
                 company_id=str(doc.company_id)
             )
         except Exception as e:
+            # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
+            if file_path and os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
             raise HTTPException(status_code=500, detail=str(e))
 
 @router.get(

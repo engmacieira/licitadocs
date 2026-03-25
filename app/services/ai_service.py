@@ -19,7 +19,7 @@ DAILY_TOKEN_LIMIT = 30000
 
 class AIService:
     @staticmethod
-    def generate_concierge_response(db: Session, user: User, user_message: str) -> str:
+    def generate_concierge_response(db: Session, user: User, company_id: str, user_message: str) -> str:
         """
         Orquestra o fluxo do Chatbot:
         1. Identifica a empresa ativa do usuário.
@@ -27,12 +27,7 @@ class AIService:
         3. Aplica o Prompt Blindado e chama a LLM.
         """
         
-        # 1. Identificação do Tenant (Empresa)
-        company_id = None
-        if user.company_links:
-            # Seleciona a primeira empresa vinculada (Padrão para MVP)
-            company_id = user.company_links[0].company_id
-        
+        # 1. Identificação do Tenant (Removido hardcode anterior)
         if not company_id:
              return "Não consegui identificar a sua empresa para consultar os documentos. Por favor, contate o suporte."
 
@@ -75,8 +70,12 @@ class AIService:
             doc_context = "\n".join(doc_lines) if doc_lines else "Nenhum documento encontrado no Cofre."
             
         except Exception as e:
-            logger.error(f"❌ [AI_SERVICE] Erro ao buscar contexto: {str(e)}")
-            doc_context = "Erro técnico ao acessar o cofre."
+            logger.error(f"❌ [AI_SERVICE] Erro crítico ao buscar contexto RAG: {str(e)}")
+            # Mission 3: Abortar imediatamente para evitar chamadas inúteis à LLM (desperdício financeiro)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro técnico ao acessar o cofre de documentos. A operação foi interrompida para sua segurança."
+            )
 
         # 3. Engenharia de Prompt (Blindagem Máxima)
         system_prompt = f"""

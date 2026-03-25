@@ -60,6 +60,15 @@ class DocumentRepository:
         db: Session, type_id: str, filename: str, file_path: str, company_id: str,
         expiration_date: Optional[date] = None, authentication_code: Optional[str] = None
     ) -> Certificate:
+        # Missão 3: Versionamento de Certidões (Upsert e Arquivamento)
+        # Busca todas as certidões ativas daquele company_id e type_id e altera o status para "archived"
+        db.query(Certificate).filter(
+            Certificate.company_id == company_id,
+            Certificate.type_id == type_id,
+            Certificate.status != CertificateStatus.ARCHIVED.value,
+            Certificate.deleted_at.is_(None)
+        ).update({"status": CertificateStatus.ARCHIVED.value}, synchronize_session=False)
+
         cert = Certificate(
             type_id=type_id, filename=filename, file_path=file_path,
             company_id=company_id, expiration_date=expiration_date,
@@ -139,13 +148,17 @@ class DocumentRepository:
         return unified_list
         
     @staticmethod
-    def get_file_path(db: Session, item_id: str) -> Optional[str]:
-        """Garante que não baixa arquivos deletados."""
+    def get_file_path(db: Session, item_id: str, company_id: Optional[str] = None) -> Optional[str]:
+        """Garante que não baixa arquivos deletados e valida vínculo da empresa (IDOR)."""
         doc = db.query(Document).filter(Document.id == item_id, Document.deleted_at.is_(None)).first()
-        if doc: return doc.file_path
+        if doc:
+            if company_id and str(doc.company_id) != company_id: return None
+            return doc.file_path
         
         cert = db.query(Certificate).filter(Certificate.id == item_id, Certificate.deleted_at.is_(None)).first()
-        if cert: return cert.file_path
+        if cert:
+            if company_id and str(cert.company_id) != company_id: return None
+            return cert.file_path
         return None
     
     # =================================================================
@@ -445,3 +458,53 @@ class DocumentRepository:
 
         unified_list.sort(key=lambda x: x["company_name"])
         return unified_list
+
+    @staticmethod
+    def get_recent_global(db: Session, limit: int = 5) -> List[dict]:
+        """Busca os documentos e certificados mais recentes de todo o sistema (Admin)."""
+        unified_list = []
+        
+        # 1. Documentos Recentes (Soft Delete aplicado)
+        legacies = db.query(Document)\
+            .filter(Document.deleted_at.is_(None))\
+            .order_by(Document.created_at.desc())\
+            .limit(limit)\
+            .all()
+            
+        for doc in legacies:
+            unified_list.append({
+                "id": doc.id,
+                "title": doc.title or "Documento Legado",
+                "filename": doc.filename,
+                "expiration_date": doc.expiration_date,
+                "status": doc.status,
+                "created_at": doc.created_at,
+                "is_structured": False,
+                "company_id": str(doc.company_id),
+                "is_client_upload": getattr(doc, 'is_client_upload', False)
+            })
+
+        # 2. Certidões Recentes (Soft Delete aplicado)
+        certificates = db.query(Certificate)\
+            .options(joinedload(Certificate.document_type))\
+            .filter(Certificate.deleted_at.is_(None))\
+            .order_by(Certificate.created_at.desc())\
+            .limit(limit)\
+            .all()
+            
+        for cert in certificates:
+            unified_list.append({
+                "id": cert.id,
+                "title": cert.document_type.name if cert.document_type else "Certidão",
+                "filename": cert.filename,
+                "expiration_date": cert.expiration_date,
+                "status": cert.status,
+                "created_at": cert.created_at,
+                "is_structured": True,
+                "company_id": str(cert.company_id),
+                "is_client_upload": False
+            })
+
+        # 3. Ordena e limita
+        unified_list.sort(key=lambda x: x["created_at"], reverse=True)
+        return unified_list[:limit]

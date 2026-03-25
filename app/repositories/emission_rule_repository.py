@@ -5,7 +5,6 @@ Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
 """
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import DatabaseError, IntegrityError
-from fastapi import HTTPException
 
 from app.repositories.base_repository import BaseRepository
 from app.models.emission_rule_model import EmissionRule
@@ -29,7 +28,7 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
                 
             return rules
         except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao buscar regras de emissão.")
+            raise ValueError("Erro interno ao buscar regras de emissão.")
 
     @classmethod
     def get_by_id(cls, db: Session, rule_id: str) -> EmissionRule:
@@ -41,7 +40,7 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
                 rule.document_type_name = rule.document_type.name if rule.document_type else "Desconhecido"
             return rule
         except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao buscar regra de emissão.")
+            raise ValueError("Erro interno ao buscar regra de emissão.")
             
     @classmethod
     def get_specific_rule(cls, db: Session, document_type_id: str, state: str = None, city: str = None) -> EmissionRule:
@@ -61,14 +60,14 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
                 
             return query.first()
         except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao buscar regra por localização.")
+            raise ValueError("Erro interno ao buscar regra por localização.")
 
     @classmethod
     def create(cls, db: Session, rule_in: EmissionRuleCreate) -> EmissionRule:
         try:
             existing = cls.get_specific_rule(db, rule_in.document_type_id, rule_in.state, rule_in.city)
             if existing:
-                raise HTTPException(status_code=400, detail="Já existe uma regra cadastrada para este documento nesta exata localização.")
+                raise ValueError("Já existe uma regra cadastrada para este documento nesta exata localização.")
                 
             new_rule = cls.model(
                 document_type_id=rule_in.document_type_id,
@@ -87,17 +86,17 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
             return cls.get_by_id(db, new_rule.id)
         except IntegrityError:
             db.rollback()
-            raise HTTPException(status_code=400, detail="Erro de integridade ao criar a regra de emissão.")
+            raise ValueError("Erro de integridade ao criar a regra de emissão.")
         except DatabaseError:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao salvar a regra.")
+            raise ValueError("Erro interno ao salvar a regra.")
 
     @classmethod
     def update(cls, db: Session, rule_id: str, rule_in: EmissionRuleUpdate) -> EmissionRule:
         try:
             rule = cls.get_by_id(db, rule_id)
             if not rule:
-                raise HTTPException(status_code=404, detail="Regra de emissão não encontrada.")
+                raise KeyError("Regra de emissão não encontrada.")
             
             update_data = rule_in.model_dump(exclude_unset=True)
             for field, value in update_data.items():
@@ -110,7 +109,7 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
             return cls.get_by_id(db, rule.id)
         except DatabaseError:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao atualizar a regra.")
+            raise ValueError("Erro interno ao atualizar a regra.")
             
     @classmethod
     def delete(cls, db: Session, rule_id: str):
@@ -118,11 +117,11 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
             # Substituímos db.delete() pelo superpoder do cls.soft_delete()
             success = cls.soft_delete(db, rule_id)
             if not success:
-                raise HTTPException(status_code=404, detail="Regra de emissão não encontrada.")
+                raise KeyError("Regra de emissão não encontrada.")
             return True
         except DatabaseError:
             db.rollback()
-            raise HTTPException(status_code=500, detail="Erro interno ao excluir a regra.")
+            raise ValueError("Erro interno ao excluir a regra.")
 
     @classmethod
     def resolve_rule_for_company(cls, db: Session, document_type_id: str, company_id: str) -> EmissionRule:
@@ -164,4 +163,4 @@ class EmissionRuleRepository(BaseRepository[EmissionRule]):
 
             return None
         except DatabaseError:
-            raise HTTPException(status_code=500, detail="Erro interno ao resolver regra de emissão.")
+            raise ValueError("Erro interno ao resolver regra de emissão.")

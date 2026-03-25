@@ -5,7 +5,8 @@ from app.core.security import get_password_hash
 from app.models.user_model import User
 from app.tests.conftest import generate_valid_cnpj
 
-def test_register_success(client):
+@pytest.mark.asyncio
+async def test_register_success(client):
     """Valida o Happy Path do registro completo (Onboarding)."""
     payload = {
         "email": "newuser@example.com",
@@ -21,7 +22,8 @@ def test_register_success(client):
     assert "access_token" in data
     assert data["user"]["email"] == "newuser@example.com"
 
-def test_register_duplicate_email(client, test_user):
+@pytest.mark.asyncio
+async def test_register_duplicate_email(client, test_user):
     """Teste de constraint: impede e-mail duplicado."""
     payload = {
         "email": test_user.email,
@@ -79,7 +81,8 @@ def test_register_missing_fields(client):
     response = client.post("/auth/register", data=payload)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
-def test_register_error_cases(client, db_session, test_user):
+@pytest.mark.asyncio
+async def test_register_error_cases(client, db_session, test_user):
     """Testa erros no processo de registro."""
     from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
     
@@ -134,13 +137,13 @@ def test_login_inactive_user(client, db_session):
     assert response.status_code == 403
     assert "Acesso bloqueado" in response.json()["detail"]
 
-def test_register_simple_error(client, db_session, test_user):
-    """Testa erro no registro simplificado."""
+def test_register_simple_unauthenticated(client):
+    """Valida que POST /register-simple retorna 401 sem autenticação."""
     response = client.post("/auth/register-simple", json={
-        "email": test_user.email,
+        "email": "hacker@example.com",
         "password": "any"
     })
-    assert response.status_code == 400
+    assert response.status_code == 401
 
 def test_simulate_payment(client, db_session, test_user, monkeypatch):
     """Testa a rota de simulação de pagamento."""
@@ -166,23 +169,30 @@ def test_simulate_payment(client, db_session, test_user, monkeypatch):
     response = client.post("/auth/simulate-payment", json={"email": test_user.email})
     assert response.status_code == 403
 
-def test_register_simple_success(client, db_session):
-    """Testa sucesso no registro simplificado."""
-    email = f"simple_{os.urandom(4).hex()}@example.com"
+def test_register_simple_forbidden(client, test_user):
+    """Valida que POST /register-simple retorna 403 para usuário não-admin."""
+    from app.core.security import create_access_token
+    from datetime import timedelta
+    token = create_access_token(
+        data={"sub": test_user.email, "role": test_user.role, "user_id": test_user.id},
+        expires_delta=timedelta(minutes=15)
+    )
+    headers = {"Authorization": f"Bearer {token}"}
     response = client.post("/auth/register-simple", json={
-        "email": email,
-        "password": "password123"
-    })
-    assert response.status_code == 201
-    assert response.json()["email"] == email
+        "email": "hacker@example.com",
+        "password": "any"
+    }, headers=headers)
+    assert response.status_code == 403
 
-def test_register_with_files_success(client, db_session, monkeypatch):
+@pytest.mark.asyncio
+async def test_register_with_files_success(client, db_session, monkeypatch):
     """Testa registro completo com ficheiros simbólicos."""
     from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
     import io
     
-    # Mock do save_upload_file para não gravar no disco real
-    monkeypatch.setattr("app.routers.auth_router.save_upload_file", lambda f, d: ("/tmp/fake.pdf", 1024))
+    # Mock do save_upload_file para não gravar no disco real (agora assíncrono)
+    async def fake_save(f, d): return ("/tmp/fake.pdf", 1024)
+    monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save)
     
     payload = {
         "email": f"full_{os.urandom(4).hex()}@example.com",
@@ -201,3 +211,101 @@ def test_register_with_files_success(client, db_session, monkeypatch):
     response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == 201
     assert "access_token" in response.json()
+
+@pytest.mark.asyncio
+async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
+    """Valida se ocorreu rollback e os.remove dos arquivos em caso de falha."""
+    from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
+    import io
+    
+    saved_paths = []
+    
+    call_count = {"count": 0}
+    
+    async def fake_save_upload_fail_on_3(upload_file, dest):
+        call_count["count"] += 1
+        if call_count["count"] == 3:
+            raise Exception("Simulated DB or File Error")
+        path = f"/tmp/fake_{upload_file.filename}"
+        saved_paths.append(path)
+        return (path, 1024)
+        
+    removed_paths = []
+    def fake_remove(path):
+        removed_paths.append(path)
+        
+    monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save_upload_fail_on_3)
+    monkeypatch.setattr("os.remove", fake_remove)
+    
+    payload = {
+        "email": f"leak_{os.urandom(4).hex()}@example.com",
+        "password": "password123",
+        "legal_name": "Leak LTDA",
+        "cnpj": generate_valid_cnpj(),
+        "responsible_name": "Leak Owner",
+        "cpf": generate_valid_cpf()
+    }
+    
+    files = {
+        "social_contract": ("contract.pdf", io.BytesIO(b"fake pdf 1"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"fake pdf 2"), "application/pdf"),
+        "responsible_doc": ("rg.pdf", io.BytesIO(b"fake pdf 3"), "application/pdf"),
+        "proxy_doc": ("proxy.pdf", io.BytesIO(b"fake pdf 4"), "application/pdf")
+    }
+    
+    response = client.post("/auth/register", data=payload, files=files)
+    assert response.status_code == 500
+    
+    assert len(saved_paths) == 2
+    assert len(removed_paths) == 2
+    for path in saved_paths:
+        assert path in removed_paths
+
+def test_login_user_enumeration_mitigation(client, db_session, test_user, monkeypatch):
+    """Valida se verify_password é chamado exatamente 1 vez, mesmo p/ usuário inexistente."""
+    from unittest.mock import MagicMock
+    
+    mock_verify = MagicMock(return_value=False)
+    monkeypatch.setattr("app.routers.auth_router.verify_password", mock_verify)
+    
+    client.post("/auth/token", data={"username": "naoexiste@example.com", "password": "any"})
+    assert mock_verify.call_count == 1
+    
+    mock_verify.reset_mock()
+    
+    client.post("/auth/token", data={"username": test_user.email, "password": "wrong"})
+    assert mock_verify.call_count == 1
+
+@pytest.mark.asyncio
+async def test_register_strict_file_validation(client, db_session):
+    """Testa upload de .exe e arquivo MAIOR que 5MB."""
+    from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
+    import io
+    import os
+    
+    payload = {
+        "email": f"file_{os.urandom(4).hex()}@example.com",
+        "password": "password123",
+        "legal_name": "File LTDA",
+        "cnpj": generate_valid_cnpj(),
+        "responsible_name": "File Owner",
+        "cpf": generate_valid_cpf()
+    }
+    
+    files_invalid_ext = {
+        "social_contract": ("virus.exe", io.BytesIO(b"MZ..."), "application/x-msdownload")
+    }
+    response_ext = client.post("/auth/register", data=payload, files=files_invalid_ext)
+    assert response_ext.status_code == 400
+    assert "Apenas arquivos PDF são permitidos" in response_ext.json()["detail"]
+    
+    large_pdf_content = b"0" * (5 * 1024 * 1024 + 10)
+    files_large = {
+        "social_contract": ("contract.pdf", io.BytesIO(large_pdf_content), "application/pdf")
+    }
+    payload["email"] = f"large_{os.urandom(4).hex()}@example.com"
+    payload["cnpj"] = generate_valid_cnpj()
+    
+    response_size = client.post("/auth/register", data=payload, files=files_large)
+    assert response_size.status_code == 413
+    assert "Arquivo muito grande" in response_size.json()["detail"]

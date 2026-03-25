@@ -4,7 +4,6 @@ Gerencia a fila de trabalho para emissão de certidões.
 Herda de BaseRepository para garantir suporte a Soft Delete automaticamente.
 """
 from sqlalchemy.orm import Session
-from fastapi import HTTPException
 
 from app.repositories.base_repository import BaseRepository
 from app.models.emission_request_model import EmissionRequest
@@ -76,7 +75,7 @@ class EmissionRequestRepository(BaseRepository[EmissionRequest]):
         req = cls.get_by_id(db, request_id)
         
         if not req:
-            raise HTTPException(status_code=404, detail="Registo de emissão não encontrado.")
+            raise ValueError("Registo de emissão não encontrado.")
             
         if payload.estimated_date is not None:
             req.estimated_date = payload.estimated_date
@@ -85,4 +84,18 @@ class EmissionRequestRepository(BaseRepository[EmissionRequest]):
             
         db.commit()
         db.refresh(req)
-        return req
+        
+        # Busca o nome da empresa para a resposta (schema-ready)
+        company = db.query(Company).filter(
+            Company.id == req.company_id,
+            Company.deleted_at.is_(None)
+        ).first()
+
+        return {
+            "id": req.id,
+            "created_at": req.created_at,
+            "companyId": req.company_id,
+            "companyName": company.razao_social if company else "Empresa Desconhecida",
+            "estimatedDate": req.estimated_date.isoformat() if req.estimated_date else "",
+            "status": req.status
+        }

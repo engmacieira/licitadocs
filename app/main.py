@@ -36,9 +36,11 @@ from app.services.orchestrator_service import OrchestratorService
 
 ENV = os.getenv("ENV", "development").lower()
 
-# ==========================================
-# 🚀 CONFIGURAÇÃO DA APLICAÇÃO (FASTAPI)
-# ==========================================
+# Missão 4: Ocultar o Swagger em Produção
+docs_config = {
+    "docs_url": "/docs" if ENV != "production" else None,
+    "redoc_url": "/redoc" if ENV != "production" else None,
+}
 
 app = FastAPI(
     title="LicitaDoc API",
@@ -55,8 +57,7 @@ app = FastAPI(
     * **🤖 AI Concierge:** Assistente Virtual RAG focado exclusivamente no Cofre da Empresa.
     * **⚙️ Admin & Backoffice:** Gestão global, Broadcasts de mensagens e configuração de Automações.
     """,
-    docs_url="/docs",
-    redoc_url="/redoc"
+    **docs_config
 )
 
 app.state.limiter = limiter
@@ -86,13 +87,19 @@ def stop_scheduler():
 '''
 
 # ==========================================
-# 🌐 MIDDLEWARES (CORS)
+# 🌐 MIDDLEWARES (CORS Dinâmico)
 # ==========================================
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# Missão 3: CORS configurável via Variável de Ambiente
+cors_origins_str = os.getenv("CORS_ORIGINS", "")
+if cors_origins_str:
+    origins = [origin.strip() for origin in cors_origins_str.split(",") if origin.strip()]
+else:
+    # Fallback seguro para desenvolvimento
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,

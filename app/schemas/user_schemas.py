@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from app.utils.validators import validar_matematica_cpf
 
 class UserRoleEnum(str, enum.Enum):
     """Reflete os papéis globais definidos no modelo de banco de dados."""
@@ -40,39 +41,10 @@ class UserBase(BaseModel):
     @field_validator('cpf')
     @classmethod
     def validate_cpf(cls, v: Optional[str]) -> Optional[str]:
-        """
-        Executa a validação matemática do CPF.
-        Garante integridade dos dados antes da persistência no banco.
-        """
+        """Executa a validação matemática do CPF via utilitário centralizado."""
         if not v:
             return None
-            
-        # 1. Limpeza de formatação
-        numeros = re.sub(r'\D', '', v)
-        
-        # 2. Verificação de tamanho básico
-        if len(numeros) != 11:
-            raise ValueError('CPF deve conter exatamente 11 dígitos')
-            
-        # 3. Verificação de sequências repetidas
-        if numeros == numeros[0] * 11:
-            raise ValueError('CPF inválido (sequência repetida)')
-
-        # 4. Cálculo do 1º dígito verificador
-        soma = sum(int(numeros[i]) * (10 - i) for i in range(9))
-        resto = (soma * 10) % 11
-        if resto == 10: resto = 0
-        if resto != int(numeros[9]):
-            raise ValueError('CPF inválido (1º dígito verificador falhou)')
-
-        # 5. Cálculo do 2º dígito verificador
-        soma = sum(int(numeros[i]) * (11 - i) for i in range(10))
-        resto = (soma * 10) % 11
-        if resto == 10: resto = 0
-        if resto != int(numeros[10]):
-            raise ValueError('CPF inválido (2º dígito verificador falhou)')
-
-        return numeros
+        return validar_matematica_cpf(v)
 
 class UserCreate(UserBase):
     """Contrato exclusivo para criação de novos usuários (POST)."""
@@ -82,7 +54,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Contrato para atualização parcial de perfil (PATCH)."""
     nome: Optional[str] = None
-    is_active: Optional[bool] = None
+    # is_active: Removido para evitar Mass Assignment por parte do usuário final.
     cpf: Optional[str] = None
     rg: Optional[str] = None
     celular: Optional[str] = None
@@ -91,6 +63,14 @@ class UserUpdate(BaseModel):
     estado_civil: Optional[str] = None  
     profissao: Optional[str] = None
     password: Optional[str] = Field(None, min_length=8, description="Nova senha (se informada)")
+
+    @field_validator('cpf')
+    @classmethod
+    def validate_cpf(cls, v: Optional[str]) -> Optional[str]:
+        """Garante validação de CPF também no schema de atualização."""
+        if not v:
+            return None
+        return validar_matematica_cpf(v)
 
 class UserResponse(UserBase):
     """Contrato de saída para APIs públicas. Remove campos sensíveis como senhas."""

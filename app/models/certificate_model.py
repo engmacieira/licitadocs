@@ -17,6 +17,7 @@ class CertificateStatus(str, enum.Enum):
     EXPIRED = "expired"       # ❌ Vencida (Irregularidade detectada)
     PROCESSING = "processing" # ⏳ Robô em operação de leitura/extração
     ERROR = "error"           # 🚫 Falha técnica na validação do documento
+    ARCHIVED = "archived"     # 📦 Arquivado (Versão obsoleta ou substituída)
 
 class Certificate(Base, SoftDeleteMixin):
     """

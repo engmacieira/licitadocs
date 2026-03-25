@@ -3,7 +3,7 @@ Router Administrativo (Backoffice).
 Gerenciamento global de empresas, status de acesso e documentos via painel do Admin.
 """
 import os
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
@@ -12,6 +12,9 @@ from app.core.database import get_db
 from app.dependencies import require_role
 from app.models.user_model import User, UserRole
 from app.schemas.company_schemas import CompanyCreate, CompanyUpdate, CompanyResponse
+
+# Constantes de Segurança
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 # Repositórios e Utilitários
 from app.repositories.company_repository import CompanyRepository
@@ -50,7 +53,7 @@ def create_company(
 )
 def list_companies(
     skip: int = 0, 
-    limit: int = 100,
+    limit: int = Query(100, le=500),
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
@@ -117,13 +120,9 @@ def toggle_company_status(
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
-    owner = UserRepository.get_by_id(db, company.owner_id)
-    if not owner:
-        raise HTTPException(status_code=404, detail="Usuário responsável não encontrado.")
-
-    # Inverte o status de acesso do dono da empresa
-    new_status = not owner.is_active
-    owner.is_active = new_status
+    # Inverte o status de acesso apenas da empresa, preservando o usuário raiz
+    new_status = not company.is_active
+    company.is_active = new_status
     db.commit()
     
     status_msg = "ativada" if new_status else "bloqueada"
@@ -153,18 +152,28 @@ def list_company_documents(
     status_code=status.HTTP_201_CREATED,
     summary="Upload Administrativo de Documento"
 )
-def upload_company_document(
+async def upload_company_document(
     company_id: str,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Apenas arquivos .pdf são aceitos.")
+        
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="Arquivo muito grande. Máximo permitido: 5MB.")
+
     if not CompanyRepository.get_by_id(db, company_id):
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
 
     try:
         # Delega o salvamento físico para o file_helper
-        file_path, _ = save_upload_file(file, "admin_uploads")
+        file_path, _ = await save_upload_file(file, "admin_uploads")
         
         # Delega o salvamento no banco para o Repository
         new_doc = DocumentRepository.create_legacy(
@@ -191,11 +200,11 @@ def download_company_document(
     db: Session = Depends(get_db),
     current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
 ):
-    # Delega a busca segura do path para o Repositório
-    file_path = DocumentRepository.get_file_path(db, doc_id)
+    # Delega a busca segura do path para o Repositório, blindando contra IDOR
+    file_path = DocumentRepository.get_file_path(db, item_id=doc_id, company_id=company_id)
     
     if not file_path or not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Arquivo físico não encontrado no servidor.")
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado ou acesso negado.")
         
     filename = os.path.basename(file_path)
     return FileResponse(path=file_path, filename=filename, media_type='application/octet-stream')

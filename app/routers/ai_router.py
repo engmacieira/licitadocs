@@ -40,11 +40,23 @@ def chat_with_concierge(
     e delega toda a complexidade de RAG e Prompt Engineering para o AIService.
     """
     
-    # A mágica acontece no Service, que agora consome o DocumentRepository blindado
+    # Validação do Tenant (Multi-empresa)
+    # Verifica se o usuário tem um vínculo ativo com a empresa solicitada
+    user_has_access = any(link.company_id == chat_request.company_id for link in current_user.company_links)
+    
+    if not user_has_access:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para acessar os documentos desta empresa."
+        )
+
+    # A mágica acontece no Service, que agora recebe o company_id explicitamente
     ia_reply = AIService.generate_concierge_response(
         db=db, 
         user=current_user, 
+        company_id=chat_request.company_id,
         user_message=chat_request.message
     )
 
-    return ChatResponse(response=ia_reply)
+    return ChatResponse(response=ia_reply)
