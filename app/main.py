@@ -33,6 +33,8 @@ from app.routers import (
 from app.models import certificate_model
 from app.models.document_automation_model import DocumentAutomationConfig
 from app.services.orchestrator_service import OrchestratorService
+from anyio.lowlevel import RunVar
+from anyio import CapacityLimiter
 
 ENV = os.getenv("ENV", "development").lower()
 
@@ -70,6 +72,15 @@ app.add_middleware(SlowAPIMiddleware)
 '''
 # --- CONFIGURAÇÃO DO BACKGROUND JOBS (APScheduler) ---
 scheduler = BackgroundScheduler()
+
+@app.on_event("startup")
+def setup_concurrency():
+    """
+    Missão: Otimizar o Thread Pool do AnyIO para suportar a carga de 200 requests.
+    Como o banco usa conexões síncronas, cada request em thread consome um slot.
+    O default de 40 causaria gargalo mesmo com o banco configurado.
+    """
+    RunVar("_default_thread_limiter").set(CapacityLimiter(200))
 
 @app.on_event("startup")
 def start_scheduler():
