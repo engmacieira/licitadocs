@@ -10,6 +10,7 @@ env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
 load_dotenv(env_path, override=True)
 
 from app.core.database import Base, get_db
+from app.core.rate_limit import limiter
 from app.main import app
 from app.models.user_model import User, UserCompanyLink
 from app.models.company_model import Company
@@ -59,6 +60,8 @@ def client(db_session):
             pass # A limpeza é feita pela fixture db_session
     
     app.dependency_overrides[get_db] = override_get_db
+    # Desativa o rate limit globalmente durante os testes
+    limiter.enabled = False 
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()

@@ -78,4 +78,10 @@ class CompanyRepository(BaseRepository[Company]):
         Remove uma empresa (Agora via Soft Delete).
         Retorna True se sucesso, False se não encontrada.
         """
-        return cls.soft_delete(db, company_id)
+        # Capturamos a resposta da classe base
+        deleted_company = cls.soft_delete(db, company_id)
+        
+        # Se o objeto foi retornado, o soft delete ocorreu com sucesso (True).
+        # Se retornou None, a empresa não foi encontrada (False).
+        return deleted_company is not None
+        

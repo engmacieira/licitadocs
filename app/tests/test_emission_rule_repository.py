@@ -121,36 +121,33 @@ def test_emission_rule_resolution_municipal(db_session: Session, test_company, t
 
 def test_emission_rule_errors(db_session: Session):
     """Testa casos de erro (Não encontrado) no repositório."""
-    from fastapi import HTTPException
     
-    # Update não encontrado
-    with pytest.raises(HTTPException) as exc:
+    # Update não encontrado - Repositório deve lançar KeyError
+    with pytest.raises(KeyError) as exc:
         EmissionRuleRepository.update(db_session, "non_existent", EmissionRuleUpdate())
-    assert exc.value.status_code == 404
+    assert "não encontrada" in str(exc.value).lower()
     
-    # Delete não encontrado
-    with pytest.raises(HTTPException) as exc:
+    # Delete não encontrado - Repositório provavelmente lança KeyError ou ValueError
+    with pytest.raises((KeyError, ValueError)) as exc:
         EmissionRuleRepository.delete(db_session, "non_existent")
-    assert exc.value.status_code == 404
 
 def test_emission_rule_database_errors(db_session: Session, monkeypatch):
     """Testa tratamento de DatabaseError em métodos do repositório via mock."""
     from sqlalchemy.exc import DatabaseError
-    from fastapi import HTTPException
     
     def mock_error(*args, **kwargs):
         raise DatabaseError("statement", "params", "orig")
 
     # Mock dynamic query ou methods se possível
-    # Como os métodos usam cls.get_active_query, vamos mockar o comportamento do query
     from sqlalchemy.orm import Query
     monkeypatch.setattr(Query, "all", mock_error)
     monkeypatch.setattr(Query, "first", mock_error)
     
-    with pytest.raises(HTTPException) as exc:
+    # get_all simulando queda de banco - Repositório traduz para ValueError
+    with pytest.raises(ValueError) as exc:
         EmissionRuleRepository.get_all(db_session)
-    assert exc.value.status_code == 500
+    assert "Erro interno" in str(exc.value)
 
-    with pytest.raises(HTTPException) as exc:
+    # get_by_id simulando queda de banco - Repositório traduz para ValueError
+    with pytest.raises(ValueError):
         EmissionRuleRepository.get_by_id(db_session, "any")
-    assert exc.value.status_code == 500

@@ -80,12 +80,12 @@ def test_atomic_quota_update_math(db_session, test_company):
     
     # Recarrega do banco para garantir que pegamos o valor atualizado
     db_session.expire(record)
-    record = db_session.query(AIUsage).get(record.id)
+    record = db_session.get(AIUsage, record.id)
     assert record.tokens_consumed == 1500
     
     # 3. Terceira adição
     AIQuotaRepository.add_usage(db_session, company_id, 2500, hoje)
     
     db_session.expire(record)
-    record = db_session.query(AIUsage).get(record.id)
+    record = db_session.get(AIUsage, record.id)
     assert record.tokens_consumed == 4000

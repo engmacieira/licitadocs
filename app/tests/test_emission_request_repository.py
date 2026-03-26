@@ -34,7 +34,7 @@ def test_emission_request_update(db_session: Session, test_emission_rule, test_c
         db_session, request_data["id"], update_payload
     )
     
-    assert updated_request.status == "processing"
+    assert updated_request["status"] == "processing"
 
 def test_emission_request_soft_delete(db_session: Session, test_emission_rule, test_company, test_user):
     """Valida o protocolo de Soft Delete para solicitações."""

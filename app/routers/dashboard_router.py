@@ -45,7 +45,8 @@ def get_admin_dashboard_stats(
 
     # 2. Documentos Recentes (Unificados: Legados + Certidões)
     recent_docs = DocumentRepository.get_recent_global(db, limit=5)
-
+    recent_docs.sort(key=lambda doc: doc.get("created_at"), reverse=True)
+    
     # 3. Empresas Recentes
     recent_companies = CompanyRepository.get_active_query(db)\
         .order_by(Company.created_at.desc())\

@@ -26,15 +26,19 @@ def test_admin_stats_schema_and_unification(client, db_session):
     
     # 3. Inserir um Documento Legado
     doc = Document(
-        title="Contrato Social", 
-        filename="contrato.pdf", 
-        file_path="/tmp/contrato.pdf", 
-        company_id=company.id,
-        created_at=datetime.now() - timedelta(hours=2)
+        title="Contrato Social",
+        filename="contrato.pdf",
+        file_path="/tmp/contrato.pdf",
+        company_id=company.id
+        # Remova qualquer created_at manual daqui!
     )
     db_session.add(doc)
+    db_session.commit() # Salva no banco
     
-    # 4. Inserir um Certificado (Mais recente que o documento)
+    import time
+    time.sleep(1) # <--- A MÁGICA DO QA: Pausamos 1 segundo para garantir que o banco vire o relógio!
+    
+    # 4. Inserir um Certificado (Garantidamente mais novo)
     cat = DocumentCategory(name="Fiscal", slug="fiscal_test")
     db_session.add(cat)
     db_session.flush()
@@ -44,11 +48,11 @@ def test_admin_stats_schema_and_unification(client, db_session):
     db_session.flush()
     
     cert = Certificate(
-        type_id=dtype.id, 
-        filename="cnd.pdf", 
-        file_path="/tmp/cnd.pdf", 
-        company_id=company.id,
-        created_at=datetime.now() # Certificado é o mais recente!
+        type_id=dtype.id,
+        filename="cnd.pdf",
+        file_path="/tmp/cnd.pdf",
+        company_id=company.id
+        # Remova qualquer created_at manual daqui também!
     )
     db_session.add(cert)
     db_session.commit()

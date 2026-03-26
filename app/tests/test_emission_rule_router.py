@@ -123,7 +123,7 @@ def test_emission_request_security_and_validation(client, auth_headers, admin_he
     # --- 5. VALIDAÇÃO: Status INVÁLIDO (Enum) ---
     invalid_payload = {"status": "invalido_total"}
     response = client.patch(f"/emission-rules/requests/{request_id}", headers=admin_headers, json=invalid_payload)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 def test_repository_exception_handling(client, admin_headers, db_session):
     """Testa se o router trata corretamente ValueError do repositório."""

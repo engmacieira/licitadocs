@@ -7,7 +7,7 @@ from app.repositories.document_repository import DocumentRepository
 
 def test_upload_document_success(client, auth_headers, test_company):
     """Valida o Happy Path de upload de documento."""
-    file_content = b"test file content"
+    file_content = b"%PDF-1.5\ntest file content"
     file = ("test.pdf", BytesIO(file_content), "application/pdf")
     
     response = client.post(
@@ -61,6 +61,8 @@ def test_delete_document_soft_delete(client, auth_headers, test_company, db_sess
     # 2. Deleta via Router
     response = client.delete(f"/documents/{doc.id}", headers=auth_headers)
     assert response.status_code == status.HTTP_204_NO_CONTENT
+    
+    db_session.commit() # Garante persistência para a verificação abaixo
     
     # 3. Valida no banco (Soft Delete: Registro AINDA EXISTE, mas com deleted_at)
     db_session.expire_all()
@@ -137,7 +139,7 @@ def test_upload_structured_with_alert(client, auth_headers, test_company, test_d
     """Valida upload de certidão com status irregular e criação de alerta."""
     from app.repositories.message_repository import MessageRepository
     
-    file = ("cert.pdf", BytesIO(b"pdf content"), "application/pdf")
+    file = ("cert.pdf", BytesIO(b"%PDF-1.5\npdf content"), "application/pdf")
     response = client.post(
         "/documents/upload",
         data={
@@ -246,8 +248,8 @@ def test_upload_document_constraints(client, auth_headers, db_session, test_user
     db_session.refresh(test_user)
     import io
     
-    # 1. Formato inválido
-    file = ("test.txt", io.BytesIO(b"txt content"), "text/plain")
+    # 1. Formato inválido (Txt mas renomeado pra .pdf não passa no Magic Number)
+    file = ("test.pdf", io.BytesIO(b"txt content"), "application/pdf")
     response = client.post(
         "/documents/upload", 
         headers=auth_headers, 
@@ -270,7 +272,7 @@ def test_upload_document_constraints(client, auth_headers, db_session, test_user
     admin_token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     
-    file_pdf = ("test.pdf", io.BytesIO(b"pdf content"), "application/pdf")
+    file_pdf = ("test.pdf", io.BytesIO(b"%PDF-1.5\npdf content"), "application/pdf")
     response = client.post("/documents/upload", headers=admin_headers, files={"file": file_pdf})
     assert response.status_code == 400
     assert "Admins devem enviar" in response.json()["detail"]
@@ -313,10 +315,10 @@ def test_export_valid_documents_zip_success(client, auth_headers, test_company, 
 
     # 1. Criar arquivos físicos temporários reais para o teste
     file1_path = tmp_path / "teste1.pdf"
-    file1_path.write_text("conteudo pdf 1")
+    file1_path.write_bytes(b"%PDF-1.5 content 1")
 
     file2_path = tmp_path / "teste2.pdf"
-    file2_path.write_text("conteudo pdf 2")
+    file2_path.write_bytes(b"%PDF-1.5 content 2")
 
     # 2. Inserir no banco de dados
     doc_valido = Document(

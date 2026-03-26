@@ -20,7 +20,10 @@ def test_token_accumulation_success(client, test_company, auth_headers):
     que cada resposta consumiu 1.000 tokens. Valida se a aplicação realiza o 
     registo no banco de dados para a empresa na data de hoje acumulando 3.000 tokens.
     """
-    payload = {"message": "Dúvida sobre documento"}
+    payload = {
+        "message": "Dúvida sobre documento",
+        "company_id": test_company.id
+    }
     
     # Criamos um state persistente em memória para o mock do repositório
     db_state = {"tokens_today": 0}
@@ -50,7 +53,10 @@ def test_quota_exceeded_blocking(client, test_company, auth_headers):
     Banco de dados já registra 29.500 tokens consumidos hoje. A nova requisição 
     estouraria o limite. Aplicação deve barrar antes de gastar tokens na LLM.
     """
-    payload = {"message": "Resumo muito longo que gastaria muitos tokens"}
+    payload = {
+        "message": "Resumo muito longo que gastaria muitos tokens",
+        "company_id": test_company.id
+    }
     
     # Mock: o banco diz que já usamos 30000 tokens hoje (limite atingido)
     def fake_get_usage(db, company_id, ref_date):
@@ -80,7 +86,10 @@ def test_daily_reset_rollover(client, test_company, auth_headers):
     Simula empresa com 30.000 tokens consumidos ontem. Hoje a requisição deve ser
     permitida e iniciar uma nova contagem do zero.
     """
-    payload = {"message": "Primeira dúvida do dia de hoje"}
+    payload = {
+        "message": "Primeira dúvida do dia de hoje",
+        "company_id": test_company.id
+    }
     hoje = date.today()
     ontem = hoje - timedelta(days=1)
     

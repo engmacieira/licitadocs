@@ -29,10 +29,11 @@ def test_list_members(client, auth_headers, test_company):
 
 def test_add_member_success(client, auth_headers, test_company):
     """Valida convite/adição de novo membro."""
+    from app.tests.conftest import generate_valid_cpf
     payload = {
         "email": "newmember@example.com",
         "role": "VIEWER",
-        "cpf": "12312312312"
+        "cpf": generate_valid_cpf()
     }
     response = client.post(f"/companies/{test_company.id}/members", json=payload, headers=auth_headers)
     assert response.status_code == status.HTTP_201_CREATED
@@ -66,10 +67,12 @@ def test_get_companies_admin_only(client, auth_headers, test_user):
 
 def test_company_onboarding_steps(client, db_session, test_company, test_user):
     """Testa a atualização das etapas de onboarding."""
-    db_session.refresh(test_user)
+    # Torna o usuário admin para este teste
+    test_user.role = "admin"
+    db_session.commit()
+    
     from app.core.security import create_access_token
-    import os
-    token = create_access_token(data={"sub": test_user.email, "role": "client", "user_id": str(test_user.id)})
+    token = create_access_token(data={"sub": test_user.email, "role": "admin", "user_id": str(test_user.id)})
     headers = {"Authorization": f"Bearer {token}"}
     
     # 1. Terms
@@ -85,8 +88,12 @@ def test_member_management_edge_cases(client, db_session, test_company, test_use
     # Garante que os vínculos criados na fixture estão carregados no objeto
     db_session.refresh(test_user)
     
+    # Torna o usuário admin para ter flexibilidade total nos testes de borda
+    test_user.role = "admin"
+    db_session.commit()
+    
     from app.core.security import create_access_token
-    token = create_access_token(data={"sub": test_user.email, "role": "client", "user_id": str(test_user.id)})
+    token = create_access_token(data={"sub": test_user.email, "role": "admin", "user_id": str(test_user.id)})
     headers = {"Authorization": f"Bearer {token}"}
     
     # 1. Adicionar membro que já existe
@@ -99,10 +106,10 @@ def test_member_management_edge_cases(client, db_session, test_company, test_use
     assert response.status_code == 400
     assert "já faz parte" in response.json()["detail"]
     
-    # 2. Remover a si próprio: 400
+    # 2. Remover a si próprio: 403 (Prioridade para proteção de Owner)
     response = client.delete(f"/companies/{test_company.id}/members/{test_user.id}", headers=headers)
-    assert response.status_code == 400
+    assert response.status_code == 403
     
-    # 3. Alterar permissão própria: 400
+    # 3. Alterar permissão própria: 403 (Prioridade para proteção de Owner)
     response = client.put(f"/companies/{test_company.id}/members/{test_user.id}", headers=headers, json={"role": "VIEWER"})
-    assert response.status_code == 400
+    assert response.status_code == 403

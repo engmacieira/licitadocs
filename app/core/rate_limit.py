@@ -8,8 +8,8 @@ def get_remote_address_with_proxy(request: Request) -> str:
     """
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
-        # Pega o último IP da lista (o IP inserido pelo proxy reverso confiável)
-        return forwarded_for.split(",")[-1].strip()
+        # Pega o PRIMEIRO IP da lista (o IP original do cliente)
+        return forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else "127.0.0.1"
 
 # Instância global do Rate Limiter configurada para ambiente de nuvem

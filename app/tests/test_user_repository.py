@@ -30,8 +30,8 @@ def test_user_soft_delete(db_session: Session, test_user: User):
     user_id = test_user.id
     
     # Executa soft delete
-    success = UserRepository.soft_delete(db_session, user_id)
-    assert success is True
+    deleted_user_result = UserRepository.soft_delete(db_session, user_id)
+    assert deleted_user_result is not None  # Se o objeto voltou, o soft delete foi executado!
     
     # Verifica se o campo deleted_at foi preenchido
     # Precisamos de uma query bruta para ver o registro deletado

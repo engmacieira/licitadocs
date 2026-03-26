@@ -160,7 +160,6 @@ async def upload_document(
 
         try:
             # Missão 1: Blindagem contra Malware (Magic Numbers)
-            # Validação do Magic Number do PDF (%PDF-)
             header = await file.read(5)
             await file.seek(0)
             if header != b"%PDF-":
@@ -195,6 +194,13 @@ async def upload_document(
                     pass
             raise HTTPException(status_code=500, detail=str(e))
             
+        # ---> CORREÇÃO DO BUG 1 AQUI <---
+        # Aplica o status customizado na certidão estruturada e salva no banco
+        if status:
+            cert.status = status
+            db.commit()
+            db.refresh(cert)
+
         # Automação de Alertas
         if status in ["error", "irregular"]:
             doc_type_obj = db.query(DocumentType).filter(DocumentType.id == type_id).first()
@@ -353,7 +359,8 @@ async def export_valid_documents_zip(
     files_metadata = []
     for doc in valid_docs:
         file_path = DocumentRepository.get_file_path(db, doc["id"])
-        if file_path and file_path != "SEM_ANEXO":
+        # (AQUI) Agora também validamos se o arquivo realmente existe no SO
+        if file_path and file_path != "SEM_ANEXO" and os.path.exists(file_path):
             files_metadata.append({
                 "path": file_path,
                 "filename": doc["filename"]

@@ -41,7 +41,7 @@ def test_cnpj_max_length_validation(client, admin_headers):
         "cnpj": "1" * 100 # Very long CNPJ
     }
     response = client.post("/admin/companies", json=payload, headers=admin_headers)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     # ReDoS protection: max_length=18 or validator caught it
     error_msg = str(response.json())
     assert "string_too_long" in error_msg or "CNPJ inválido" in error_msg
@@ -52,7 +52,7 @@ def test_invalid_cpf_validation(client, auth_headers, test_company):
         "responsavel_cpf": "12345678900" # Invalid mathematical CPF
     }
     response = client.put(f"/companies/{test_company.id}", json=payload, headers=auth_headers)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     assert "CPF inválido" in str(response.json())
 
 # --- Missão 2: Fechar o Bypass de Pagamento ---

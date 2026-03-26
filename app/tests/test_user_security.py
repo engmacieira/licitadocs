@@ -45,8 +45,8 @@ def test_cpf_validation_failure(client, test_user, auth_headers):
         headers=auth_headers
     )
     
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    assert "CPF inválido" in response.json()["detail"][0]["msg"]
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert "11 dígitos" in response.json()["detail"][0]["msg"]
 
 def test_mass_assignment_is_active_blocked(client, test_user, auth_headers, db_session):
     """

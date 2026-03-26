@@ -15,6 +15,7 @@ def test_admin_list_companies_success(client, db_session):
     admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
     db_session.add(admin)
     db_session.commit()
+    db_session.refresh(admin)
     
     token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
     headers = {"Authorization": f"Bearer {token}"}
@@ -35,6 +36,8 @@ def test_admin_delete_company_soft_delete(client, db_session, test_company):
     admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
     db_session.add(admin)
     db_session.commit()
+    db_session.refresh(admin)
+    db_session.refresh(test_company)
     
     token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
     headers = {"Authorization": f"Bearer {token}"}
@@ -45,6 +48,9 @@ def test_admin_delete_company_soft_delete(client, db_session, test_company):
     
     # 2. Valida no DB
     db_session.expire_all()
+    # Como o repositório aplica Soft Delete no query filter, 
+    # precisamos buscar no banco ignorando o filtro padrão se houvesse, 
+    # mas o teste usa db_session.query(Company) diretamente.
     deleted_company = db_session.query(Company).filter_by(id=test_company.id).first()
     assert deleted_company is not None
     assert deleted_company.deleted_at is not None
@@ -60,6 +66,8 @@ def test_admin_toggle_company_status(client, db_session, test_company):
     admin = User(email=admin_email, password_hash="hash", role=UserRole.ADMIN.value, is_active=True)
     db_session.add(admin)
     db_session.commit()
+    db_session.refresh(admin)
+    db_session.refresh(test_company)
     
     token = create_access_token(data={"sub": admin_email, "role": UserRole.ADMIN.value})
     headers = {"Authorization": f"Bearer {token}"}
@@ -85,7 +93,7 @@ def test_admin_companies_error_cases(client, db_session):
     assert response.status_code == status.HTTP_404_NOT_FOUND
     
     # 404: Atualiza empresa inexistente
-    response = client.put("/admin/companies/non_existent", headers=headers, json={"razao_social": "Erro"})
+    response = client.put("/admin/companies/non_existent", headers=headers, json={"name": "Erro"})
     assert response.status_code == status.HTTP_404_NOT_FOUND
     
     # 404: Deleta empresa inexistente
@@ -97,12 +105,12 @@ def test_admin_companies_error_cases(client, db_session):
     from app.tests.conftest import generate_valid_cnpj
     cnpj = generate_valid_cnpj()
     client.post("/admin/companies", headers=headers, json={
-        "cnpj": cnpj, "razao_social": "Empresa Original", "owner_id": str(admin.id)
+        "cnpj": cnpj, "name": "Empresa Original", "owner_id": str(admin.id)
     })
     
     # Tenta criar de novo com o mesmo CNPJ
     response = client.post("/admin/companies", headers=headers, json={
-        "cnpj": cnpj, "razao_social": "Empresa Duplicada", "owner_id": str(admin.id)
+        "cnpj": cnpj, "name": "Empresa Duplicada", "owner_id": str(admin.id)
     })
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
@@ -176,7 +184,7 @@ def test_admin_upload_restrictions_malware_dos_vulnerability(client, db_session,
         headers=headers,
         files={"file": file_large}
     )
-    assert response.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+    assert response.status_code == status.HTTP_413_CONTENT_TOO_LARGE
 
 def test_admin_toggle_company_status_not_owner(client, db_session, test_company):
     """
@@ -275,4 +283,4 @@ def test_admin_list_companies_pagination_dos_vulnerability(client, db_session):
     
     # 1. Request com limit acima do max_limit
     response = client.get("/admin/companies?limit=1000000", headers=headers)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
