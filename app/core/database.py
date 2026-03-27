@@ -28,8 +28,8 @@ if not DATABASE_URL:
 engine = create_engine(
     DATABASE_URL, 
     pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=20,
+    pool_size=50,
+    max_overflow=150,
     pool_timeout=30
 )
 
