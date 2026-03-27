@@ -12,6 +12,7 @@ from datetime import date, datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter
@@ -341,11 +342,7 @@ async def export_valid_documents_zip(
             raise HTTPException(status_code=403, detail="Utilizador não possui empresa ativa vinculada.")
 
     # 2. Busca os documentos da empresa, IGNORANDO uploads pendentes do cliente
-    all_docs = DocumentRepository.get_unified_by_company(
-        db=db, 
-        company_id=target_company_id, 
-        is_client_upload=False
-    )
+    all_docs = await run_in_threadpool(DocumentRepository.get_unified_by_company, db, target_company_id, False)
     
     # 3. Filtragem de Regra de Negócio: Apenas Válidos e Vigentes
     valid_statuses = ["valid", "warning"]
@@ -358,7 +355,7 @@ async def export_valid_documents_zip(
     # pra não prender Sessão do DB no generator assíncrono atrasado pela I/O de rede
     files_metadata = []
     for doc in valid_docs:
-        file_path = DocumentRepository.get_file_path(db, doc["id"])
+        file_path = await run_in_threadpool(DocumentRepository.get_file_path, db, doc["id"])
         # (AQUI) Agora também validamos se o arquivo realmente existe no SO
         if file_path and file_path != "SEM_ANEXO" and os.path.exists(file_path):
             files_metadata.append({

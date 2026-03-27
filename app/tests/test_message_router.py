@@ -141,3 +141,71 @@ def test_message_admin_views_and_broadcast(client, db_session, test_company):
     }
     response = client.post("/messages/admin/broadcast", headers=headers, json=payload_empty)
     assert response.status_code == 400
+def test_send_message_spoofing_and_idor(client, auth_headers, test_user, test_company, db_session):
+    """Valida prevenção de spoofing e IDOR no parent_id."""
+    # 1. Spoofing: Usuário não-admin tenta enviar como 'system'
+    payload = {"content": "X", "message_type": "system"}
+    response = client.post(f"/messages/{test_company.id}", json=payload, headers=auth_headers)
+    assert response.status_code == 201
+    assert response.json()["message_type"] == "chat" # Forçado
+
+    # 2. IDOR: Responder a uma thread de outra empresa
+    from app.models.company_model import Company
+    import os
+    # Gerar CNPJ aleatório para evitar colisão UniqueViolation no suite completo
+    rand_cnpj = f"00{os.urandom(4).hex()}0001"[:14]
+    other_comp = Company(razao_social="Outra", cnpj=rand_cnpj)
+    db_session.add(other_comp)
+    db_session.commit()
+    
+    other_msg = Message(company_id=other_comp.id, sender_id=test_user.id, content="Ola", message_type="chat")
+    db_session.add(other_msg)
+    db_session.commit()
+    
+    payload_reply = {"content": "Reply", "parent_id": str(other_msg.id)}
+    response = client.post(f"/messages/{test_company.id}", json=payload_reply, headers=auth_headers)
+    assert response.status_code == 403
+    assert "Acesso negado" in response.json()["detail"]
+
+def test_message_router_exceptions(client, auth_headers, admin_headers, test_company, db_session):
+    """Valida tratamento de exceções 500 no Message Router."""
+    from unittest.mock import patch
+    
+    # 1. send_message exception
+    with patch("app.repositories.message_repository.MessageRepository.create", side_effect=Exception("Error")):
+        response = client.post(f"/messages/{test_company.id}", json={"content": "Hi"}, headers=auth_headers)
+        assert response.status_code == 500
+
+    # 2. list_messages exception
+    with patch("app.repositories.message_repository.MessageRepository.get_by_company", side_effect=Exception("Error")):
+        response = client.get(f"/messages/{test_company.id}", headers=auth_headers)
+        assert response.status_code == 500
+
+    # 3. mark_as_read exception
+    msg = Message(company_id=test_company.id, sender_id=test_company.owner_id, content="X")
+    db_session.add(msg)
+    db_session.commit()
+    with patch("app.repositories.message_repository.MessageRepository.mark_as_read", side_effect=Exception("Error")):
+        response = client.patch(f"/messages/{msg.id}/read", headers=auth_headers)
+        assert response.status_code == 500
+
+    # 4. resolve_ticket exception
+    with patch("app.repositories.message_repository.MessageRepository.resolve_ticket", side_effect=Exception("Error")):
+        response = client.patch(f"/messages/{msg.id}/resolve", headers=auth_headers)
+        assert response.status_code == 500
+
+    # 5. broadcast_alert exception
+    with patch("app.repositories.message_repository.MessageRepository.create_bulk", side_effect=Exception("Error")):
+        payload = {"subject": "X", "content": "Y", "send_to_all": True}
+        response = client.post("/messages/admin/broadcast", json=payload, headers=admin_headers)
+        assert response.status_code == 500
+
+def test_resolve_ticket_success(client, auth_headers, test_company, db_session):
+    """Valida resolução de ticket com sucesso."""
+    msg = Message(company_id=test_company.id, sender_id=test_company.owner_id, content="Ticket", message_type="ticket")
+    db_session.add(msg)
+    db_session.commit()
+    
+    response = client.patch(f"/messages/{msg.id}/resolve", headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json()["message_type"] == "ticket" # Mantém tipo mas resolve no repo

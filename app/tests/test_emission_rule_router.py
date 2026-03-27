@@ -1,45 +1,10 @@
 import pytest
 import os
 from fastapi import status
+from app.main import app
+from app.core.database import get_db
 from app.models.emission_rule_model import EmissionRule
 
-def generate_valid_cpf():
-    """Gera um CPF válido para testes."""
-    import random
-    cpf = [random.randint(0, 9) for _ in range(9)]
-    for _ in range(2):
-        val = sum([(len(cpf) + 1 - i) * v for i, v in enumerate(cpf)]) % 11
-        cpf.append(11 - val if val > 1 else 0)
-    return "".join(map(str, cpf))
-
-@pytest.fixture
-def admin_user(db_session):
-    """Cria um usuário administrador para testes."""
-    from app.repositories.user_repository import UserRepository
-    from app.schemas.user_schemas import UserCreate
-    from app.models.user_model import UserRole
-    
-    email = f"admin_{os.urandom(4).hex()}@example.com"
-    user_in = UserCreate(
-        email=email,
-        password="password123",
-        is_active=True,
-        cpf=generate_valid_cpf(),
-        rg="1234567",
-        celular="11999999999",
-        genero="M"
-    )
-    user = UserRepository.create_user(db_session, user_in)
-    user.role = UserRole.ADMIN.value
-    db_session.commit()
-    return user
-
-@pytest.fixture
-def admin_headers(admin_user):
-    """Fixture que fornece cabeçalhos de autenticação para o admin_user."""
-    from app.core.security import create_access_token
-    access_token = create_access_token(data={"sub": admin_user.email})
-    return {"Authorization": f"Bearer {access_token}"}
 
 def test_list_emission_rules(client, auth_headers):
     """Valida listagem de regras de emissão."""
@@ -64,17 +29,15 @@ def test_get_emission_rule_by_id(client, auth_headers, test_emission_rule):
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["id"] == str(test_emission_rule.id)
 
-def test_delete_emission_rule_soft_delete(client, auth_headers, test_emission_rule, db_session):
+def test_delete_emission_rule_soft_delete(client, auth_headers, admin_headers, test_emission_rule, db_session):
     """Valida soft delete de regra de emissão."""
     rule_id = test_emission_rule.id
     from app.repositories.emission_rule_repository import EmissionRuleRepository
     
     # 1. Verifica no banco antes
-    # 2. Deleta via repository (que agora lança ValueError/KeyError se falhar)
-    try:
-        EmissionRuleRepository.delete(db_session, rule_id)
-    except Exception:
-        pytest.fail("Falha ao deletar regra via repositório")
+    # 2. Deleta via API
+    response = client.delete(f"/emission-rules/{rule_id}", headers=admin_headers)
+    assert response.status_code == status.HTTP_204_NO_CONTENT
     
     # 3. Valida no DB
     db_session.expire_all()
@@ -134,3 +97,73 @@ def test_repository_exception_handling(client, admin_headers, db_session):
     
     # O router deve capturar o erro e devolver 404 (KeyError)
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+def test_resolve_emission_link_success(client, auth_headers, test_doc_type, test_company, test_emission_rule, db_session):
+    """Valida a resolução mágica de link de emissão."""
+    from app.models.document_type_model import DocumentScope
+    
+    test_company.estado = "SP"
+    test_company.cidade = "São Paulo"
+    # O test_doc_type da fixture é NATIONAL por padrão. Vamos mudar para MUNICIPAL para testar a busca exata.
+    test_doc_type.scope = "MUNICIPAL"
+    
+    db_session.add(test_company)
+    db_session.add(test_doc_type)
+    db_session.commit()
+
+    url = f"/emission-rules/resolve?document_type_id={test_doc_type.id}&company_id={test_company.id}"
+    response = client.get(url, headers=auth_headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["id"] == str(test_emission_rule.id)
+
+def test_create_emission_rule_error_handling(client, admin_headers, test_doc_type):
+    """Valida tratamento de erro (ValueError/IntegrityError) no cadastro."""
+    from unittest.mock import patch
+    with patch("app.repositories.emission_rule_repository.EmissionRuleRepository.create", side_effect=ValueError("Erro customizado")):
+        payload = {
+            "document_type_id": str(test_doc_type.id),
+            "state": "SP",
+            "city": "São Paulo",
+            "emission_link": "http://example.com"
+        }
+        response = client.post("/emission-rules/", json=payload, headers=admin_headers)
+        assert response.status_code == 400
+        assert "Erro customizado" in response.json()["detail"]
+
+def test_update_emission_rule_value_error(client, admin_headers, test_emission_rule):
+    """Valida tratamento de ValueError no update."""
+    from unittest.mock import patch
+    with patch("app.repositories.emission_rule_repository.EmissionRuleRepository.update", side_effect=ValueError("Valor inválido")):
+        payload = {"emission_link": "http://new.com"}
+        response = client.put(f"/emission-rules/{test_emission_rule.id}", json=payload, headers=admin_headers)
+        assert response.status_code == 400
+        assert "Valor inválido" in response.json()["detail"]
+
+def test_delete_emission_rule_errors(client, admin_headers):
+    """Valida tratamento de erros no delete (KeyError e ValueError)."""
+    from unittest.mock import patch
+    rule_id = "00000000-0000-0000-0000-000000000000"
+    
+    # Caso 1: KeyError (404)
+    with patch("app.repositories.emission_rule_repository.EmissionRuleRepository.delete", side_effect=KeyError("Não encontrado")):
+        response = client.delete(f"/emission-rules/{rule_id}", headers=admin_headers)
+        assert response.status_code == 404
+
+    # Caso 2: ValueError (400)
+    with patch("app.repositories.emission_rule_repository.EmissionRuleRepository.delete", side_effect=ValueError("Erro de negócio")):
+        response = client.delete(f"/emission-rules/{rule_id}", headers=admin_headers)
+        assert response.status_code == 400
+
+def test_list_emission_requests_success(client, auth_headers, test_emission_rule, test_company):
+    """Valida listagem de solicitações com sucesso."""
+    url = f"/emission-rules/{test_emission_rule.id}/requests?company_id={test_company.id}"
+    response = client.get(url, headers=auth_headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+def test_update_emission_request_not_found(client, admin_headers):
+    """Valida 404 ao atualizar solicitação inexistente."""
+    fake_id = "00000000-0000-0000-0000-000000000000"
+    payload = {"status": "completed"}
+    response = client.patch(f"/emission-rules/requests/{fake_id}", json=payload, headers=admin_headers)
+    assert response.status_code == 404

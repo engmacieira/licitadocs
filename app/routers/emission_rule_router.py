@@ -6,15 +6,17 @@ Inclui também a gestão da fila de trabalho (Solicitações de Emissão).
 from typing import List, Optional
 from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
 from app.models.user_model import User, UserRole
+from app.models.emission_rule_model import EmissionRule
 from app.repositories.emission_rule_repository import EmissionRuleRepository
 from app.repositories.emission_request_repository import EmissionRequestRepository
 from app.schemas.emission_rule_schemas import EmissionRuleCreate, EmissionRuleUpdate, EmissionRuleResponse
 from app.schemas.emission_request_schemas import (
-    EmissionRequestCreate, 
-    EmissionRequestUpdate, 
+    EmissionRequestCreate,
+    EmissionRequestUpdate,
     EmissionRequestResponse,
     EmissionRequestStatus
 )

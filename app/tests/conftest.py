@@ -182,3 +182,31 @@ def test_emission_rule(db_session, test_doc_type):
         emission_link="http://example.com"
     )
     return EmissionRuleRepository.create(db_session, rule_in)
+@pytest.fixture
+def admin_user(db_session):
+    """Cria um usuário administrador para testes."""
+    from app.repositories.user_repository import UserRepository
+    from app.schemas.user_schemas import UserCreate
+    from app.models.user_model import UserRole
+    
+    email = f"admin_{os.urandom(4).hex()}@example.com"
+    user_in = UserCreate(
+        email=email,
+        password="password123",
+        is_active=True,
+        cpf=generate_valid_cpf(),
+        rg="1234567",
+        celular="11999999999",
+        genero="M"
+    )
+    user = UserRepository.create_user(db_session, user_in)
+    user.role = UserRole.ADMIN.value
+    db_session.commit()
+    return user
+
+@pytest.fixture
+def admin_headers(admin_user):
+    """Fixture que fornece cabeçalhos de autenticação para o admin_user."""
+    from app.core.security import create_access_token
+    access_token = create_access_token(data={"sub": admin_user.email})
+    return {"Authorization": f"Bearer {access_token}"}
