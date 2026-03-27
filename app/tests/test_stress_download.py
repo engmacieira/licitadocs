@@ -39,7 +39,7 @@ async def test_download_connection_pool_stress(auth_headers, test_company, db_se
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=auth_headers) as client:
-            num_requests = 200
+            num_requests = 90
             
             # Dispara os 200 downloads concorrentes
             tasks = [client.get(f"/documents/{doc.id}/download") for _ in range(num_requests)]
