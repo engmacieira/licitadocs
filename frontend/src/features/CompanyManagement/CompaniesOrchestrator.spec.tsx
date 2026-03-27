@@ -118,6 +118,9 @@ describe('CompaniesOrchestrator Component', () => {
         const searchInput = screen.getByPlaceholderText(/buscar por razão social ou cnpj/i);
         await user.type(searchInput, 'Alpha');
 
+        // Wait for debounce timeout
+        await new Promise(r => setTimeout(r, 400));
+
         expect(screen.getByText('Alpha Corp')).toBeInTheDocument();
         expect(screen.queryByText('Beta Solutions')).not.toBeInTheDocument();
         expect(screen.queryByText('Gamma Tech')).not.toBeInTheDocument();
@@ -137,6 +140,9 @@ describe('CompaniesOrchestrator Component', () => {
 
         const searchInput = screen.getByPlaceholderText(/buscar por razão social ou cnpj/i);
         await user.type(searchInput, '22222');
+
+        // Wait for debounce timeout
+        await new Promise(r => setTimeout(r, 400));
 
         expect(screen.queryByText('Alpha Corp')).not.toBeInTheDocument();
         expect(screen.getByText('Beta Solutions')).toBeInTheDocument();

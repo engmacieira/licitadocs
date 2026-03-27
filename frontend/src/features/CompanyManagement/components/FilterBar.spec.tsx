@@ -27,6 +27,9 @@ describe('FilterBar Component', () => {
         const input = screen.getByPlaceholderText(/buscar por razão social ou cnpj/i);
         await user.type(input, 'Test Company');
 
+        // Wait for debounce timeout
+        await new Promise(r => setTimeout(r, 400));
+
         expect(defaultProps.setSearchTerm).toHaveBeenCalled();
     });
 
