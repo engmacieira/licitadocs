@@ -94,10 +94,19 @@ def test_user(db_session):
     from app.schemas.user_schemas import UserCreate
     
     email = f"test_{os.urandom(4).hex()}@example.com"
-    user_in = UserCreate(
+    from app.schemas.user_schemas import UserCreate
+    from typing import Optional
+
+    class UserCreateWithRole(UserCreate):
+        role: Optional[str] = "client"
+
+    email = f"test_{os.urandom(4).hex()}@example.com"
+    user_in = UserCreateWithRole(
         email=email,
         password="password123",
         is_active=True,
+        role="admin",
+        nome="Admin Tester",
         cpf=generate_valid_cpf(),
         rg="1234567",
         celular="11999999999",
@@ -109,7 +118,11 @@ def test_user(db_session):
 def auth_headers(test_user):
     """Fixture que fornece cabeçalhos de autenticação para o test_user."""
     from app.core.security import create_access_token
-    access_token = create_access_token(data={"sub": test_user.email})
+    access_token = create_access_token(data={
+        "sub": test_user.email,
+        "role": getattr(test_user, "role", "client"),
+        "user_id": test_user.id
+    })
     return {"Authorization": f"Bearer {access_token}"}
 
 @pytest.fixture

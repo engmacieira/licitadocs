@@ -15,14 +15,15 @@ def test_concurrency_race_condition_unique_constraint(auth_headers):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=auth_headers) as client:
             # Payload idêntico para forçar violação de Unique Constraint (CNPJ)
+            # CNPJ gerado: 07244213000108
             payload = {
-                "cnpj": "11222333000199",
+                "cnpj": "07244213000108",
                 "razao_social": "StartUp Simultanea SA"
             }
             
             # Simulamos 20 cliques no botão 'Salvar' ocorrendo no EXATO mesmo milissegundo 
             num_concurrent_clicks = 20
-            tasks = [client.post("/companies/", json=payload) for _ in range(num_concurrent_clicks)]
+            tasks = [client.post("/admin/companies", json=payload) for _ in range(num_concurrent_clicks)]
             
             results = await asyncio.gather(*tasks, return_exceptions=True)
             

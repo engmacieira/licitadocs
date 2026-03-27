@@ -30,6 +30,7 @@ class UserRepository(BaseRepository[User]):
             email=user_in.email,
             password_hash=hashed_password,
             is_active=user_in.is_active,
+            role=getattr(user_in, "role", "client"),
             cpf=user_in.cpf,
             rg=user_in.rg,
             celular=user_in.celular,

@@ -3,7 +3,9 @@ Ponto de Entrada da Aplicação (Entrypoint).
 Inicializa o FastAPI, configura Middlewares e regista as Rotas.
 """
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 # from apscheduler.schedulers.background import BackgroundScheduler
 
