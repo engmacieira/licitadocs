@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 // Contextos e Guards
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Layouts
 import { MainLayout } from './components/layout/MainLayout';
@@ -46,11 +47,12 @@ function App() {
       {/* Feedback Visual Global (Toasts) */}
       <Toaster richColors position="top-right" closeButton />
 
-      <AuthProvider>
-        <Routes>
-          {/* =========================================================
-              ROTAS PÚBLICAS (Acesso Livre)
-          ========================================================= */}
+      <ErrorBoundary>
+        <AuthProvider>
+          <Routes>
+            {/* =========================================================
+                ROTAS PÚBLICAS (Acesso Livre)
+            ========================================================= */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -78,9 +80,10 @@ function App() {
             <Route path="/signature" element={<SignaturePage />} />
             <Route path="/help-center" element={<HelpCenterPage />} />
             <Route path="/document-templates" element={<DocumentTemplatesPage />} />
+          </Route>
 
-            {/* --- ADMINISTRADOR (Backoffice) --- */}
-            {/* Dica: Futuramente você pode criar um wrapper <AdminRoute> aqui */}
+          {/* --- ADMINISTRADOR (Backoffice) --- */}
+          <Route element={<ProtectedRoute allowedRoles={['admin']}><MainLayout /></ProtectedRoute>}>
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
             <Route path="/admin/upload" element={<AdminUploadPage />} />
             <Route path="/admin/settings" element={<SettingsPage />} />
@@ -92,12 +95,21 @@ function App() {
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
             <Route path="/admin/companies/:id" element={<AdminCompanyDetailsPage />} />
             <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
+          </Route>
 
+          <Route
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
             {/* Fallback: Rota 404 ou Redirecionamento */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
-      </AuthProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

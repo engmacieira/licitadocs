@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { X, Send, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 // Serviços e Contextos
 import { aiService } from '../../../../services/aiService';
@@ -256,7 +257,11 @@ function MessageBubble({ message }: MessageBubbleProps) {
                     : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-bl-sm' // Branco limpo para a IA
                     }`}
             >
-                {message.content}
+                {isUser || typeof message.content !== 'string' ? (
+                    message.content
+                ) : (
+                    <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(message.content) }} />
+                )}
             </div>
         </div>
     );

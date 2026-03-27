@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { CompanyVault } from './CompanyVault';
 import { documentService } from '../../../services/documentService';
@@ -119,8 +119,10 @@ describe('CompanyVault Component', () => {
         const downloadButtons = screen.getAllByTitle('Baixar Arquivo');
         fireEvent.click(downloadButtons[0]);
 
-        expect(toast.info).toHaveBeenCalledWith('Iniciando download...');
-        expect(documentService.downloadDocument).toHaveBeenCalledWith('doc-1', 'federal.pdf');
+        await waitFor(() => {
+            expect(toast.info).toHaveBeenCalledWith('Iniciando download...');
+            expect(documentService.downloadDocument).toHaveBeenCalledWith('doc-1', 'federal.pdf');
+        });
     });
 
     it('should toggle section visibility when clicking the header', () => {
