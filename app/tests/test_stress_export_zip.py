@@ -5,11 +5,14 @@ import httpx
 import logging
 from unittest.mock import patch
 import uuid
-import tracemalloc
+from io import BytesIO
 
 from app.main import app
 from app.models.document_model import Document
 from app.repositories.document_repository import DocumentRepository
+
+# Helper to track memory (optional, for documentation in the test)
+import tracemalloc
 
 def create_dummy_file(path: str, size_kb: int = 100):
     """Cria um arquivo dummy leve para simular os PDFs sem travar o I/O do disco local."""
@@ -42,7 +45,6 @@ def setup_50_documents(db_session, test_company, dummy_pdf_path, test_user):
         added_docs.append(doc)
     db_session.commit()
     return added_docs
-
 
 @pytest.mark.slow
 @pytest.mark.asyncio
@@ -86,7 +88,6 @@ async def test_export_zip_memory_stress(setup_50_documents, auth_headers, test_c
         assert len(status_codes) > 0, "Nenhuma request completou!"
         assert 500 not in status_codes, "Falha bloqueou o stream!"
         assert len(exceptions) == 0, "Exceções capturadas no ASGI!"
-
 
 @pytest.mark.slow
 @pytest.mark.asyncio
