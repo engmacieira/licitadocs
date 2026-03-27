@@ -24,13 +24,13 @@ describe('LandingPage Integration Test', () => {
         expect(screen.getByText(/Suas certidões sempre em dia/i)).toBeInTheDocument();
 
         // Verifica os containers/títulos de features
-        expect(screen.getByText('Renovação Automática')).toBeInTheDocument();
-        expect(screen.getByText('Sempre Habilitado')).toBeInTheDocument();
-        expect(screen.getByText('Auditoria Completa')).toBeInTheDocument();
+        expect(screen.getByText('Mapeamento Descomplicado')).toBeInTheDocument();
+        expect(screen.getByText('Gestão Especializada')).toBeInTheDocument();
+        expect(screen.getByText('Blindagem de Pagamentos')).toBeInTheDocument();
 
         // Verifica botões de call to action
         expect(screen.getByRole('button', { name: /Login/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Quero Contratar/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Assinar Agora/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Como Funciona\?/i })).toBeInTheDocument();
     });
 
@@ -48,7 +48,7 @@ describe('LandingPage Integration Test', () => {
         const user = userEvent.setup();
         render(<LandingPage />);
 
-        const registerButton = screen.getByRole('button', { name: /Quero Contratar/i });
+        const registerButton = screen.getByRole('button', { name: /Assinar Agora/i });
         await user.click(registerButton);
 
         expect(navigate).toHaveBeenCalledWith('/register');

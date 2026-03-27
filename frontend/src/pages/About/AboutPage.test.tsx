@@ -18,16 +18,16 @@ describe('AboutPage Integration Test', () => {
         render(<AboutPage />);
 
         // Verifica o título principal
-        expect(screen.getByText(/Tecnologia Portuguesa para/i)).toBeInTheDocument();
-        expect(screen.getByText(/Simplificar o Setor Público/i)).toBeInTheDocument();
+        expect(screen.getByText(/10 anos julgando licitações./i)).toBeInTheDocument();
+        expect(screen.getByText(/Agora, trabalhando a seu favor./i)).toBeInTheDocument();
 
         // Verifica seções de DNA/Valores
-        expect(screen.getByText('Inovação Constante')).toBeInTheDocument();
+        expect(screen.getByText('Simplicidade e Organização')).toBeInTheDocument();
         expect(screen.getByText('Ética e Transparência')).toBeInTheDocument();
-        expect(screen.getByText('Foco no Utilizador')).toBeInTheDocument();
+        expect(screen.getByText('Parceria Duradoura')).toBeInTheDocument();
 
-        // Verifica a missão
-        expect(screen.getByText(/A Nossa Missão/i)).toBeInTheDocument();
+        // Verifica a visão e objetivos
+        expect(screen.getByText(/Visão e Objetivos/i)).toBeInTheDocument();
     });
 
     it('deve navegar de volta para a home ao clicar no botão Voltar', async () => {
@@ -64,7 +64,7 @@ describe('AboutPage Integration Test', () => {
         const user = userEvent.setup();
         render(<AboutPage />);
 
-        const demoButton = screen.getByRole('button', { name: /Ver Demonstração/i });
+        const demoButton = screen.getByRole('button', { name: /Entender o Processo/i });
         await user.click(demoButton);
 
         expect(navigate).toHaveBeenCalledWith('/demonstracao');

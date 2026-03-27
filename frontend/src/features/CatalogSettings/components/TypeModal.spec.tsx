@@ -191,7 +191,9 @@ describe('TypeModal', () => {
         // Verifica se o serviço foi chamado apenas UMA vez
         expect(documentService.createType).toHaveBeenCalledTimes(1);
         // Verifica se o botão ficou desativado (loading state)
-        expect(saveButton).toBeDisabled();
+        await waitFor(() => {
+            expect(saveButton).toBeDisabled();
+        });
     });
 
     /**

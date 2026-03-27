@@ -18,13 +18,13 @@ describe('DemoPage Integration Test', () => {
         render(<DemoPage />);
 
         // Verifica o título principal
-        expect(screen.getByText(/Conheça o Poder do/i)).toBeInTheDocument();
+        expect(screen.getByText(/Veja como mantemos o seu/i)).toBeInTheDocument();
         expect(screen.getAllByText('LicitaDocs').length).toBeGreaterThan(0);
 
         // Verifica as seções de pilares (Features)
-        expect(screen.getByText('Busca e Renovação Automática')).toBeInTheDocument();
+        expect(screen.getByText('Monitoramento e Renovação Ativa')).toBeInTheDocument();
         expect(screen.getByText('Cofre Digital Seguro e Compartilhado')).toBeInTheDocument();
-        expect(screen.getByText('Ferramentas de Habilitação')).toBeInTheDocument();
+        expect(screen.getByText('Ferramentas e Apoio Especializado')).toBeInTheDocument();
 
         // Verifica o bloco de preço
         expect(screen.getByText('178')).toBeInTheDocument();
@@ -45,7 +45,7 @@ describe('DemoPage Integration Test', () => {
         const user = userEvent.setup();
         render(<DemoPage />);
 
-        const registerCTA = screen.getByRole('button', { name: /Assinar Agora/i });
+        const registerCTA = screen.getByRole('button', { name: /Quero Assinar Agora/i });
         await user.click(registerCTA);
 
         expect(navigate).toHaveBeenCalledWith('/register');

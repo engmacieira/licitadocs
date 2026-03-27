@@ -11,9 +11,10 @@ describe('ContractContent Component', () => {
         expect(screen.getByText(/CLÁUSULA 3ª – DAS OBRIGAÇÕES DA CONTRATANTE/i)).toBeInTheDocument();
         expect(screen.getByText(/CLÁUSULA 4ª – DA PROTEÇÃO DE DADOS \(LGPD\)/i)).toBeInTheDocument();
         expect(screen.getByText(/CLÁUSULA 5ª – DOS NÍVEIS DE SERVIÇO \(SLA\)/i)).toBeInTheDocument();
-        expect(screen.getByText(/CLÁUSULA 6ª – DA REMUNERAÇÃO/i)).toBeInTheDocument();
-        expect(screen.getByText(/CLÁUSULA 7ª – DO PRAZO E CANCELAMENTO \(CHURN\)/i)).toBeInTheDocument();
-        expect(screen.getByText(/CLÁUSULA 8ª – DA FORMALIZAÇÃO E FORO/i)).toBeInTheDocument();
+        expect(screen.getByText(/CLÁUSULA 6ª – DA POLÍTICA DE USO JUSTO E LIMITES DE PROCESSAMENTO \(FAIR USE\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/CLÁUSULA 7ª – DA REMUNERAÇÃO/i)).toBeInTheDocument();
+        expect(screen.getByText(/CLÁUSULA 8ª – DO PRAZO E CANCELAMENTO \(CHURN\)/i)).toBeInTheDocument();
+        expect(screen.getByText(/CLÁUSULA 9ª – DA FORMALIZAÇÃO E FORO/i)).toBeInTheDocument();
     });
 
     it('contains specific legal terms', () => {
