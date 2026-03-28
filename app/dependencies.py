@@ -18,10 +18,12 @@ from app.repositories.user_repository import UserRepository
 # Configuração do esquema OAuth2 para integração automática com o Swagger UI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
+from app.core.context import user_id_var
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """
     Decodifica o Token JWT e recupera o usuário do banco de dados.
-    Garante que o portador do token é um usuário válido.
+    Garante que o portador do token é um usuário válido e armazena o id em contextvars.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -43,6 +45,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
         
+    # Armazena o ID do usuário no contextvar para a auditoria de negócios (Audit Trail)
+    user_id_var.set(str(user.id))
+
     return user
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

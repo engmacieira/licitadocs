@@ -16,6 +16,9 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from asgi_correlation_id import CorrelationIdMiddleware
+from app.middlewares.audit_middleware import AuditMiddleware
+
 # Importação dos Routers Refatorados
 from app.routers import (
     auth_router, 
@@ -65,6 +68,10 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
+
+# Middleware de Auditoria (Sistêmico) e Correlation ID
+app.add_middleware(AuditMiddleware)
+app.add_middleware(CorrelationIdMiddleware, header_name='X-Request-ID')
 
 # ==========================================
 # ⏰ BACKGROUND JOBS (CRON)
