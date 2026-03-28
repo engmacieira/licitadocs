@@ -8,7 +8,7 @@ from typing import TypeVar, Generic, Type, Optional, List, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import inspect
 from datetime import datetime, timezone
-import threading
+import asyncio
 
 from app.core.context import request_id_var, user_id_var
 from app.repositories.audit_repository import AuditRepository
@@ -147,16 +147,30 @@ class BaseRepository(Generic[ModelType]):
 
     @classmethod
     def _trigger_audit(cls, action: str, entity_id: str, old_data: dict, new_data: dict):
-        """Envia log de auditoria via Threading para não bloquear a requisição HTTP."""
+        """Envia log de auditoria via worker thread limpa do event loop ASGI para não bloquear a requisição HTTP."""
         req_id = request_id_var.get()
         user_id = user_id_var.get()
         entity_name = cls.model.__name__
 
         try:
-            threading.Thread(
-                target=AuditRepository.create_audit_log_async,
-                args=(entity_name, entity_id, action, user_id, old_data, new_data, req_id),
-                daemon=True
-            ).start()
+            # Em vez de criar instâncias isoladas de threading que não acompanham hooks
+            # de ciclo de vida do Uvicorn, enviamos pro pool global thread nativo do loop ASGI
+            # (get_running_loop().run_in_executor ou asyncio.to_thread).
+            # Fallback seguro para sincronicidade se não tivermos em um escopo asincrono
+            try:
+                loop = asyncio.get_running_loop()
+                loop.run_in_executor(
+                    None,
+                    AuditRepository.create_audit_log_async,
+                    entity_name, entity_id, action, user_id, old_data, new_data, req_id
+                )
+            except RuntimeError:
+                # Caso chamado fora de um event loop async, fallback import thread daemon
+                import threading
+                threading.Thread(
+                    target=AuditRepository.create_audit_log_async,
+                    args=(entity_name, entity_id, action, user_id, old_data, new_data, req_id),
+                    daemon=True
+                ).start()
         except Exception:
             pass
