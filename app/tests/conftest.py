@@ -24,7 +24,7 @@ from app.models.emission_request_model import EmissionRequest
 from app.models.message_model import Message
 from app.models.ai_usage_model import AIUsage
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
