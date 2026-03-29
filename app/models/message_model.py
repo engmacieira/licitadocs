@@ -87,6 +87,12 @@ class Message(Base, SoftDeleteMixin):
         doc="Indica se o destinatário já visualizou a mensagem"
     )
     
+    read_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="Data e hora de quando a mensagem foi lida"
+    )
+
     is_resolved = Column(
         Boolean, 
         default=False, 
