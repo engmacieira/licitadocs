@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import api from '../../services/api';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
 
 // Subcomponentes da Feature
 import { InboxSidebar } from './components/InboxSidebar';
@@ -35,11 +36,26 @@ export function InboxOrchestrator() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // --- CONTAGEM GLOBAL ---
+    const { fetchUnreadCount } = useUnreadCount();
+
     // --- CARREGAMENTO INICIAL ---
     useEffect(() => {
         loadTickets();
         loadAlerts();
     }, []);
+
+    // --- MARCAR TICKET COMO LIDO AO ABRIR ---
+    useEffect(() => {
+        if (selectedTicketId) {
+            api.patch(`/messages/ticket/${selectedTicketId}/read`)
+                .then(() => {
+                    fetchUnreadCount();
+                    loadTickets();
+                })
+                .catch(() => console.error("Erro ao marcar ticket como lido."));
+        }
+    }, [selectedTicketId, fetchUnreadCount]);
 
     const loadTickets = async () => {
         setIsLoading(true);
@@ -87,6 +103,7 @@ export function InboxOrchestrator() {
             });
             toast.success("Resposta enviada!");
             setReplyText('');
+            fetchUnreadCount();
             loadTickets();
         } catch (error) {
             toast.error("Erro ao enviar resposta.");
@@ -100,6 +117,7 @@ export function InboxOrchestrator() {
         try {
             await api.patch(`/messages/${activeTicket.id}/resolve`);
             toast.success("Ticket resolvido com sucesso!");
+            fetchUnreadCount();
             loadTickets();
         } catch (error) {
             toast.error("Erro ao resolver ticket.");

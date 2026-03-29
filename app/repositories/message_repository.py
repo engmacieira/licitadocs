@@ -100,3 +100,63 @@ class MessageRepository(BaseRepository[Message]):
             ).order_by(cls.model.created_at.desc()).all()
         except DatabaseError as e:
             raise e
+
+    @classmethod
+    def get_admin_unread_count(cls, db: Session) -> int:
+        """Retorna a quantidade de tickets (chats) abertos com respostas novas não lidas pelo admin."""
+        try:
+            from app.models.user_model import UserRole
+            from app.models.user_model import User
+            return cls.get_active_query(db).join(User, cls.model.sender_id == User.id).filter(
+                cls.model.is_read == False,
+                User.role == UserRole.CLIENT.value,
+                cls.model.message_type != "system"
+            ).count()
+        except DatabaseError as e:
+            raise e
+
+    @classmethod
+    def get_client_unread_count(cls, db: Session, company_id: str) -> int:
+        """Retorna a quantidade de alertas do sistema e respostas do Admin não lidas pelo cliente."""
+        try:
+            from app.models.user_model import UserRole
+            from app.models.user_model import User
+            from sqlalchemy import or_
+            return cls.get_active_query(db).outerjoin(User, cls.model.sender_id == User.id).filter(
+                cls.model.company_id == company_id,
+                cls.model.is_read == False,
+                or_(
+                    cls.model.message_type == "system",
+                    User.role == UserRole.ADMIN.value
+                )
+            ).count()
+        except DatabaseError as e:
+            raise e
+
+    @classmethod
+    def mark_ticket_thread_as_read(cls, db: Session, ticket_id: str, is_admin: bool):
+        """Marca como lidas as mensagens de um ticket, dependendo do leitor."""
+        try:
+            from app.models.user_model import UserRole
+            from app.models.user_model import User
+            import datetime
+
+            thread = cls.get_active_query(db).filter(
+                (cls.model.id == ticket_id) | (cls.model.parent_id == ticket_id)
+            ).all()
+
+            for msg in thread:
+                if not msg.is_read:
+                    if is_admin:
+                        if msg.sender and msg.sender.role == UserRole.CLIENT.value:
+                            msg.is_read = True
+                            msg.read_at = datetime.datetime.now(datetime.timezone.utc)
+                    else:
+                        if (msg.sender and msg.sender.role == UserRole.ADMIN.value) or (msg.message_type == "system"):
+                            msg.is_read = True
+                            msg.read_at = datetime.datetime.now(datetime.timezone.utc)
+
+            db.commit()
+        except DatabaseError as e:
+            db.rollback()
+            raise e

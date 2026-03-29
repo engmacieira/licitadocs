@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # 1. Configurações de Conexão
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
 
 # Protocolo de Tolerância Zero: Interrompe a execução se o banco não estiver configurado
 if not DATABASE_URL:

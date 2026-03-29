@@ -5,6 +5,7 @@ import { LifeBuoy } from 'lucide-react';
 // Serviços e Contexto
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUnreadCount } from '../../hooks/useUnreadCount';
 
 // Subcomponentes da Feature
 import { ContactSidebar } from './components/ContactSidebar';
@@ -38,6 +39,9 @@ export function HelpCenterOrchestrator() {
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
 
+    // --- CONTAGEM GLOBAL ---
+    const { fetchUnreadCount } = useUnreadCount();
+
     /** Carrega todas as mensagens e alertas associados à empresa. */
     const loadMessages = async () => {
         if (!currentCompany?.id) return;
@@ -56,6 +60,18 @@ export function HelpCenterOrchestrator() {
         loadMessages();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentCompany]);
+
+    // --- MARCAR TICKET COMO LIDO AO ABRIR ---
+    useEffect(() => {
+        if (selectedTicketId) {
+            api.patch(`/messages/ticket/${selectedTicketId}/read`)
+                .then(() => {
+                    fetchUnreadCount();
+                    loadMessages();
+                })
+                .catch(() => console.error("Erro ao marcar ticket como lido."));
+        }
+    }, [selectedTicketId, fetchUnreadCount]);
 
     // --- FILTROS E DERIVAÇÕES DE DADOS ---
     const alerts = messages.filter(m => m.message_type === 'system');
@@ -80,6 +96,7 @@ export function HelpCenterOrchestrator() {
                 parent_id: activeTicket.id
             });
             setReplyText('');
+            fetchUnreadCount();
             loadMessages();
         } catch (error) {
             toast.error("Erro ao enviar resposta.");
@@ -92,6 +109,7 @@ export function HelpCenterOrchestrator() {
         if (e) e.stopPropagation();
         try {
             await api.patch(`/messages/${alertId}/read`);
+            fetchUnreadCount();
             loadMessages();
             // Volta para a lista automaticamente após marcar como lido
             setSelectedAlertId(null);
