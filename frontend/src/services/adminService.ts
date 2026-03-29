@@ -96,7 +96,6 @@ export const adminService = {
             console.error("Erro ao buscar fila de pendências:", error);
             return [];
         }
-    }
     },
 
     // ==========================================
