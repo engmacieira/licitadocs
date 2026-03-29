@@ -5,9 +5,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-# Carregar o arquivo .env.test
-env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
-load_dotenv(env_path, override=True)
+# Tentar carregar as variáveis de ambiente, priorizando o sistema, depois .env.test
+if "TEST_DATABASE_URL" not in os.environ:
+    env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
+    load_dotenv(env_path, override=True)
 
 from app.core.database import Base, get_db
 from app.core.rate_limit import limiter
