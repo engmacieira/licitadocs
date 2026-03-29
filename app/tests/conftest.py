@@ -5,10 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-# Tentar carregar as variáveis de ambiente, priorizando o sistema, depois .env.test
-if "TEST_DATABASE_URL" not in os.environ:
-    env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
-    load_dotenv(env_path, override=True)
+# Carregar o arquivo .env.test
+env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
+load_dotenv(env_path, override=True)
 
 from app.core.database import Base, get_db
 from app.core.rate_limit import limiter
@@ -25,7 +24,7 @@ from app.models.emission_request_model import EmissionRequest
 from app.models.message_model import Message
 from app.models.ai_usage_model import AIUsage
 
-DATABASE_URL = os.getenv("TEST_DATABASE_URL") or os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
