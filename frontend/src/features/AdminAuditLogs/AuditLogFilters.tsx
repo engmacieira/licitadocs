@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, RotateCcw } from 'lucide-react';
-import { AuditLogFilters as IAuditLogFilters } from '../../schemas/audit';
+import type { AuditLogFilters as IAuditLogFilters } from '../../schemas/audit';
 
 interface Props {
     filters: IAuditLogFilters;

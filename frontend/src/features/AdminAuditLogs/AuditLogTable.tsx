@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Eye, ShieldAlert } from 'lucide-react';
-import { AuditLog } from '../../schemas/audit';
+import type { AuditLog } from '../../schemas/audit';
 
 interface Props {
     logs: AuditLog[];

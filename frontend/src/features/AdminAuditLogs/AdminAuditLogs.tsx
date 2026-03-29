@@ -3,7 +3,7 @@ import { useAuditLogs } from './useAuditLogs';
 import { AuditLogFilters } from './AuditLogFilters';
 import { AuditLogTable } from './AuditLogTable';
 import { AuditLogModal } from './AuditLogModal';
-import { AuditLog } from '../../schemas/audit';
+import type { AuditLog } from '../../schemas/audit';
 import { Activity } from 'lucide-react';
 
 export function AdminAuditLogs() {

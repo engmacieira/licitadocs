@@ -1,5 +1,5 @@
 import api from './api';
-import { PaginatedAuditLogs, AuditLogFilters } from '../schemas/audit';
+import type { PaginatedAuditLogs, AuditLogFilters } from '../schemas/audit';
 
 
 /**

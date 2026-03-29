@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { AuditLog } from '../../schemas/audit';
+import type { AuditLog } from '../../schemas/audit';
 
 interface Props {
     log: AuditLog;
