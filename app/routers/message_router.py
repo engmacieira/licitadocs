@@ -120,9 +120,38 @@ def mark_as_read(
     
     try:
         MessageRepository.mark_as_read(db, message_id)
+        import datetime
+        message.is_read = True
+        message.read_at = datetime.datetime.now(datetime.timezone.utc)
+        db.commit()
         return {"status": "Mensagem lida com sucesso."}
     except Exception:
+        db.rollback()
         raise HTTPException(status_code=500, detail="Erro ao atualizar status de leitura.")
+
+@router.patch(
+    "/ticket/{ticket_id}/read",
+    status_code=status.HTTP_200_OK,
+    summary="Marcar Thread do Ticket como Lida"
+)
+def mark_ticket_thread_as_read(
+    ticket_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Marca como lidas as mensagens de um Ticket específico quando aberto."""
+    message = MessageRepository.get_by_id(db, ticket_id)
+    if not message:
+        raise HTTPException(status_code=404, detail="Ticket não encontrado.")
+
+    if current_user.role != UserRole.ADMIN.value:
+        verify_company_access(message.company_id, current_user, db)
+
+    try:
+        MessageRepository.mark_ticket_thread_as_read(db, ticket_id, is_admin=(current_user.role == UserRole.ADMIN.value))
+        return {"status": "Ticket lido com sucesso."}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao marcar ticket como lido.")
 
 @router.patch(
     "/{message_id}/resolve", 
@@ -159,6 +188,45 @@ def resolve_ticket(
 # ==========================================
 # 🛡️ VISÃO DO ADMINISTRADOR E BROADCASTS
 # ==========================================
+
+@router.get(
+    "/admin/unread-count",
+    status_code=status.HTTP_200_OK,
+    summary="Contador de Mensagens Não Lidas (Admin)"
+)
+def get_admin_unread_count(
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value])),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna a quantidade de tickets abertos que possuem respostas novas de clientes que o admin ainda não leu.
+    """
+    try:
+        count = MessageRepository.get_admin_unread_count(db)
+        return {"unread_count": count}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao buscar contador de mensagens não lidas.")
+
+@router.get(
+    "/{company_id}/unread-count",
+    status_code=status.HTTP_200_OK,
+    summary="Contador de Mensagens Não Lidas (Cliente)"
+)
+def get_client_unread_count(
+    company_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retorna a quantidade de alertas do sistema e respostas do Admin não lidas pelo cliente.
+    """
+    verify_company_access(company_id, current_user, db)
+
+    try:
+        count = MessageRepository.get_client_unread_count(db, company_id)
+        return {"unread_count": count}
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erro ao buscar contador de mensagens não lidas.")
 
 @router.get(
     "/admin/all", 
