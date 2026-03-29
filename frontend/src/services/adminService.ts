@@ -1,4 +1,6 @@
 import api from './api';
+import { PaginatedAuditLogs, AuditLogFilters } from '../schemas/audit';
+
 
 /**
  * Interface que representa as estatísticas vitais exibidas no Dashboard do Administrador.
@@ -94,5 +96,25 @@ export const adminService = {
             console.error("Erro ao buscar fila de pendências:", error);
             return [];
         }
+    }
+    },
+
+    // ==========================================
+    // 📊 AUDITORIA (Audit Trail)
+    // ==========================================
+
+    /**
+     * Busca o histórico de auditoria paginado e com filtros aplicados.
+     */
+    getAuditLogs: async (filters: AuditLogFilters): Promise<PaginatedAuditLogs> => {
+        // Remove undefined values to not send `param=undefined` in query
+        const cleanFilters = Object.fromEntries(
+            Object.entries(filters).filter(([_, v]) => v !== undefined && v !== '')
+        );
+
+        const response = await api.get<PaginatedAuditLogs>('/admin/audit-logs', {
+            params: cleanFilters
+        });
+        return response.data;
     }
 };

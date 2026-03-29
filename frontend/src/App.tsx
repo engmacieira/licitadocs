@@ -40,6 +40,7 @@ import { AdminInboxPage } from './pages/Admin/Inbox';
 import { ValidityMonitorPage } from './pages/Admin/ValidityMonitor';
 import { AdminEmissionRulesPage } from './pages/Admin/EmissionRules';
 import { ManualEmissionPage } from './pages/Admin/ManualEmission';
+import { AdminAuditLogsPage } from './pages/Admin/AuditLogs';
 
 function App() {
   return (
@@ -95,6 +96,7 @@ function App() {
             <Route path="/admin/companies" element={<AdminCompaniesPage />} />
             <Route path="/admin/companies/:id" element={<AdminCompanyDetailsPage />} />
             <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
+            <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
           </Route>
 
           <Route
