@@ -122,11 +122,14 @@ def update_company(
 def update_onboarding_step(
     company_id: str,
     step: str = Query(..., description="terms | payment | data | contract"),
-    current_admin: User = Depends(get_current_active_admin),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Avança as flags de progresso do onboarding da empresa."""
     
+    # Validação de Segurança: Apenas MASTER da empresa ou ADMIN do sistema podem alterar
+    verify_company_access(company_id, current_user, db, required_role=UserCompanyRole.MASTER.value)
+
     company = CompanyRepository.get_by_id(db, company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")

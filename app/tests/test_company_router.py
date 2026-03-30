@@ -65,22 +65,15 @@ def test_get_companies_admin_only(client, auth_headers, test_user):
     response = client.get("/companies/", headers=auth_headers)
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
-def test_company_onboarding_steps(client, db_session, test_company, test_user):
-    """Testa a atualização das etapas de onboarding."""
-    # Torna o usuário admin para este teste
-    test_user.role = "admin"
-    db_session.commit()
-    
-    from app.core.security import create_access_token
-    token = create_access_token(data={"sub": test_user.email, "role": "admin", "user_id": str(test_user.id)})
-    headers = {"Authorization": f"Bearer {token}"}
+def test_company_onboarding_steps(client, auth_headers, test_company):
+    """Testa a atualização das etapas de onboarding por um usuário MASTER."""
     
     # 1. Terms
-    response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=terms", headers=headers)
+    response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=terms", headers=auth_headers)
     assert response.status_code == 200
     
     # 2. Invalid step
-    response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=invalid", headers=headers)
+    response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=invalid", headers=auth_headers)
     assert response.status_code == 400
 
 def test_member_management_edge_cases(client, db_session, test_company, test_user):

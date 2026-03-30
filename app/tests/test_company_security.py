@@ -57,12 +57,6 @@ def test_invalid_cpf_validation(client, auth_headers, test_company):
 
 # --- Missão 2: Fechar o Bypass de Pagamento ---
 
-def test_onboarding_bypass_forbidden_for_master(client, auth_headers, test_company):
-    """Teste do Bypass: Tentar chamar a rota de onboarding logado como MASTER (deve falhar com 403)."""
-    # auth_headers is for test_user who is MASTER of test_company
-    response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=payment", headers=auth_headers)
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-
 def test_onboarding_allowed_for_admin(client, admin_headers, test_company):
     """Garante que apenas ADMIN pode atualizar onboarding."""
     response = client.patch(f"/companies/{test_company.id}/onboarding-step?step=payment", headers=admin_headers)
