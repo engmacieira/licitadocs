@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: licitadocs_backend
+    ports:
+      - "8000:8000"
+    environment:
+      # Essas variáveis serão lidas do arquivo .env que criaremos dentro da máquina EC2
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      # Mais para frente, substituiremos pelo IP público da sua EC2
+      - BACKEND_CORS_ORIGINS=["http://localhost", "http://SEU_IP_EC2"]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: licitadocs_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
