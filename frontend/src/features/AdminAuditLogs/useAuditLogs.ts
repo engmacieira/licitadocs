@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { adminService } from '../../services/adminService';
-import type { AuditLog, AuditLogFilters, PaginatedAuditLogs } from '../../schemas/audit';
+import type { AuditLogFilters, PaginatedAuditLogs } from '../../schemas/audit';
 
 export function useAuditLogs(initialFilters: AuditLogFilters = { skip: 0, limit: 100 }) {
     const [data, setData] = useState<PaginatedAuditLogs>({ items: [], total: 0, skip: 0, limit: 100 });

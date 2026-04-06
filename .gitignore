@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .env
+*.pem
 .venv
 .zip
 *.zip

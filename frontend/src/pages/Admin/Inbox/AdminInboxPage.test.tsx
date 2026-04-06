@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { AdminInboxPage } from './index';
@@ -29,14 +29,14 @@ describe('AdminInboxPage', () => {
             if (url.includes('/messages/admin/all')) {
                 return Promise.resolve({
                     data: [
-                        { 
-                            id: 'msg1', 
-                            content: 'Ticket 1', 
+                        {
+                            id: 'msg1',
+                            content: 'Ticket 1',
                             subject: 'Suporte Técnico',
-                            company_id: 'c1', 
+                            company_id: 'c1',
                             company_name: 'Empresa Alpha',
-                            parent_id: null, 
-                            created_at: new Date().toISOString() 
+                            parent_id: null,
+                            created_at: new Date().toISOString()
                         },
                     ]
                 });
@@ -65,10 +65,10 @@ describe('AdminInboxPage', () => {
         // Verifica as abas do sidebar (conforme InboxSidebar.tsx)
         expect(await screen.findByText(/Tickets/i)).toBeInTheDocument();
         expect(screen.getByText(/Avisos Emitidos/i)).toBeInTheDocument();
-        
+
         // Verifica se o ticket do mock aparece (findBy para o loading)
         expect(await screen.findByText(/Ticket 1/i)).toBeInTheDocument();
-        
+
         // Verifica a área de conversa (padrão quando nada selecionado)
         expect(screen.getByText(/Selecione um ticket na lista ao lado/i)).toBeInTheDocument();
     });

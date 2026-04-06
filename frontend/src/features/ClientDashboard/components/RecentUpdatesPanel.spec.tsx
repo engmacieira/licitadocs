@@ -95,10 +95,9 @@ describe('RecentUpdatesPanel', () => {
 
         renderComponent(mockDocs);
 
-        const downloadButton = screen.getAllByRole('button').filter(b => b.querySelector('svg'))[0];
         // Note: getAllByRole('button') will include "Acessar Cofre" if it exists.
         // In the mockDocs case above, "Acessar Cofre" exists.
-        
+
         const buttons = screen.getAllByRole('button');
         // buttons[0] is "Acessar Cofre"
         // buttons[1] is the Download button

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuditLogs } from './useAuditLogs';
 import { AuditLogFilters } from './AuditLogFilters';
 import { AuditLogTable } from './AuditLogTable';

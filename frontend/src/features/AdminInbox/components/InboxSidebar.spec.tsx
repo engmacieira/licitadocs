@@ -16,19 +16,19 @@ describe('InboxSidebar', () => {
     };
 
     const mockTickets = [
-        { 
-            id: 't1', 
-            subject: 'Dúvida no Upload', 
-            created_at: '2024-03-22T10:00:00Z', 
-            company_name: 'Empresa Alpha', 
+        {
+            id: 't1',
+            subject: 'Dúvida no Upload',
+            created_at: '2024-03-22T10:00:00Z',
+            company_name: 'Empresa Alpha',
             content: 'Não consigo subir o PDF...',
             is_resolved: false
         },
-        { 
-            id: 't2', 
-            subject: 'Erro de Login', 
-            created_at: '2024-03-21T15:30:00Z', 
-            company_name: 'Empresa Beta', 
+        {
+            id: 't2',
+            subject: 'Erro de Login',
+            created_at: '2024-03-21T15:30:00Z',
+            company_name: 'Empresa Beta',
             content: 'Meu usuário está bloqueado.',
             is_resolved: true
         }
@@ -53,8 +53,7 @@ describe('InboxSidebar', () => {
 
     it('deve alternar abas ao clicar nos botões de navegação', () => {
         render(<InboxSidebar {...defaultProps} />);
-        
-        const ticketsTab = screen.getByRole('button', { name: /Tickets/i });
+
         const alertsTab = screen.getByRole('button', { name: /Avisos Emitidos/i });
 
         fireEvent.click(alertsTab);
@@ -68,7 +67,7 @@ describe('InboxSidebar', () => {
 
     it('deve listar os tickets corretamente', () => {
         render(<InboxSidebar {...defaultProps} activeTab="tickets" parentTickets={mockTickets} />);
-        
+
         expect(screen.getByText(mockTickets[0].subject)).toBeInTheDocument();
         expect(screen.getByText(mockTickets[0].company_name)).toBeInTheDocument();
         expect(screen.getByText(mockTickets[1].subject)).toBeInTheDocument();
@@ -78,23 +77,23 @@ describe('InboxSidebar', () => {
 
     it('deve chamar setSelectedTicketId ao clicar num ticket', () => {
         render(<InboxSidebar {...defaultProps} activeTab="tickets" parentTickets={mockTickets} />);
-        
+
         const ticketButton = screen.getByText(mockTickets[0].subject).closest('button');
         fireEvent.click(ticketButton!);
-        
+
         expect(defaultProps.setSelectedTicketId).toHaveBeenCalledWith(mockTickets[0].id);
     });
 
     it('deve destacar o ticket selecionado', () => {
         render(<InboxSidebar {...defaultProps} activeTab="tickets" parentTickets={mockTickets} selectedTicketId="t1" />);
-        
+
         const selectedButton = screen.getByText(mockTickets[0].subject).closest('button');
         expect(selectedButton).toHaveClass('border-purple-500');
     });
 
     it('deve listar os avisos corretamente na aba de avisos', () => {
         render(<InboxSidebar {...defaultProps} activeTab="alerts" alerts={mockAlerts} />);
-        
+
         expect(screen.getByText(mockAlerts[0].subject)).toBeInTheDocument();
         expect(screen.getByText(mockAlerts[0].company_name)).toBeInTheDocument();
         expect(screen.getByText(/Disparado por Admin Admin/)).toBeInTheDocument();
@@ -102,10 +101,10 @@ describe('InboxSidebar', () => {
 
     it('deve chamar setSelectedAlertId ao clicar num aviso', () => {
         render(<InboxSidebar {...defaultProps} activeTab="alerts" alerts={mockAlerts} />);
-        
+
         const alertButton = screen.getByText(mockAlerts[0].subject).closest('button');
         fireEvent.click(alertButton!);
-        
+
         expect(defaultProps.setSelectedAlertId).toHaveBeenCalledWith(mockAlerts[0].id);
     });
 

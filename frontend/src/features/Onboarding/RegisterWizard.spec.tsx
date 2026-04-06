@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RegisterWizard } from './RegisterWizard';
 import userEvent from '@testing-library/user-event';
 import { authService } from '../../services/authService';
-import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'sonner';
 
 // Mocks
@@ -47,7 +46,7 @@ describe('RegisterWizard', () => {
 
         // Step 1: Company
         expect(screen.getByText(/Passo 1 de 4/i)).toBeInTheDocument();
-        
+
         // Test validation failure on Step 1
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
         expect(await screen.findByText(/CNPJ inválido/i)).toBeInTheDocument();
@@ -100,9 +99,9 @@ describe('RegisterWizard', () => {
 
         // Step 4
         await waitFor(() => screen.getByText(/Passo 4 de 4/i));
-        
+
         const file = new File([''], 'test.pdf', { type: 'application/pdf' });
-        
+
         const socialInput = document.getElementById('social') as HTMLInputElement;
         const cnpjInput = document.getElementById('cnpj') as HTMLInputElement;
         const docInput = document.getElementById('doc') as HTMLInputElement;
@@ -146,7 +145,7 @@ describe('RegisterWizard', () => {
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
         await waitFor(() => screen.getByText(/Passo 4 de 4/i));
-        
+
         const file = new File([''], 'test.pdf', { type: 'application/pdf' });
         await user.upload(document.getElementById('social') as HTMLInputElement, file);
         await user.upload(document.getElementById('cnpj') as HTMLInputElement, file);
