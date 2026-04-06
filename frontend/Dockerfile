@@ -1,5 +1,5 @@
 # Estágio 1: Build (Node.js)
-FROM node:18-alpine as builder
+FROM node:22-alpine as builder
 WORKDIR /app
 
 # Copia dependências e instala
