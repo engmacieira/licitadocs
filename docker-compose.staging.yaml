@@ -12,7 +12,7 @@ services:
       # Agora sim, todas as variáveis serão puxadas do arquivo .env do servidor
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
-      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+      - CORS_ORIGINS=${CORS_ORIGINS}
     restart: unless-stopped
 
   frontend:
