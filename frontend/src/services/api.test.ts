@@ -39,6 +39,7 @@ vi.mock('sonner', () => ({
 }));
 
 // Importamos o api APÓS o mock do axios ser definido para que a instância use o mock
+import api from './api';
 
 describe('api service (interceptors)', () => {
     beforeEach(() => {
