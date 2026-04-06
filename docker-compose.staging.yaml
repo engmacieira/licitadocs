@@ -9,11 +9,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # Essas variáveis serão lidas do arquivo .env que criaremos dentro da máquina EC2
+      # Agora sim, todas as variáveis serão puxadas do arquivo .env do servidor
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
-      # Mais para frente, substituiremos pelo IP público da sua EC2
-      - BACKEND_CORS_ORIGINS=["http://localhost", "http://SEU_IP_EC2"]
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
     restart: unless-stopped
 
   frontend:
