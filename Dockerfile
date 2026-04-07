@@ -11,6 +11,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia o código da pasta app para dentro do contêiner
 COPY ./app ./app
 
+# Copia o motor de migrações para o contêiner
+COPY alembic.ini .
+COPY alembic ./alembic
+
 # Expõe a porta que o FastAPI vai rodar
 EXPOSE 8000
 
