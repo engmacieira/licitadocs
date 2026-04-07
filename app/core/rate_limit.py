@@ -1,4 +1,5 @@
 from slowapi import Limiter
+from slowapi.util import get_remote_address
 from fastapi import Request
 
 def get_remote_address_with_proxy(request: Request) -> str:
