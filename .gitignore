@@ -15,4 +15,5 @@ debug_models.py
 test_ai.py
 manual_test_ai.py
 storage/
-uploads/  
+uploads/
+scripts/
