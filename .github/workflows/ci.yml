@@ -14,10 +14,10 @@ jobs:
       fail-fast: false 
       matrix:
         test-group: 
-          - "tests/services tests/core tests/utils tests/models tests/schemas"
-          - "tests/test_*router*.py"
-          - "tests/test_*repository*.py tests/test_*security*.py"
-          - "tests/test_stress*.py tests/test_auth*.py tests/test_ai_*.py"
+          - "app/tests/services app/tests/core app/tests/utils app/tests/models app/tests/schemas"
+          - "app/tests/test_*router*.py"
+          - "app/tests/test_*repository*.py app/tests/test_*security*.py"
+          - "app/tests/test_stress*.py app/tests/test_auth*.py app/tests/test_ai_*.py"
 
     services:
       postgres:
