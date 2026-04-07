@@ -101,11 +101,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -e  # Faz o script parar na hora se der qualquer erro
+            set -e  
             cd ~/licitadocs
-            
-            # 🔥 Git pull autenticado automaticamente com o Token do Actions
             git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
-            
             docker compose -f docker-compose.staging.yaml up -d --build
             docker compose exec -T backend alembic upgrade head
+            docker system prune -af --volumes
