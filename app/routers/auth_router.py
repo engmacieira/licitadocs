@@ -47,6 +47,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
 )
 @limiter.limit("5/minute")
 async def register(
+    request: Request,
     email: EmailStr = Form(..., description="E-mail de acesso do usuário"),
     password: str = Form(..., description="Senha forte"),
     legal_name: str = Form(..., description="Razão Social da empresa"),
