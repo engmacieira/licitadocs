@@ -1,4 +1,4 @@
-name: CI - LicitaDoc Quality Check
+name: CI/CD - LicitaDoc Pipeline
 
 on:
   push:
@@ -9,6 +9,15 @@ on:
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false 
+      matrix:
+        test-group: 
+          - "tests/services tests/core tests/utils tests/models tests/schemas"
+          - "tests/test_*router*.py"
+          - "tests/test_*repository*.py tests/test_*security*.py"
+          - "tests/test_stress*.py tests/test_auth*.py tests/test_ai_*.py"
 
     services:
       postgres:
@@ -18,15 +27,13 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: licitadocs_test
         ports:
-          # Mapeia a porta 5433 do runner (que seu código espera) 
-          # para a porta 5432 do container
           - 5435:5432
-        # Healthcheck para garantir que o banco subiu antes de rodar os testes
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --tmpfs /var/lib/postgresql/data
           
     steps:
       - uses: actions/checkout@v4
@@ -35,22 +42,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov
+          pip install pytest
       
       - name: Run Migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5435/licitadocs_test
         run: alembic upgrade head
 
-      - name: Run Backend Tests
-        run: python -m pytest --cov=app
+      - name: Run Backend Tests (${{ matrix.test-group }})
+        run: python -m pytest ${{ matrix.test-group }}
         env:
-          GOOGLE_API_KEY: ${ secrets.GOOGLE_API_KEY }
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5435/licitadocs_test  
 
   frontend-tests:
@@ -71,4 +79,28 @@ jobs:
 
       - name: Run Frontend Tests
         working-directory: ./frontend
-        run: npm run test -- --run # '--run' faz o vitest rodar uma vez e sair
+        run: npm run test -- --run 
+
+  # ==========================================
+  # 🚀 FASE DE DEPLOY (CD)
+  # ==========================================
+  deploy-staging:
+    name: Deploy para AWS EC2
+    runs-on: ubuntu-latest
+    # A MÁGICA AQUI: O deploy SÓ acontece se os dois jobs acima passarem!
+    needs: [backend-tests, frontend-tests] 
+    
+    # Regra de Segurança: Só faz deploy se o código estiver indo para a branch main ou master
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Executando Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/licitadocs
+            git pull origin main
+            docker compose -f docker-compose.staging.yaml up -d --build
