@@ -72,26 +72,3 @@ jobs:
         working-directory: ./frontend
         run: npm run test -- --run 
 
-  # ==========================================
-  # 🚀 FASE DE DEPLOY (CD)
-  # ==========================================
-  deploy-staging:
-    name: Deploy para AWS EC2
-    runs-on: ubuntu-latest
-    # A MÁGICA AQUI: O deploy SÓ acontece se os dois jobs acima passarem!
-    needs: [backend-tests, frontend-tests] 
-    
-    # Regra de Segurança: Só faz deploy se o código estiver indo para a branch main ou master
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-
-    steps:
-      - name: Executando Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/licitadocs
-            git pull origin main
-            docker compose -f docker-compose.staging.yaml up -d --build
