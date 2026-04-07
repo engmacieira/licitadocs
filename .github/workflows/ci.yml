@@ -1,4 +1,4 @@
-name: CI/CD - LicitaDoc Pipeline
+name: CI - LicitaDoc Quality Check
 
 on:
   push:
@@ -18,13 +18,15 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: licitadocs_test
         ports:
+          # Mapeia a porta 5433 do runner (que seu código espera) 
+          # para a porta 5432 do container
           - 5435:5432
+        # Healthcheck para garantir que o banco subiu antes de rodar os testes
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          --tmpfs /var/lib/postgresql/data
           
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +35,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -70,5 +71,4 @@ jobs:
 
       - name: Run Frontend Tests
         working-directory: ./frontend
-        run: npm run test -- --run 
-
+        run: npm run test -- --run # '--run' faz o vitest rodar uma vez e sair
