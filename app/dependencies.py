@@ -61,18 +61,26 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 
 # --- Sistema de Controle de Acesso (RBAC) ---
 
-def require_role(allowed_roles: List[str]):
+def require_role(allowed_roles: List[any]):
     """
     Fábrica de dependência para restrição de acesso por cargo (ADMIN/CLIENT).
     Uso: current_user = Depends(require_role([UserRole.ADMIN.value]))
     """
+    # 🛡️ BLINDAGEM 1: Converte todos os papéis permitidos para string
+    allowed_roles_str = [str(role) for role in allowed_roles]
+    
     def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in allowed_roles:
+        # 🛡️ BLINDAGEM 2: Normaliza o papel do usuário atual para string
+        # Assim evitamos bugs se a base de dados retornar um objeto Enum ou um int
+        user_role = str(current_user.role.value) if hasattr(current_user.role, 'value') else str(current_user.role)
+        
+        if user_role not in allowed_roles_str:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Acesso negado: Requer privilégios de {', '.join(allowed_roles)}."
+                detail=f"Acesso negado: Requer privilégios de {', '.join(allowed_roles_str)}."
             )
         return current_user
+        
     return role_checker
 
 # Atalho para rotas exclusivas da equipe interna (Staff)
