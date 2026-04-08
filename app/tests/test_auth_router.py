@@ -3,7 +3,7 @@ import os
 from fastapi import status
 from app.core.security import get_password_hash
 from app.models.user_model import User
-from app.tests.conftest import generate_valid_cnpj
+from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
 
 @pytest.mark.asyncio
 async def test_register_success(client):
@@ -14,7 +14,7 @@ async def test_register_success(client):
         "legal_name": "New Company LTDA",
         "cnpj": generate_valid_cnpj(),
         "responsible_name": "John Doe",
-        "cpf": "12345678901"
+        "cpf": generate_valid_cpf()
     }
     response = client.post("/auth/register", data=payload)
     assert response.status_code == status.HTTP_201_CREATED
@@ -29,9 +29,9 @@ async def test_register_duplicate_email(client, test_user):
         "email": test_user.email,
         "password": "password123",
         "legal_name": "Another Company",
-        "cnpj": "98765432000188",
+        "cnpj": generate_valid_cnpj(),
         "responsible_name": "Jane Doe",
-        "cpf": "98765432100"
+        "cpf": generate_valid_cpf()
     }
     response = client.post("/auth/register", data=payload)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -46,7 +46,7 @@ def test_login_success(client, db_session):
         password_hash=get_password_hash(password),
         is_active=True,
         nome="Login Test",
-        cpf="00011122233"
+        cpf=generate_valid_cpf()
     )
     db_session.add(user)
     db_session.commit()
@@ -74,9 +74,9 @@ def test_register_missing_fields(client):
         "email": "missing@example.com",
         # password is missing
         "legal_name": "Missing Co",
-        "cnpj": "00000000000000",
+        "cnpj": generate_valid_cnpj(),
         "responsible_name": "No One",
-        "cpf": "00000000000"
+        "cpf": generate_valid_cpf()
     }
     response = client.post("/auth/register", data=payload)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT

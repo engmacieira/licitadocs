@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
 from app.core.rate_limit import limiter
 from app.dependencies import require_role
+from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
 
 # Models & Repos
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
@@ -61,7 +62,15 @@ async def register(
     proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação Inicial (Usando o repositório blindado)
+    # 1. Validação Inicial (Matemática e Existência)
+    try:
+        if cpf:
+            cpf = validar_matematica_cpf(cpf)
+        if cnpj:
+            cnpj = validar_matematica_cnpj(cnpj)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="E-mail já cadastrado no sistema.")
 

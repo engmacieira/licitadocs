@@ -3,11 +3,11 @@ import { registerSchema } from './registerSchema';
 
 describe('registerSchema', () => {
     const validData = {
-        cnpj: '12.345.678/0001-90',
+        cnpj: '11.444.777/0001-61',
         legalName: 'Empresa Teste LTDA',
         tradeName: 'Teste Store',
         responsibleName: 'João da Silva',
-        cpf: '123.456.789-01',
+        cpf: '529.982.247-25',
         email: 'CONTATO@TESTE.COM',
         password: 'password123',
         confirmPassword: 'password123'
@@ -24,8 +24,8 @@ describe('registerSchema', () => {
     it('should validate with unformatted CNPJ and CPF', () => {
         const unformattedData = {
             ...validData,
-            cnpj: '12345678000190',
-            cpf: '12345678901'
+            cnpj: '11444777000161',
+            cpf: '52998224725'
         };
         const result = registerSchema.safeParse(unformattedData);
         expect(result.success).toBe(true);
@@ -37,7 +37,16 @@ describe('registerSchema', () => {
             const result = registerSchema.safeParse(invalidData);
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues[0].message).toBe('CNPJ inválido (digite apenas números ou use o formato padrão)');
+                expect(result.error.issues[0].message).toBe('Formato de CNPJ inválido');
+            }
+        });
+
+        it('should fail if CNPJ is mathematically invalid', () => {
+            const invalidData = { ...validData, cnpj: '11.444.777/0001-62' };
+            const result = registerSchema.safeParse(invalidData);
+            expect(result.success).toBe(false);
+            if (!result.success) {
+                expect(result.error.issues[0].message).toBe('CNPJ matematicamente inválido');
             }
         });
     });
@@ -70,7 +79,16 @@ describe('registerSchema', () => {
             const result = registerSchema.safeParse(invalidData);
             expect(result.success).toBe(false);
             if (!result.success) {
-                expect(result.error.issues[0].message).toBe('CPF inválido (digite apenas números ou use o formato padrão)');
+                expect(result.error.issues[0].message).toBe('Formato de CPF inválido');
+            }
+        });
+
+        it('should fail if CPF is mathematically invalid', () => {
+            const invalidData = { ...validData, cpf: '529.982.247-26' };
+            const result = registerSchema.safeParse(invalidData);
+            expect(result.success).toBe(false);
+            if (!result.success) {
+                expect(result.error.issues[0].message).toBe('CPF matematicamente inválido');
             }
         });
     });
