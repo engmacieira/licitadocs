@@ -83,52 +83,52 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     </div>
                 </div>
 
-                {/* STEP 2: DADOS DA EMPRESA */}
-                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.data ? 'border-green-200 bg-green-50' : (companyStatus.terms ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                {/* STEP 2: PAGAMENTO (NOVA ORDEM) */}
+                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.payment ? 'border-green-200 bg-green-50' : (companyStatus.terms ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
-                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.data ? 'bg-green-200 text-green-700' : (companyStatus.terms ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
-                            <Building2 className="h-6 w-6" />
-                        </div>
-                        <div className="flex-1 text-center sm:text-left">
-                            <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
-                                2. Dados Cadastrais
-                                {companyStatus.data && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
-                            </h3>
-                            <p className="text-slate-600 text-sm mt-1">Preenchimento completo dos dados da empresa e responsável legal.</p>
-                        </div>
-                        {!companyStatus.data && (
-                            <Button variant={companyStatus.terms ? 'primary' : 'outline'} disabled={!companyStatus.terms} onClick={() => navigate('/company-settings')} className="w-full sm:w-auto">
-                                Completar Dados
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                {/* STEP 3: PAGAMENTO */}
-                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.payment ? 'border-green-200 bg-green-50' : (companyStatus.data ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
-                    <div className="flex flex-col sm:flex-row items-center gap-5">
-                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.payment ? 'bg-green-200 text-green-700' : (companyStatus.data ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.payment ? 'bg-green-200 text-green-700' : (companyStatus.terms ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
                             <CreditCard className="h-6 w-6" />
                         </div>
                         <div className="flex-1 text-center sm:text-left">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
-                                3. Ativação do Plano
+                                2. Ativação do Plano
                                 {companyStatus.payment && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
                             </h3>
                             <p className="text-slate-600 text-sm mt-1">Confirmação da assinatura do serviço.</p>
                         </div>
                         {!companyStatus.payment && (
-                            <Button variant={companyStatus.data ? 'primary' : 'outline'} disabled={!companyStatus.data} onClick={() => navigate('/payment')} className="w-full sm:w-auto">
+                            <Button variant={companyStatus.terms ? 'primary' : 'outline'} disabled={!companyStatus.terms} onClick={() => navigate('/payment')} className="w-full sm:w-auto">
                                 Realizar Pagamento
                             </Button>
                         )}
                     </div>
                 </div>
 
-                {/* STEP 4: CONTRATO E PROCURAÇÃO */}
-                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.contract ? 'border-green-200 bg-green-50' : (companyStatus.payment ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                {/* STEP 3: DADOS DA EMPRESA (NOVA ORDEM) */}
+                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.data ? 'border-green-200 bg-green-50' : (companyStatus.payment ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
-                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.contract ? 'bg-green-200 text-green-700' : (companyStatus.payment ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.data ? 'bg-green-200 text-green-700' : (companyStatus.payment ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                            <Building2 className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                3. Dados Cadastrais
+                                {companyStatus.data && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
+                            </h3>
+                            <p className="text-slate-600 text-sm mt-1">Preenchimento completo dos dados da empresa e responsável legal.</p>
+                        </div>
+                        {!companyStatus.data && (
+                            <Button variant={companyStatus.payment ? 'primary' : 'outline'} disabled={!companyStatus.payment} onClick={() => navigate('/company-settings')} className="w-full sm:w-auto">
+                                Completar Dados
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* STEP 4: CONTRATO E PROCURAÇÃO */}
+                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.contract ? 'border-green-200 bg-green-50' : (companyStatus.data ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                    <div className="flex flex-col sm:flex-row items-center gap-5">
+                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.contract ? 'bg-green-200 text-green-700' : (companyStatus.data ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
                             <FileSignature className="h-6 w-6" />
                         </div>
                         <div className="flex-1 text-center sm:text-left">
@@ -139,7 +139,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                             <p className="text-slate-600 text-sm mt-1">Assinatura digital dos documentos de representação.</p>
                         </div>
                         {!companyStatus.contract && (
-                            <Button variant={companyStatus.payment ? 'primary' : 'outline'} disabled={!companyStatus.payment} onClick={() => navigate('/signature')} className="w-full sm:w-auto">
+                            <Button variant={companyStatus.data ? 'primary' : 'outline'} disabled={!companyStatus.data} onClick={() => navigate('/signature')} className="w-full sm:w-auto">
                                 Assinar Documentos
                             </Button>
                         )}
