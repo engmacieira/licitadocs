@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useReactToPrint } from 'react-to-print';
-import { FileSignature } from 'lucide-react';
+import { FileSignature, RefreshCw } from 'lucide-react';
 
 // Serviços e Contexto
 import { useAuth } from '../../contexts/AuthContext';
@@ -28,11 +28,37 @@ export function SignatureOrchestrator() {
 
     // --- ESTADOS ---
     const [isLoading, setIsLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(true); // US-2707: Estado de sincronização
     const [contractFile, setContractFile] = useState<File | null>(null);
     const [proxyFile, setProxyFile] = useState<File | null>(null);
     const [activeTab, setActiveTab] = useState<'contract' | 'proxy'>('contract');
 
-    const company = currentCompany as any;
+    // ESTADOS LOCAIS PARA SINCRONIZAÇÃO (US-2707)
+    const [company, setCompany] = useState<any>(currentCompany);
+    const [user, setUser] = useState<any>(userProfile);
+
+    // --- FORÇAR REFRESH DOS DADOS AO ENTRAR ---
+    useEffect(() => {
+        async function fetchFreshData() {
+            if (!currentCompany?.id) return;
+            setIsSyncing(true);
+            try {
+                // Busca os dados atualizados direto da API para preencher os PDFs
+                const [freshCompany, freshUser] = await Promise.all([
+                    api.get(`/companies/${currentCompany.id}`).then(res => res.data),
+                    api.get('/users/me').then(res => res.data)
+                ]);
+                setCompany(freshCompany);
+                setUser(freshUser);
+            } catch (error) {
+                console.error("Erro ao sincronizar dados", error);
+                toast.warning("Usando dados em cache. Algumas informações podem estar desatualizadas.");
+            } finally {
+                setIsSyncing(false);
+            }
+        }
+        fetchFreshData();
+    }, [currentCompany]);
 
     // --- MAPA DE DADOS ---
     const companyData = {
@@ -41,13 +67,13 @@ export function SignatureOrchestrator() {
         endereco: `${company?.logradouro || ''}, ${company?.numero || ''} - ${company?.cidade || ''}/${company?.estado || ''}`,
         cidade: company?.cidade || "Cidade",
         estado: company?.estado || "UF",
-        responsavel: userProfile?.nome || company?.responsavel_nome || "NOME DO RESPONSÁVEL",
-        cpfResponsavel: userProfile?.cpf || company?.responsavel_cpf || "000.000.000-00",
-        genero: userProfile?.genero || "outro",
-        rg: userProfile?.rg || "",
-        nacionalidade: userProfile?.nacionalidade || "",
-        estado_civil: userProfile?.estado_civil || "",
-        profissao: userProfile?.profissao || ""
+        responsavel: user?.nome || company?.responsavel_nome || "NOME DO RESPONSÁVEL",
+        cpfResponsavel: user?.cpf || company?.responsavel_cpf || "000.000.000-00",
+        genero: user?.genero || "outro",
+        rg: user?.rg || "",
+        nacionalidade: user?.nacionalidade || "",
+        estado_civil: user?.estado_civil || "",
+        profissao: user?.profissao || ""
     };
 
     // --- HOOKS DE IMPRESSÃO ---
@@ -82,19 +108,24 @@ export function SignatureOrchestrator() {
         const toastId = toast.loading("Enviando documentos e validando assinatura...");
 
         try {
-            // 1A. Upload do Contrato
+            // 1A. Upload do Contrato (US-2708: Correção do Bug de Logout)
             const contractData = new FormData();
             contractData.append("file", contractFile);
             contractData.append("title", "Contrato SaaS Assinado");
             contractData.append("company_id", company.id);
-            await api.post("/documents/upload", contractData, { headers: { "Content-Type": "multipart/form-data" } });
+            contractData.append("is_client_upload", "true"); // <-- ESSENCIAL PARA NÃO DAR 401
 
-            // 1B. Upload da Procuração
+            // Removi os headers manuais pois o Axios injeta o multipart/boundary automaticamente
+            await api.post("/documents/upload", contractData);
+
+            // 1B. Upload da Procuração (US-2708: Correção do Bug de Logout)
             const proxyData = new FormData();
             proxyData.append("file", proxyFile);
             proxyData.append("title", "Procuração Assinada");
             proxyData.append("company_id", company.id);
-            await api.post("/documents/upload", proxyData, { headers: { "Content-Type": "multipart/form-data" } });
+            proxyData.append("is_client_upload", "true"); // <-- ESSENCIAL PARA NÃO DAR 401
+
+            await api.post("/documents/upload", proxyData);
 
             // 2. Dispara a flag do Passo 4 (Contrato)
             await api.patch(`/companies/${company.id}/onboarding-step?step=contract`);
@@ -102,6 +133,7 @@ export function SignatureOrchestrator() {
             toast.success("Documentos enviados com sucesso!", { id: toastId });
             navigate('/');
         } catch (error) {
+            console.error("Erro no upload", error);
             toast.error("Erro ao processar documentos.", { id: toastId });
         } finally {
             setIsLoading(false);
@@ -109,6 +141,17 @@ export function SignatureOrchestrator() {
     };
 
     if (!company) return null;
+
+    // Feedback visual enquanto sincroniza os dados
+    if (isSyncing) {
+        return (
+            <div className="flex flex-col justify-center items-center h-64 text-slate-500 animate-in fade-in">
+                <RefreshCw className="animate-spin h-8 w-8 text-blue-600 mb-4" />
+                <p className="font-medium text-slate-700">Sincronizando dados jurídicos...</p>
+                <p className="text-sm mt-1">Isso garante que o contrato saia com seu endereço atualizado.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">

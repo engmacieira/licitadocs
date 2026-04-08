@@ -21,11 +21,11 @@
     3. Dados Cadastrais
     4. Assinatura da Procuração
     5. Verificação da Equipe
-* **[ ] [US-2706] Segurança de Perfil:** Adicionar campo "Senha Atual" no formulário de alteração de senha em `/company-settings`.
+* **[x] [US-2706] Segurança de Perfil:** Adicionar campo "Senha Atual" no formulário de alteração de senha em `/company-settings`.
 
 ### 📦 3. Fluxo de Onboarding & Documentos
-* **[ ] [US-2707] Sincronização em `/signature`:** Garantir que todos os dados da empresa (especialmente endereço) sejam carregados corretamente e forçar refresh ao entrar na página.
-* **[ ] [US-2708] Fix do Logout Pós-Assinatura:** Impedir o logout automático após o envio dos documentos assinados. Redirecionar para o Dashboard com mensagem de sucesso.
+* **[x] [US-2707] Sincronização em `/signature`:** Garantir que todos os dados da empresa (especialmente endereço) sejam carregados corretamente e forçar refresh ao entrar na página.
+* **[x] [US-2708] Fix do Logout Pós-Assinatura:** Impedir o logout automático após o envio dos documentos assinados. Redirecionar para o Dashboard com mensagem de sucesso.
 * **[ ] [US-2709] Download de Kit ZIP:** Implementar a função "Baixar Kit Completo" no cofre do cliente, gerando um arquivo ZIP com as certidões organizadas.
 
 ---
