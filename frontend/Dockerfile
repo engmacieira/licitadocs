@@ -12,6 +12,8 @@ RUN npm run build
 
 # Estágio 2: Servidor Web (Nginx)
 FROM nginx:alpine
+# Copia o nosso nginx.conf customizado para dentro do container, substituindo o padrão
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copia os arquivos estáticos gerados na etapa anterior para a pasta pública do Nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 
