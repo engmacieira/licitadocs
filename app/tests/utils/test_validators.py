@@ -17,7 +17,7 @@ def test_validar_cpf_invalido_sequencia():
 
 def test_validar_cpf_invalido_dv():
     with pytest.raises(ValueError, match="1º dígito falhou"):
-        validar_matematica_cpf("12345678901") # Changed from 09 to 01 to definitely fail 1st DV
+        validar_matematica_cpf("12345678911") # Definitely fails 1st DV (expected 0)
     with pytest.raises(ValueError, match="2º dígito falhou"):
         validar_matematica_cpf("52998224726")
 
