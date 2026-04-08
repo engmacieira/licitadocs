@@ -53,14 +53,14 @@ describe('RegisterWizard', () => {
         expect(await screen.findByText(/Razão Social deve ter no mínimo 3 caracteres/i)).toBeInTheDocument();
 
         // Fill Step 1 correctly
-        await user.type(screen.getByLabelText(/CNPJ/i), '12.345.678/0001-90');
+        await user.type(screen.getByLabelText(/CNPJ/i), '11.444.777/0001-61');
         await user.type(screen.getByLabelText(/Razão Social/i), 'Minha Empresa Ltda');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
         // Step 2: Responsible
         expect(await screen.findByText(/Passo 2 de 4/i)).toBeInTheDocument();
         await user.type(screen.getByLabelText(/Nome Completo/i), 'João da Silva');
-        await user.type(screen.getByLabelText(/CPF/i), '123.456.789-00');
+        await user.type(screen.getByLabelText(/CPF/i), '529.982.247-25');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
         // Step 3: Credentials
@@ -80,14 +80,14 @@ describe('RegisterWizard', () => {
         render(<RegisterWizard />);
 
         // Step 1
-        await user.type(screen.getByLabelText(/CNPJ/i), '12.345.678/0001-90');
+        await user.type(screen.getByLabelText(/CNPJ/i), '11.444.777/0001-61');
         await user.type(screen.getByLabelText(/Razão Social/i), 'Minha Empresa Ltda');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
         // Step 2
         await waitFor(() => screen.getByLabelText(/Nome Completo/i));
         await user.type(screen.getByLabelText(/Nome Completo/i), 'João da Silva');
-        await user.type(screen.getByLabelText(/CPF/i), '123.456.789-00');
+        await user.type(screen.getByLabelText(/CPF/i), '529.982.247-25');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
 
         // Step 3
@@ -131,12 +131,12 @@ describe('RegisterWizard', () => {
         render(<RegisterWizard />);
 
         // Fast forward to Step 4
-        await user.type(screen.getByLabelText(/CNPJ/i), '12.345.678/0001-90');
+        await user.type(screen.getByLabelText(/CNPJ/i), '11.444.777/0001-61');
         await user.type(screen.getByLabelText(/Razão Social/i), 'Minha Empresa Ltda');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
         await waitFor(() => screen.getByLabelText(/Nome Completo/i));
         await user.type(screen.getByLabelText(/Nome Completo/i), 'João da Silva');
-        await user.type(screen.getByLabelText(/CPF/i), '123.456.789-00');
+        await user.type(screen.getByLabelText(/CPF/i), '529.982.247-25');
         await user.click(screen.getByRole('button', { name: /Próximo/i }));
         await waitFor(() => screen.getByLabelText(/E-mail/i));
         await user.type(screen.getByLabelText(/E-mail Corporativo/i), 'joao@empresa.com');

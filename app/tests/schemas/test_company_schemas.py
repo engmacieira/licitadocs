@@ -48,9 +48,9 @@ def test_company_state_length(cnpj_valido, schema_tester):
 # --- Tratamento de Erros ---
 
 @pytest.mark.parametrize("invalid_cnpj, msg", [
-    ("123", "CNPJ inválido"),
-    ("1" * 14, "CNPJ inválido"),
-    ("12.345.678/0001-90", "CNPJ inválido"), 
+    ("123", "14 dígitos"),
+    ("1" * 14, "sequência repetida"),
+    ("12.345.678/0001-90", "falhou"),
 ])
 def test_company_invalid_cnpj(invalid_cnpj, msg, schema_tester):
     data = {"cnpj": invalid_cnpj, "razao_social": "Fail Corp"}
