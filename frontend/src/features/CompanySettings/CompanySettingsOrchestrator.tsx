@@ -23,7 +23,11 @@ export interface CompanyFormSchema {
     cep: string; logradouro: string; numero: string; bairro: string;
     cidade: string; estado: string;
 }
-export interface PasswordFormSchema { password: string; confirmPassword: string; }
+export interface PasswordFormSchema {
+    currentPassword: string;
+    password: string;
+    confirmPassword: string;
+}
 export interface ProfileFormSchema {
     nome: string; cpf: string; rg: string; celular: string;
     genero: string; nacionalidade: string; estado_civil: string; profissao: string;
@@ -173,15 +177,24 @@ export function CompanySettingsOrchestrator() {
 
     const onChangePassword = async (data: PasswordFormSchema) => {
         if (data.password !== data.confirmPassword) {
-            toast.error("As senhas não coincidem.");
+            toast.error("As senhas novas não coincidem.");
             return;
         }
         try {
-            await api.patch('/users/me', { password: data.password });
+            // Agora enviamos a senha atual junto com a nova senha para o backend validar
+            await api.patch('/users/me', {
+                current_password: data.currentPassword,
+                password: data.password
+            });
             toast.success("Senha alterada com sucesso!");
             passwordForm.reset();
-        } catch (error) {
-            toast.error("Erro ao alterar senha.");
+        } catch (error: any) {
+            // Tratamento de erro específico para senha atual incorreta
+            if (error.response?.status === 401 || error.response?.status === 403) {
+                toast.error("Senha atual incorreta.");
+            } else {
+                toast.error("Erro ao alterar senha. Tente novamente.");
+            }
         }
     };
 

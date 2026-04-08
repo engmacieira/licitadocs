@@ -62,6 +62,10 @@ class UserUpdate(BaseModel):
     nacionalidade: Optional[str] = None 
     estado_civil: Optional[str] = None  
     profissao: Optional[str] = None
+    
+    # 👇 NOVO CAMPO ADICIONADO AQUI 👇
+    current_password: Optional[str] = Field(None, description="Senha atual (obrigatória para validação na troca de senha)")
+    
     password: Optional[str] = Field(None, min_length=8, description="Nova senha (se informada)")
 
     @field_validator('cpf')

@@ -67,8 +67,9 @@ export function ProfileTab({ profileForm, onSaveProfile, passwordForm, onChangeP
                     </h3>
                     <p className="text-sm text-slate-500 mb-6">Alterar senha de acesso.</p>
                     <form onSubmit={passwordForm.handleSubmit(onChangePassword)} className="space-y-4">
+                        <Input type="password" label="Senha Atual" {...passwordForm.register("currentPassword", { required: true })} />
                         <Input type="password" label="Nova Senha" {...passwordForm.register("password", { required: true })} />
-                        <Input type="password" label="Confirmar Senha" {...passwordForm.register("confirmPassword", { required: true })} />
+                        <Input type="password" label="Confirmar Nova Senha" {...passwordForm.register("confirmPassword", { required: true })} />
                         <Button type="submit" variant="outline" className="w-full" isLoading={passwordForm.formState.isSubmitting}>
                             Trocar Senha
                         </Button>

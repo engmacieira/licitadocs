@@ -4,11 +4,11 @@ Controla as rotas onde o utilizador logado pode consultar ou alterar os seus pr�
 bem como listar as empresas às quais está vinculado.
 """
 from typing import List
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash, verify_password
 from app.dependencies import get_current_user
 from app.models.user_model import User
 from app.schemas.user_schemas import UserResponse, UserUpdate
@@ -41,7 +41,7 @@ def read_users_me(current_user: User = Depends(get_current_user)):
     "/me", 
     response_model=UserResponse,
     summary="Atualizar Dados do Próprio Perfil",
-    description="Permite ao utilizador atualizar os seus dados pessoais, como nome, telemóvel ou profissão."
+    description="Permite ao utilizador atualizar os seus dados pessoais, como nome, telemóvel ou profissão. Se for alterar a senha, exige a senha atual por segurança."
 )
 def update_user_me(
     user_in: UserUpdate,
@@ -49,18 +49,28 @@ def update_user_me(
     db: Session = Depends(get_db)
 ):
     """Atualiza dados do perfil."""
-    # Exclui campos não enviados (unset) para não substituir valores existentes por nulos
+    # Exclui campos não enviados (unset)
     user_data = user_in.model_dump(exclude_unset=True)
     
-    # 🛡️ Missão 1: Tratamento de Senha (Hashing)
+    # 🛡️ Missão 1: Tratamento de Senha (Com Validação de Segurança)
     if "password" in user_data:
-        password = user_data.pop("password")
-        current_user.password_hash = get_password_hash(password)
+        new_password = user_data.pop("password")
+        
+        # Pega a senha atual do payload (se não vier, retorna None)
+        current_password = user_data.pop("current_password", None)
+        
+        if not current_password:
+            raise HTTPException(status_code=400, detail="A senha atual é obrigatória para definir uma nova senha.")
+            
+        if not verify_password(current_password, current_user.password_hash):
+            raise HTTPException(status_code=401, detail="Senha atual incorreta.")
+            
+        current_user.password_hash = get_password_hash(new_password)
     
     for field, value in user_data.items():
         # 🛡️ Missão 3: Bloqueio de Mass Assignment (Blindagem)
-        # O utilizador NUNCA pode alterar o seu próprio ID, Cargo (Role), Status ou Hash de Password.
-        if field not in ["id", "role", "password_hash", "is_active"]:
+        # current_password foi excluído aqui pois já foi processado e retirado com o .pop()
+        if field not in ["id", "role", "password_hash", "is_active", "current_password"]:
             setattr(current_user, field, value)
     
     db.add(current_user)
