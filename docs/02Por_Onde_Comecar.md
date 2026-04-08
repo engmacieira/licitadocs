@@ -4,21 +4,20 @@
 > Este arquivo é o seu Ponto de Restauração. Leia-o antes de iniciar qualquer nova funcionalidade.
 
 ## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Lançamento / Go-to-Market (Comercialização).
-* **Sprint Atual:** **Aguardando Planejamento da Sprint 24**.
-* **Última Ação Realizada:** Finalização da Sprint 23. Os robôs básicos (TST e CNPJ) estão a funcionar em background. O foco do desenvolvimento pivotou de "Automação Extrema" para "Vendas e Operação".
-* **PRÓXIMO PASSO IMEDIATO:** O projeto agora precisa de funcionalidades que permitam VENDER o sistema e reter os utilizadores. Sugestões para a Sprint 24:
-  1. **Monetização e Planos (Billing):** Integrar Stripe, Pagar.me ou Asaas para cobrar assinaturas mensais das empresas.
-  2. **Dashboard de Retenção:** Criar o ecrã inicial real (Gráficos, "5 Certidões a expirar", etc.) para o cliente ver valor imediato ao fazer login.
-  3. **Sistema de Alertas:** Enviar e-mails automáticos quando um documento for aprovado ou estiver a 5 dias de expirar.
+* **Fase do Projeto:** Estabilização (Hardening) e Expansão de UX.
+* **Sprint Atual:** **Sprint 27: Estabilidade e Experiência do Usuário (Fase 1 do Roadmap)**.
+* **Última Ação Realizada:** Consolidação do `docs/ROADMAP_VISAO_FUTURA.md`, definindo as 5 fases de evolução do SaaS. A Sprint 26 (Backend Hardening) foi concluída como base para as novas features.
+* **PRÓXIMO PASSO IMEDIATO:** Executar o Backlog da Sprint 27, focado em:
+  1. **UX & Estabilidade:** Corrigir Erro 404 (F5), scroll automático e IA Chatbot.
+  2. **Conversão de Onboarding:** Otimizar tempo de cadastro e reordenar flags do Dashboard.
+  3. **Segurança & Perfil:** Implementar validação de senha atual e download de Kit ZIP.
+  4. **Fluxo de Assinatura:** Corrigir sincronização de dados e bug de logout em `/signature`.
 
 ## 🏗️ Definições Arquiteturais (Não Quebrar)
-* **Automação:** Mantida no `APScheduler`. Não perca tempo a criar novos robôs de *scraping* sem autorização explícita do Tech Lead. O foco agora é comercial.
+* **Arquitetura:** MVC/Repository (Backend) e Orchestrator/Feature (Frontend).
+* **Automação:** Robôs externos (scrapers) estão **PAUSADOS**. Focar em automações internas (geração de ZIP, envios de e-mail).
+* **Documentação:** Sempre consultar o `docs/ROADMAP_VISAO_FUTURA.md` para alinhar novas tarefas à visão de longo prazo.
 
-# 🤖 Contexto de Continuidade: LicitaDocs
-
-## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Refinamento de UX e Separação de Contextos (Cliente vs Admin).
-* **Sprint Atual:** Sprint 24 - Refinamento de Fluxos, Assinaturas e Painel Administrativo.
-* **Última Ação Realizada:** Planejamento da Sprint 24 aprovado e Backlog gerado.
-* **PRÓXIMO PASSO IMEDIATO:** Atualizar os Models do SQLAlchemy (`Company`, `Message` e configurações de `Certificate`) para gerar as novas migrations via Alembic.
+---
+**Atualizado em:** Março de 2024
+**Responsável:** Jules (Software Engineer)
