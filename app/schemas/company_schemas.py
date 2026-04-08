@@ -12,7 +12,7 @@ from app.models.user_model import UserCompanyRole
 
 # --- Utilitários de Validação ---
 
-from app.utils.validators import validar_matematica_cpf
+from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
 
 # --- Schemas de Empresa ---
 
@@ -53,22 +53,9 @@ class CompanyBase(BaseModel):
     @field_validator('cnpj', mode='before')
     @classmethod
     def validate_cnpj(cls, v: str) -> str:
-        """Validação matemática de CNPJ otimizada."""
+        """Validação matemática de CNPJ via utilitário centralizado."""
         if not v: raise ValueError('CNPJ é obrigatório')
-        numeros = re.sub(r'\D', '', v)
-        if len(numeros) != 14 or numeros == numeros[0] * 14:
-            raise ValueError('CNPJ inválido')
-
-        def calcular_dv(payload, pesos):
-            soma = sum(int(payload[i]) * pesos[i] for i in range(len(pesos)))
-            resto = soma % 11
-            return 0 if resto < 2 else 11 - resto
-
-        if calcular_dv(numeros, [5,4,3,2,9,8,7,6,5,4,3,2]) != int(numeros[12]):
-            raise ValueError('CNPJ inválido (1º DV)')
-        if calcular_dv(numeros, [6,5,4,3,2,9,8,7,6,5,4,3,2]) != int(numeros[13]):
-            raise ValueError('CNPJ inválido (2º DV)')
-        return numeros
+        return validar_matematica_cnpj(v)
 
 class CompanyCreate(CompanyBase):
     """Schema para criação de novos Tenants."""

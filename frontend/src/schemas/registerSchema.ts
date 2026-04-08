@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isValidCPF, isValidCNPJ } from '../utils/validators';
 
 /**
  * Dicionário de expressões regulares (Regex) para validação de documentos brasileiros.
@@ -19,7 +20,8 @@ export const registerSchema = z.object({
     // --- Dados da Empresa ---
     cnpj: z.string()
         .trim()
-        .regex(PATTERNS.CNPJ, "CNPJ inválido (digite apenas números ou use o formato padrão)"),
+        .regex(PATTERNS.CNPJ, "Formato de CNPJ inválido")
+        .refine((val) => isValidCNPJ(val), "CNPJ matematicamente inválido"),
 
     legalName: z.string()
         .trim()
@@ -36,7 +38,8 @@ export const registerSchema = z.object({
 
     cpf: z.string()
         .trim()
-        .regex(PATTERNS.CPF, "CPF inválido (digite apenas números ou use o formato padrão)"),
+        .regex(PATTERNS.CPF, "Formato de CPF inválido")
+        .refine((val) => isValidCPF(val), "CPF matematicamente inválido"),
 
     // --- Dados de Autenticação ---
     email: z.string()
