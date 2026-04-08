@@ -6,13 +6,14 @@ import os
 import contextlib
 from datetime import timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 
 from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
+from app.core.rate_limit import limiter
 from app.dependencies import require_role
 
 # Models & Repos
@@ -44,7 +45,9 @@ router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
         "Se qualquer passo falhar, toda a operação é revertida (Rollback)."
     )
 )
+@limiter.limit("5/minute")
 async def register(
+    request: Request,
     email: EmailStr = Form(..., description="E-mail de acesso do usuário"),
     password: str = Form(..., description="Senha forte"),
     legal_name: str = Form(..., description="Razão Social da empresa"),

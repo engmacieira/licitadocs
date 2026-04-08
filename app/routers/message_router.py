@@ -5,6 +5,7 @@ Gere a comunicação entre o Administrador e as Empresas (Clientes), bem como os
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+import traceback
 
 from app.core.database import get_db
 from app.dependencies import get_current_active_user, verify_company_access, require_role
@@ -204,8 +205,9 @@ def get_admin_unread_count(
     try:
         count = MessageRepository.get_admin_unread_count(db)
         return {"unread_count": count}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Erro ao buscar contador de mensagens não lidas.")
+    except Exception as e:
+        traceback.print_exc() # <--- Força o erro real aparecer no log do Docker!
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get(
     "/{company_id}/unread-count",
@@ -221,12 +223,12 @@ def get_client_unread_count(
     Retorna a quantidade de alertas do sistema e respostas do Admin não lidas pelo cliente.
     """
     verify_company_access(company_id, current_user, db)
-
     try:
         count = MessageRepository.get_client_unread_count(db, company_id)
         return {"unread_count": count}
-    except Exception:
-        raise HTTPException(status_code=500, detail="Erro ao buscar contador de mensagens não lidas.")
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get(
     "/admin/all", 
@@ -247,8 +249,9 @@ def list_all_tickets_admin(
             msg_dict["company_name"] = msg.company.razao_social if msg.company else "Empresa Excluída"
             results.append(msg_dict)
         return results
-    except Exception:
-        raise HTTPException(status_code=500, detail="Erro ao buscar todos os tickets.")
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get(
     "/admin/alerts", 
@@ -275,8 +278,9 @@ def list_all_alerts_admin(
             results.append(msg_dict)
             
         return results
-    except Exception:
-        raise HTTPException(status_code=500, detail="Erro ao buscar alertas.")
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.post(
     "/admin/broadcast", 

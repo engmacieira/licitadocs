@@ -13,6 +13,7 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - SECRET_KEY=${SECRET_KEY}
       - CORS_ORIGINS=${CORS_ORIGINS}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
     restart: unless-stopped
 
   frontend:
