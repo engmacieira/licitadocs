@@ -4,6 +4,7 @@ Controla as rotas de cadastro complexo (Multipart Form), login JWT e utilitário
 """
 import os
 import contextlib
+import asyncio
 from datetime import timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File, Request
@@ -117,42 +118,56 @@ async def register(
         )
         db.add(link)
 
-        # 5. Processamento de Arquivos Físicos
-        async def process_file(upload_file: UploadFile, title: str):
+        # 5. Processamento de Arquivos Físicos (REESCRITO PARA ALTA PERFORMANCE)
+        async def process_file_io(upload_file: UploadFile, title: str):
             if not upload_file: 
-                return
+                return None
             
             if not upload_file.filename.lower().endswith('.pdf'):
                 raise HTTPException(status_code=400, detail="Apenas arquivos PDF são permitidos.")
             
+            # Validação de tamanho
             upload_file.file.seek(0, 2)
             size = upload_file.file.tell()
             upload_file.file.seek(0)
             if size > 5 * 1024 * 1024:
-                raise HTTPException(status_code=413, detail="Arquivo muito grande. Máximo 5MB.")
+                raise HTTPException(status_code=413, detail=f"Arquivo {title} muito grande. Máximo 5MB.")
             
             try:
-                # Usa o file_helper otimizado para lidar com a gravação no disco
+                # Faz o I/O pesado de forma assíncrona
                 path, size = await save_upload_file(upload_file, "companies")
-                saved_files.append(path)
-                
+                return {
+                    "title": title,
+                    "filename": upload_file.filename,
+                    "file_path": path
+                }
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar {title}: {str(e)}")
+
+        # Monta as tarefas para rodar TODAS AO MESMO TEMPO
+        io_tasks = []
+        if social_contract: io_tasks.append(process_file_io(social_contract, "Contrato Social"))
+        if cnpj_card: io_tasks.append(process_file_io(cnpj_card, "Cartão CNPJ"))
+        if responsible_doc: io_tasks.append(process_file_io(responsible_doc, "Documento Identidade"))
+        if proxy_doc: io_tasks.append(process_file_io(proxy_doc, "Procuração"))
+
+        # Executa o I/O de todos os arquivos paralelamente
+        processed_files = await asyncio.gather(*io_tasks)
+
+        # Agora, insere no banco (Síncrono e Seguro)
+        for file_data in processed_files:
+            if file_data:
+                saved_files.append(file_data["file_path"])
                 doc = Document(
-                    title=title,
-                    filename=upload_file.filename,
-                    file_path=path,
+                    title=file_data["title"],
+                    filename=file_data["filename"],
+                    file_path=file_data["file_path"],
                     company_id=new_company.id,
                     uploaded_by_id=new_user.id,
                     status=DocumentStatus.VALID.value,
                     is_client_upload=True
                 )
                 db.add(doc)
-            except Exception as e:
-                raise ValueError(f"Falha ao salvar {title}: {str(e)}")
-
-        if social_contract: await process_file(social_contract, "Contrato Social")
-        if cnpj_card: await process_file(cnpj_card, "Cartão CNPJ")
-        if responsible_doc: await process_file(responsible_doc, "Documento Identidade")
-        if proxy_doc: await process_file(proxy_doc, "Procuração")
 
         # 6. Finaliza a Transação Atômica com Sucesso
         db.commit()

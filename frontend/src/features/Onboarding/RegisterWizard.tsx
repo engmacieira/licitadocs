@@ -97,6 +97,12 @@ export function RegisterWizard() {
         try {
             setIsLoading(true);
 
+            // Toast informativo para o usuário saber que o processo começou (útil em redes lentas)
+            toast.info("Processando seu cadastro...", {
+                description: "Isso pode levar alguns segundos dependendo da sua conexão.",
+                duration: 5000 // Fica visível por 5 segundos
+            });
+
             const cnpjClean = data.cnpj.replace(/\D/g, '');
             const cpfClean = data.cpf.replace(/\D/g, '');
 
@@ -121,11 +127,30 @@ export function RegisterWizard() {
             navigate('/contract-sign', { replace: true });
 
         } catch (error: any) {
-            console.error("Erro no Registro:", error.response?.data);
-            if (error.response?.status === 422) {
+            console.error("Erro no Registro:", error);
+
+            // 1. Tratamento específico para Timeout ou Erro de Rede (Axios)
+            // Quando a rede corta, error.response geralmente é undefined e error.code é ECONNABORTED ou ERR_NETWORK
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout') || error.message.includes('Network Error')) {
+                toast.error("Conexão instável ou muito lenta.", {
+                    description: "Seu cadastro demorou muito para responder. Por favor, verifique sua conexão corporativa ou tente novamente mais tarde."
+                });
+            }
+            // 2. Erro de Validação de Dados (Retorno do Backend)
+            else if (error.response?.status === 422) {
                 toast.error("Erro de validação", { description: "Verifique se o CNPJ e CPF estão corretos." });
-            } else {
-                toast.error("Erro ao criar conta", { description: error.response?.data?.detail || "Verifique os dados ou tente outro e-mail." });
+            }
+            // 3. Arquivo muito grande (Retorno do Backend 413 Payload Too Large)
+            else if (error.response?.status === 413) {
+                toast.error("Arquivo muito grande", { description: "Um dos documentos excede o limite de 5MB." });
+            }
+            // 4. Erro de E-mail ou CNPJ Duplicado (Retorno 400 do Backend)
+            else if (error.response?.status === 400) {
+                toast.error("Erro no cadastro", { description: error.response?.data?.detail });
+            }
+            // 5. Erro Genérico (Fallback)
+            else {
+                toast.error("Erro ao criar conta", { description: "Ocorreu um erro inesperado. Tente novamente." });
             }
         } finally {
             setIsLoading(false);
