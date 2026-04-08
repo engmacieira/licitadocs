@@ -14,7 +14,7 @@
 * **[ ] [US-2703] Debug do Chatbot IA:** Corrigir a falha de inicialização da IA em ambiente web/produção, validando chaves de API e CORS.
 
 ### 📦 2. Refinamento de UX (Frontend)
-* **[ ] [US-2704] Reset de Scroll:** Implementar `ScrollToTop` global ou nas páginas principais (Home, Sobre Nós, Demo) para garantir que a navegação comece sempre do topo.
+* **[x] [US-2704] Reset de Scroll:** Implementar `ScrollToTop` global ou nas páginas principais (Home, Sobre Nós, Demo) para garantir que a navegação comece sempre do topo.
 * **[x] [US-2705] Reordenação do Dashboard:** Ajustar a sequência lógica das flags de onboarding no Dashboard do Cliente:
     1. Termo de Aceite
     2. Ativação do Plano (Pagamento)
