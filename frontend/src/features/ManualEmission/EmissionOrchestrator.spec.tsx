@@ -16,11 +16,12 @@ vi.mock('sonner');
 
 // Mock do react-router-dom para controlar navigation e params
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal() as any;
     return {
-        ...actual as any,
+        ...actual,
         useNavigate: () => mockNavigate,
+        useLocation: () => ({ pathname: '/emission' }),
         useParams: () => ({ ruleId: 'rule-123' }),
         useSearchParams: () => [new URLSearchParams()],
     };

@@ -5,11 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 
 // Mock do useNavigate
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal() as any;
     return {
         ...actual,
-        useNavigate: () => mockNavigate
+        useNavigate: () => mockNavigate,
+        useLocation: () => ({ pathname: '/' })
     };
 });
 
@@ -81,14 +82,14 @@ describe('OnboardingWizard', () => {
     it('deve habilitar e navegar para o próximo passo pendente', () => {
         renderComponent({
             terms: true,
+            payment: true, // Novo: Pagamento é o passo 2
             data: false,
-            payment: false,
             contract: false,
             approval: false,
             pendencies: null
         });
 
-        // Passo 2 deve estar habilitado
+        // Passo 3 deve estar habilitado (Completar Dados)
         const completeDataButton = screen.getByText('Completar Dados');
         expect(completeDataButton).not.toBeDisabled();
         
@@ -98,15 +99,15 @@ describe('OnboardingWizard', () => {
 
     it('deve manter desabilitado passos que dependem do anterior', () => {
         renderComponent({
-            terms: false, // Termos não aceitos
+            terms: true,
+            payment: false, // Passo 2 pendente
             data: false,
-            payment: false,
             contract: false,
             approval: false,
             pendencies: null
         });
 
-        // Passo 2 (Dados) deve estar desabilitado porque Termos não foi concluído
+        // Passo 3 (Dados) deve estar desabilitado porque Pagamento não foi concluído
         const completeDataButton = screen.getByText('Completar Dados');
         expect(completeDataButton).toBeDisabled();
     });
@@ -129,7 +130,7 @@ describe('OnboardingWizard', () => {
             <MemoryRouter>
                 <OnboardingWizard
                     currentCompany={mockCompany}
-                    companyStatus={{ terms: true, data: true, payment: false, contract: false, approval: false, pendencies: null }}
+                    companyStatus={{ terms: true, payment: false, data: false, contract: false, approval: false, pendencies: null }}
                     loadData={mockLoadData}
                 />
             </MemoryRouter>
@@ -142,7 +143,7 @@ describe('OnboardingWizard', () => {
             <MemoryRouter>
                 <OnboardingWizard
                     currentCompany={mockCompany}
-                    companyStatus={{ terms: true, data: true, payment: true, contract: false, approval: false, pendencies: null }}
+                    companyStatus={{ terms: true, payment: true, data: true, contract: false, approval: false, pendencies: null }}
                     loadData={mockLoadData}
                 />
             </MemoryRouter>

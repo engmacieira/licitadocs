@@ -30,11 +30,12 @@ vi.mock('sonner', () => ({
 }));
 
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal() as any;
     return {
         ...actual,
         useNavigate: () => mockNavigate,
+        useLocation: () => ({ pathname: '/admin/companies/123' }),
         useParams: () => ({ id: '123' })
     };
 });
