@@ -11,7 +11,7 @@
 ### 📦 1. Estabilidade e Infraestrutura
 * **[x] [US-2701] Fix do F5 (404 Not Found):** Configurar o roteamento no servidor de hospedagem (AWS/Nginx) para garantir que o refresh da página não quebre o SPA.
 * **[x] [US-2702] Otimização de Cadastro:** Investigar e reduzir o tempo de resposta na criação de novas empresas (Alvo: < 3s). Adicionar Skeleton Loaders ou feedback visual claro.
-* **[ ] [US-2703] Debug do Chatbot IA:** Corrigir a falha de inicialização da IA em ambiente web/produção, validando chaves de API e CORS.
+* **[x] [US-2703] Debug do Chatbot IA:** Corrigir a falha de inicialização da IA em ambiente web/produção, validando chaves de API e CORS.
 
 ### 📦 2. Refinamento de UX (Frontend)
 * **[x] [US-2704] Reset de Scroll:** Implementar `ScrollToTop` global ou nas páginas principais (Home, Sobre Nós, Demo) para garantir que a navegação comece sempre do topo.
@@ -26,7 +26,7 @@
 ### 📦 3. Fluxo de Onboarding & Documentos
 * **[x] [US-2707] Sincronização em `/signature`:** Garantir que todos os dados da empresa (especialmente endereço) sejam carregados corretamente e forçar refresh ao entrar na página.
 * **[x] [US-2708] Fix do Logout Pós-Assinatura:** Impedir o logout automático após o envio dos documentos assinados. Redirecionar para o Dashboard com mensagem de sucesso.
-* **[ ] [US-2709] Download de Kit ZIP:** Implementar a função "Baixar Kit Completo" no cofre do cliente, gerando um arquivo ZIP com as certidões organizadas.
+* **[x] [US-2709] Download de Kit ZIP:** Implementar a função "Baixar Kit Completo" no cofre do cliente, gerando um arquivo ZIP com as certidões organizadas.
 
 ---
 

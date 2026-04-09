@@ -26,7 +26,7 @@ interface Message {
  * * Regra de Negócio: Visível exclusivamente para utilizadores com perfil de Cliente.
  */
 export function ChatWidget() {
-    const { user } = useAuth(); // Importamos o contexto de autenticação
+    const { user, currentCompany } = useAuth(); // Importamos o contexto de autenticação
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Message[]>([
@@ -61,18 +61,22 @@ export function ChatWidget() {
         e.preventDefault();
         if (!inputValue.trim() || loading) return;
 
+        // 2. PROTEÇÃO DE ESTADO
+        if (!currentCompany?.id) {
+            toast.error("Erro interno: Empresa não identificada.");
+            return;
+        }
+
         const text = inputValue.trim();
         setInputValue('');
 
-        // 1. Optimistic UI: Adiciona mensagem do usuário
         setMessages(prev => [...prev, { id: Date.now(), type: 'user', content: text }]);
         setLoading(true);
 
         try {
-            // 2. Chama a API
-            const data = await aiService.sendMessage(text);
+            // 3. AGORA PASSAMOS O ID DA EMPRESA PARA O SERVIÇO
+            const data = await aiService.sendMessage(text, currentCompany.id);
 
-            // 3. Resposta da IA
             setMessages(prev => [...prev, {
                 id: Date.now() + 1,
                 type: 'bot',
@@ -81,7 +85,7 @@ export function ChatWidget() {
 
         } catch (error: any) {
             console.error(error);
-            
+
             // Tratamento específico do Financial DoS / Rate Limit
             if (error.response?.status === 429 || error.response?.status === 402) {
                 toast.error("Limite diário atingido");
@@ -95,7 +99,7 @@ export function ChatWidget() {
                             </span>
                             <span className="text-slate-600 text-sm leading-relaxed">
                                 Você utilizou toda a sua cota de inteligência artificial de hoje! Para garantirmos a melhor performance, há um limite de segurança.
-                                <br/><br/>
+                                <br /><br />
                                 Não se preocupe, a sua <strong>cota será renovada automaticamente amanhã</strong> e estarei pronto para ajudar novamente. ✨
                             </span>
                         </div>

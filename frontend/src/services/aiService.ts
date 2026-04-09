@@ -19,8 +19,8 @@ export const aiService = {
      * @param {string} message - A pergunta ou contexto digitado pelo utilizador no chat.
      * @returns {Promise<ChatResponse>} Uma promise que resolve com o objeto contendo a resposta da IA.
      */
-    sendMessage: async (message: string): Promise<ChatResponse> => {
-        const { data } = await api.post<ChatResponse>('/ai/chat', { message });
+    sendMessage: async (message: string, company_id: string): Promise<ChatResponse> => {
+        const { data } = await api.post<ChatResponse>('/ai/chat', { message, company_id });
         return data;
     }
 };
