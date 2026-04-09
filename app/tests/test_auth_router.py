@@ -6,8 +6,12 @@ from app.models.user_model import User
 from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
 
 @pytest.mark.asyncio
-async def test_register_success(client):
+async def test_register_success(client, monkeypatch):
     """Valida o Happy Path do registro completo (Onboarding)."""
+    import io
+    async def fake_save(f, d): return (f"/tmp/fake_{f.filename}", 1024)
+    monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save)
+
     payload = {
         "email": "newuser@example.com",
         "password": "strongpassword",
@@ -16,15 +20,24 @@ async def test_register_success(client):
         "responsible_name": "John Doe",
         "cpf": generate_valid_cpf()
     }
-    response = client.post("/auth/register", data=payload)
+    files = {
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
+    }
+    response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert "access_token" in data
     assert data["user"]["email"] == "newuser@example.com"
 
 @pytest.mark.asyncio
-async def test_register_duplicate_email(client, test_user):
+async def test_register_duplicate_email(client, test_user, monkeypatch):
     """Teste de constraint: impede e-mail duplicado."""
+    import io
+    async def fake_save(f, d): return (f"/tmp/fake_{f.filename}", 1024)
+    monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save)
+
     payload = {
         "email": test_user.email,
         "password": "password123",
@@ -33,7 +46,12 @@ async def test_register_duplicate_email(client, test_user):
         "responsible_name": "Jane Doe",
         "cpf": generate_valid_cpf()
     }
-    response = client.post("/auth/register", data=payload)
+    files = {
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
+    }
+    response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     assert response.json()["detail"] == "E-mail já cadastrado no sistema."
 
@@ -82,10 +100,13 @@ def test_register_missing_fields(client):
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 @pytest.mark.asyncio
-async def test_register_error_cases(client, db_session, test_user):
+async def test_register_error_cases(client, db_session, test_user, monkeypatch):
     """Testa erros no processo de registro."""
     from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
-    
+    import io
+    async def fake_save(f, d): return (f"/tmp/fake_{f.filename}", 1024)
+    monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save)
+
     valid_cnpj = generate_valid_cnpj()
     valid_cpf = generate_valid_cpf()
     
@@ -98,7 +119,12 @@ async def test_register_error_cases(client, db_session, test_user):
         "responsible_name": "Dono",
         "cpf": valid_cpf
     }
-    response = client.post("/auth/register", data=payload)
+    files = {
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
+    }
+    response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == 400
     assert "E-mail já cadastrado" in response.json()["detail"]
     
@@ -108,12 +134,12 @@ async def test_register_error_cases(client, db_session, test_user):
     payload["email"] = f"other_{os.urandom(2).hex()}@example.com"
     payload["cnpj"] = cnpj_repetido
     payload["cpf"] = generate_valid_cpf()
-    client.post("/auth/register", data=payload)
+    client.post("/auth/register", data=payload, files=files)
     
     # Tenta de novo com mesmo CNPJ
     payload["email"] = f"another_{os.urandom(2).hex()}@example.com"
     payload["cpf"] = generate_valid_cpf()
-    response = client.post("/auth/register", data=payload)
+    response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == 400
     assert "CNPJ já cadastrado" in response.json()["detail"]
 

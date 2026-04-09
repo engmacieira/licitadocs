@@ -11,10 +11,13 @@ def test_password_update_success(client, test_user, auth_headers, db_session):
     old_hash = test_user.password_hash
     new_password = "newpassword123"
     
-    # 1. Atualiza a senha
+    # 1. Atualiza a senha (Agora exige current_password)
     response = client.patch(
         "/users/me",
-        json={"password": new_password},
+        json={
+            "password": new_password,
+            "current_password": "password123" # Senha padrão das fixtures
+        },
         headers=auth_headers
     )
     assert response.status_code == status.HTTP_200_OK

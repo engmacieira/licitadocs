@@ -20,6 +20,7 @@ class DocumentStatusEnum(str, Enum):
     ERROR = "error"
     IRREGULAR = "irregular"
     ARCHIVED = "archived"
+    PENDING = "pending"
 
 class DocumentScopeEnum(str, Enum):
     """Escopo geográfico da certidão."""
