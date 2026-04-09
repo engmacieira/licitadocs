@@ -86,7 +86,7 @@ async def test_certificate_versioning_archiving(client, auth_headers, test_compa
     old_cert = db_session.query(Certificate).filter(Certificate.id == cert1.id).first()
     assert old_cert.status == CertificateStatus.ARCHIVED.value
     
-    # 4. Verifica se a nova está válida
+    # 4. Verifica se a nova está PENDING (Regra Sprint 27: uploads via router agora iniciam como pending para conferência)
     new_cert_id = response.json()["id"]
     new_cert = db_session.query(Certificate).filter(Certificate.id == new_cert_id).first()
-    assert new_cert.status == CertificateStatus.VALID.value
+    assert new_cert.status == CertificateStatus.PENDING.value

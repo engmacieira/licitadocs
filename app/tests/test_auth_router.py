@@ -345,16 +345,23 @@ async def test_register_strict_file_validation(client, db_session):
         "cpf": generate_valid_cpf()
     }
     
+    # 1. Testa Extensão Inválida (Enviando todos os arquivos obrigatórios para evitar 422)
     files_invalid_ext = {
-        "social_contract": ("virus.exe", io.BytesIO(b"MZ..."), "application/x-msdownload")
+        "social_contract": ("virus.exe", io.BytesIO(b"MZ..."), "application/x-msdownload"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
     }
     response_ext = client.post("/auth/register", data=payload, files=files_invalid_ext)
-    # Como agora faltam arquivos obrigatórios (CNPJ e ID), o FastAPI barra antes no 422
-    assert response_ext.status_code == 422
+    # Agora deve retornar 400 da validate_file_security (ou logica do router)
+    assert response_ext.status_code == 400
+    assert "permitidos" in response_ext.json()["detail"]
     
+    # 2. Testa Arquivo Grande (Enviando todos os arquivos obrigatórios)
     large_pdf_content = b"0" * (5 * 1024 * 1024 + 10)
     files_large = {
-        "social_contract": ("contract.pdf", io.BytesIO(large_pdf_content), "application/pdf")
+        "social_contract": ("contract.pdf", io.BytesIO(large_pdf_content), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
     }
     payload["email"] = f"large_{os.urandom(4).hex()}@example.com"
     payload["cnpj"] = generate_valid_cnpj()

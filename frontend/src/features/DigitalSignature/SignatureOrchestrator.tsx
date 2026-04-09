@@ -52,7 +52,7 @@ export function SignatureOrchestrator() {
                 setUser(freshUser);
             } catch (error) {
                 console.error("Erro ao sincronizar dados", error);
-                toast.error("Usando dados em cache. Algumas informações podem estar desatualizadas.");
+                toast.warning("Usando dados em cache. Algumas informações podem estar desatualizadas.");
             } finally {
                 setIsSyncing(false);
             }
