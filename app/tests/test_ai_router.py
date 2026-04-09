@@ -10,12 +10,28 @@ def test_ai_chat_success(client, auth_headers, test_company):
         
         payload = {
             "message": "Quantos documentos eu tenho no cofre?",
-            "company_id": test_company.id
+            "company_id": str(test_company.id)
         }
         response = client.post("/ai/chat", json=payload, headers=auth_headers)
         
         assert response.status_code == status.HTTP_200_OK
         assert response.json()["response"] == "Olá! Eu sou o seu assistente jurídico virtual. Em que posso ajudar?"
+
+def test_ai_chat_missing_company_id(client, auth_headers):
+    """Valida que company_id é obrigatório."""
+    payload = {"message": "Hello"}
+    response = client.post("/ai/chat", json=payload, headers=auth_headers)
+    assert response.status_code == 422
+
+def test_ai_chat_forbidden_for_admin(client, admin_headers, test_company):
+    """Valida que Admin NÃO tem acesso ao chat (Exclusivo para Clientes)."""
+    payload = {
+        "message": "Hello Admin",
+        "company_id": str(test_company.id)
+    }
+    response = client.post("/ai/chat", json=payload, headers=admin_headers)
+    assert response.status_code == 403
+    assert "exclusivo para clientes" in response.json()["detail"].lower()
 
 def test_ai_chat_unauthorized(client, test_company):
     """Valida que o chat exige autenticação."""

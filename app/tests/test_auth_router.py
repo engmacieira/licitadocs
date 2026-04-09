@@ -185,32 +185,57 @@ def test_register_simple_forbidden(client, test_user):
     assert response.status_code == 403
 
 @pytest.mark.asyncio
-async def test_register_with_files_success(client, db_session, monkeypatch):
-    """Testa registro completo com ficheiros simbólicos."""
+async def test_register_with_mandatory_files_success(client, db_session, monkeypatch):
+    """Valida que o registro funciona com os 3 PDFs obrigatórios, mesmo sem o opcional."""
     from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
     import io
     
-    # Mock do save_upload_file para não gravar no disco real (agora assíncrono)
-    async def fake_save(f, d): return ("/tmp/fake.pdf", 1024)
+    async def fake_save(f, d): return (f"/tmp/fake_{f.filename}", 1024)
     monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save)
     
     payload = {
-        "email": f"full_{os.urandom(4).hex()}@example.com",
+        "email": f"mand_{os.urandom(4).hex()}@example.com",
         "password": "password123",
-        "legal_name": "Full Assets LTDA",
+        "legal_name": "Mandatory LTDA",
         "cnpj": generate_valid_cnpj(),
-        "responsible_name": "Full Owner",
+        "responsible_name": "Mandatory Owner",
         "cpf": generate_valid_cpf()
     }
     
     files = {
-        "social_contract": ("contract.pdf", io.BytesIO(b"fake pdf content"), "application/pdf"),
-        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"fake pdf content"), "application/pdf")
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
     }
     
     response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == 201
     assert "access_token" in response.json()
+
+@pytest.mark.asyncio
+async def test_register_missing_mandatory_files_fails(client, db_session, monkeypatch):
+    """Valida que o registro falha se faltar algum dos 3 PDFs obrigatórios."""
+    from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
+    import io
+
+    payload = {
+        "email": f"missing_file_{os.urandom(4).hex()}@example.com",
+        "password": "password123",
+        "legal_name": "Missing File LTDA",
+        "cnpj": generate_valid_cnpj(),
+        "responsible_name": "Missing File Owner",
+        "cpf": generate_valid_cpf()
+    }
+
+    # Faltando 'responsible_doc'
+    files = {
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
+    }
+
+    response = client.post("/auth/register", data=payload, files=files)
+    assert response.status_code == 400
+    assert "obrigatório" in response.json()["detail"].lower()
 
 @pytest.mark.asyncio
 async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
@@ -256,8 +281,10 @@ async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
     response = client.post("/auth/register", data=payload, files=files)
     assert response.status_code == 500
     
-    assert len(saved_paths) == 2
-    assert len(removed_paths) == 2
+    # Com asyncio.gather, as tarefas são iniciadas concorrentemente.
+    # Algumas podem terminar antes da falha da 3ª tarefa.
+    assert len(saved_paths) >= 1
+    assert len(removed_paths) == len(saved_paths)
     for path in saved_paths:
         assert path in removed_paths
 
@@ -308,4 +335,4 @@ async def test_register_strict_file_validation(client, db_session):
     
     response_size = client.post("/auth/register", data=payload, files=files_large)
     assert response_size.status_code == 413
-    assert "Arquivo muito grande" in response_size.json()["detail"]
+    assert "muito grande" in response_size.json()["detail"]

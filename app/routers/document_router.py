@@ -126,6 +126,7 @@ async def upload_document(
     target_company_id: Optional[str] = Form(None),
     company_id: Optional[str] = Form(None), 
     status: Optional[str] = Form(None),
+    is_client_upload: Optional[bool] = Form(None),
     notes: Optional[str] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -176,7 +177,8 @@ async def upload_document(
         filename = "Registo de Pendência"
         file_path = "SEM_ANEXO"
 
-    is_client = (current_user.role != UserRole.ADMIN.value)
+    # Prioriza a flag enviada pelo Form, senão usa o cargo do usuário
+    is_client = is_client_upload if is_client_upload is not None else (current_user.role != UserRole.ADMIN.value)
 
     # 1. FLUXO: Certidão Estruturada (Com Type_ID)
     if type_id:
@@ -184,7 +186,8 @@ async def upload_document(
             cert = DocumentRepository.create_certificate(
                 db=db, type_id=type_id, filename=filename, file_path=file_path,
                 company_id=final_company_id, expiration_date=expiration_date,
-                authentication_code=authentication_code
+                authentication_code=authentication_code,
+                is_client_upload=is_client
             )
         except Exception as e:
             # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)

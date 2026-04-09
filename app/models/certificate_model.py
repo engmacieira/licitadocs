@@ -18,6 +18,7 @@ class CertificateStatus(str, enum.Enum):
     PROCESSING = "processing" # ⏳ Robô em operação de leitura/extração
     ERROR = "error"           # 🚫 Falha técnica na validação do documento
     ARCHIVED = "archived"     # 📦 Arquivado (Versão obsoleta ou substituída)
+    PENDING = "pending"       # ⏳ Aguardando conferência (Upload do Cliente)
 
 class Certificate(Base, SoftDeleteMixin):
     """
