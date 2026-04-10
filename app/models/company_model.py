@@ -91,4 +91,5 @@ class Company(Base, SoftDeleteMixin):
         Lógica de Negócio: Retorna True apenas se a empresa cumprir os 
         requisitos críticos de operação (Contrato, Pagamento e Verificação Admin).
         """
-        return self.is_contract_signed and self.is_payment_active and self.is_admin_verified
+        owner_email_verified = self.owner.is_email_verified if self.owner else False
+        return self.is_contract_signed and self.is_payment_active and self.is_admin_verified and owner_email_verified

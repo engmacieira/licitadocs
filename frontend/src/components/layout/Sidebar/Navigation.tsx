@@ -13,7 +13,8 @@ import {
     LifeBuoy,
     InboxIcon,
     FilePen,
-    Activity
+    Activity,
+    Mail
 } from 'lucide-react';
 
 /**
@@ -55,6 +56,9 @@ export function Navigation({ isAdmin }: NavigationProps) {
                     <NavItem to="/signature" icon={FilePen} label="Assinatura" activeColor="bg-blue-600" />
                     {currentCompany?.role === 'MASTER' && (
                         <NavItem to="/company-settings" icon={Settings} label="Minha Empresa" activeColor="bg-blue-600" />
+                    )}
+                    {currentCompany?.role === 'MASTER' && (
+                        <NavItem to="/verify-email" icon={Mail} label="Verificar E-mail" activeColor="bg-blue-600" />
                     )}
                 </>
             )}

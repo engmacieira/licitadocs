@@ -88,3 +88,16 @@ class Token(BaseModel):
     """Contrato padrão para respostas de autenticação JWT."""
     access_token: str
     token_type: str
+
+class ForgotPasswordRequest(BaseModel):
+    """Payload para solicitar a recuperação de senha."""
+    email: EmailStr = Field(..., description="E-mail da conta a ser recuperada")
+
+class ResetPasswordRequest(BaseModel):
+    """Payload para redefinir a senha usando o token enviado por e-mail."""
+    token: str = Field(..., description="Token JWT de expiração curta enviado por e-mail")
+    new_password: str = Field(..., min_length=8, description="Nova senha do usuário")
+
+class RecoverEmailRequest(BaseModel):
+    """Payload para a funcionalidade 'Esqueci meu e-mail'."""
+    documento: str = Field(..., description="CPF ou CNPJ (será limpo no backend)")

@@ -32,6 +32,8 @@ export interface UserProfile {
     email: string;
     /** Indica se a conta do utilizador está habilitada. */
     is_active: boolean;
+    /** Indica se o e-mail do utilizador foi verificado. */
+    is_email_verified: boolean;
     /** Cargo global no sistema (admin | user). */
     role: string;
 
