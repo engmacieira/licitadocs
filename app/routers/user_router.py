@@ -53,19 +53,19 @@ def update_user_me(
     user_data = user_in.model_dump(exclude_unset=True)
     
     # 🛡️ Missão 1: Tratamento de Senha (Com Validação de Segurança)
-    if "password" in user_data:
-        new_password = user_data.pop("password")
-        
-        # Pega a senha atual do payload (se não vier, retorna None)
-        current_password = user_data.pop("current_password", None)
-        
-        if not current_password:
+    if user_in.password:
+        # No schema UserUpdate, password e current_password são opcionais.
+        # Mas se password vier, current_password é obrigatório.
+        if not user_in.current_password:
             raise HTTPException(status_code=400, detail="A senha atual é obrigatória para definir uma nova senha.")
             
-        if not verify_password(current_password, current_user.password_hash):
+        if not verify_password(user_in.current_password, current_user.password_hash):
             raise HTTPException(status_code=401, detail="Senha atual incorreta.")
             
-        current_user.password_hash = get_password_hash(new_password)
+        current_user.password_hash = get_password_hash(user_in.password)
+        # Remove do dict para não tentar setar no loop mass assignment
+        user_data.pop("password", None)
+        user_data.pop("current_password", None)
     
     for field, value in user_data.items():
         # 🛡️ Missão 3: Bloqueio de Mass Assignment (Blindagem)

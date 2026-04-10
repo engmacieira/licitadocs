@@ -28,7 +28,7 @@ window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('ChatWidget', () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        vi.resetAllMocks();
     });
 
     it('does not render if user is not logged in', () => {
@@ -70,7 +70,10 @@ describe('ChatWidget', () => {
 
     it('sends a message and displays the response', async () => {
         const user = userEvent.setup();
-        vi.mocked(useAuth).mockReturnValue({ user: { role: 'client' } } as any);
+        vi.mocked(useAuth).mockReturnValue({
+            user: { role: 'client' },
+            currentCompany: { id: 'company-123' }
+        } as any);
         vi.mocked(aiService.sendMessage).mockResolvedValueOnce({ response: 'Esta é uma resposta da IA.' });
 
         render(<ChatWidget />);
@@ -86,14 +89,17 @@ describe('ChatWidget', () => {
         expect(screen.getByText('Olá, como você pode me ajudar?')).toBeInTheDocument();
         
         await waitFor(() => {
-            expect(aiService.sendMessage).toHaveBeenCalledWith('Olá, como você pode me ajudar?');
+            expect(aiService.sendMessage).toHaveBeenCalledWith('Olá, como você pode me ajudar?', 'company-123');
             expect(screen.getByText('Esta é uma resposta da IA.')).toBeInTheDocument();
         });
     });
 
     it('handles API errors', async () => {
         const user = userEvent.setup();
-        vi.mocked(useAuth).mockReturnValue({ user: { role: 'client' } } as any);
+        vi.mocked(useAuth).mockReturnValue({
+            user: { role: 'client' },
+            currentCompany: { id: 'company-123' }
+        } as any);
         vi.mocked(aiService.sendMessage).mockRejectedValueOnce(new Error('API Error'));
 
         render(<ChatWidget />);
@@ -113,7 +119,10 @@ describe('ChatWidget', () => {
 
     it('sends message when pressing Enter without Shift', async () => {
         const user = userEvent.setup();
-        vi.mocked(useAuth).mockReturnValue({ user: { role: 'client' } } as any);
+        vi.mocked(useAuth).mockReturnValue({
+            user: { role: 'client' },
+            currentCompany: { id: 'company-123' }
+        } as any);
         vi.mocked(aiService.sendMessage).mockResolvedValueOnce({ response: 'Resposta via Enter' });
 
         render(<ChatWidget />);
@@ -123,7 +132,7 @@ describe('ChatWidget', () => {
         await user.type(input, 'Mensagem via Enter{Enter}');
 
         await waitFor(() => {
-            expect(aiService.sendMessage).toHaveBeenCalledWith('Mensagem via Enter');
+            expect(aiService.sendMessage).toHaveBeenCalledWith('Mensagem via Enter', 'company-123');
             expect(screen.getByText('Resposta via Enter')).toBeInTheDocument();
         });
     });

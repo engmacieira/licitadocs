@@ -4,11 +4,19 @@ import userEvent from '@testing-library/user-event';
 import { PaymentPage } from './index';
 
 // Mock do react-router-dom
-const navigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-    useNavigate: () => navigate,
-    useLocation: () => ({ state: { legalName: 'Empresa Teste', responsibleName: 'Responsável' } })
-}));
+
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
+const navigate = mockNavigate;
 
 // Mock do AuthContext
 vi.mock('../../contexts/AuthContext', () => ({

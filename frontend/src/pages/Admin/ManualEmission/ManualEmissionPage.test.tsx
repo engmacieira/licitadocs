@@ -36,14 +36,16 @@ vi.mock('../../../contexts/AuthContext', () => ({
     })
 }));
 
+
+
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
     return {
         ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
         useNavigate: () => mockNavigate,
-        useParams: () => ({ ruleId: 'rule123' }),
-        useSearchParams: () => [new URLSearchParams('companyId=comp456')],
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
 

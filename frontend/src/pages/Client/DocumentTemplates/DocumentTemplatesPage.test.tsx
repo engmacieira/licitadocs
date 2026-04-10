@@ -3,10 +3,17 @@ import { render, screen } from '@testing-library/react';
 import { DocumentTemplatesPage } from './index';
 
 // Mock do react-router-dom
-vi.mock('react-router-dom', () => ({
-    useNavigate: () => vi.fn(),
-    useLocation: () => ({ state: {} })
-}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
 
 // Mock do AuthContext
 vi.mock('../../../contexts/AuthContext', () => ({

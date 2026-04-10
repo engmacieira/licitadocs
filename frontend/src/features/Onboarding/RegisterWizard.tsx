@@ -131,7 +131,8 @@ export function RegisterWizard() {
 
             // 1. Tratamento específico para Timeout ou Erro de Rede (Axios)
             // Quando a rede corta, error.response geralmente é undefined e error.code é ECONNABORTED ou ERR_NETWORK
-            if (error.code === 'ECONNABORTED' || error.message.includes('timeout') || error.message.includes('Network Error')) {
+            const errorMessage = error.message || '';
+            if (error.code === 'ECONNABORTED' || errorMessage.includes('timeout') || errorMessage.includes('Network Error')) {
                 toast.error("Conexão instável ou muito lenta.", {
                     description: "Seu cadastro demorou muito para responder. Por favor, verifique sua conexão corporativa ou tente novamente mais tarde."
                 });

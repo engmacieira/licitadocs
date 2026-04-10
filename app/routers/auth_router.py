@@ -57,9 +57,9 @@ async def register(
     cnpj: str = Form(..., description="CNPJ (apenas números)"),
     responsible_name: str = Form(..., description="Nome do Responsável Legal"),
     cpf: str = Form(..., description="CPF do Responsável"),
-    social_contract: Optional[UploadFile] = File(None, description="PDF do Contrato Social"),
-    cnpj_card: Optional[UploadFile] = File(None, description="PDF do Cartão CNPJ"),
-    responsible_doc: Optional[UploadFile] = File(None, description="PDF do Documento de Identidade"),
+    social_contract: UploadFile = File(..., description="PDF do Contrato Social"),
+    cnpj_card: UploadFile = File(..., description="PDF do Cartão CNPJ"),
+    responsible_doc: UploadFile = File(..., description="PDF do Documento de Identidade"),
     proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
     db: Session = Depends(get_db)
 ):
@@ -136,6 +136,7 @@ async def register(
             try:
                 # Faz o I/O pesado de forma assíncrona
                 path, size = await save_upload_file(upload_file, "companies")
+                saved_files.append(path) # 🛡️ Registra para limpeza em caso de falha global
                 return {
                     "title": title,
                     "filename": upload_file.filename,
@@ -187,18 +188,13 @@ async def register(
             }
         }
 
-    except HTTPException as e:
-        for path in saved_files:
+    except (HTTPException, Exception) as e:
+        for path in set(saved_files):
             with contextlib.suppress(OSError):
                 os.remove(path)
         db.rollback()
-        raise e
-    except Exception as e:
-        for path in saved_files:
-            with contextlib.suppress(OSError):
-                os.remove(path)
-                
-        db.rollback() # 🛡️ BLINDAGEM: Se qualquer passo falhar, o banco volta ao estado inicial
+        if isinstance(e, HTTPException):
+            raise e
         if "Email já cadastrado" in str(e):
             raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
         raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro: {str(e)}")

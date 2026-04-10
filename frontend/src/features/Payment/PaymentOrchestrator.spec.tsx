@@ -11,10 +11,17 @@ vi.mock('../../contexts/AuthContext', () => ({
     useAuth: vi.fn()
 }));
 
-vi.mock('react-router-dom', () => ({
-    useNavigate: vi.fn(),
-    useLocation: vi.fn()
-}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
 
 vi.mock('../../services/api', () => ({
     default: {
@@ -30,7 +37,7 @@ vi.mock('sonner', () => ({
 }));
 
 describe('PaymentOrchestrator Integration', () => {
-    const mockNavigate = vi.fn();
+
     const mockLocation = {
         state: {
             legalName: 'Empresa do Location',

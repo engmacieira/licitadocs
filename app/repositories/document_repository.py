@@ -39,10 +39,13 @@ class DocumentRepository:
         expiration_date: Optional[date] = None, uploaded_by_id: Optional[str] = None,
         is_client_upload: bool = False
     ) -> Document:
+        # Se for upload do cliente, entra como PENDING para conferência
+        initial_status = DocumentStatus.PENDING.value if is_client_upload else DocumentStatus.VALID.value
+
         db_doc = Document(
             title=title, filename=filename, file_path=file_path,
             company_id=company_id, expiration_date=expiration_date,
-            status=DocumentStatus.VALID.value, uploaded_by_id=uploaded_by_id,
+            status=initial_status, uploaded_by_id=uploaded_by_id,
             is_client_upload=is_client_upload
         )
         try:
@@ -58,7 +61,8 @@ class DocumentRepository:
     @staticmethod
     def create_certificate(
         db: Session, type_id: str, filename: str, file_path: str, company_id: str,
-        expiration_date: Optional[date] = None, authentication_code: Optional[str] = None
+        expiration_date: Optional[date] = None, authentication_code: Optional[str] = None,
+        is_client_upload: bool = False
     ) -> Certificate:
         # Missão 3: Versionamento de Certidões (Upsert e Arquivamento)
         # Busca todas as certidões ativas daquele company_id e type_id e altera o status para "archived"
@@ -69,11 +73,13 @@ class DocumentRepository:
             Certificate.deleted_at.is_(None)
         ).update({"status": CertificateStatus.ARCHIVED.value}, synchronize_session=False)
 
+        initial_status = CertificateStatus.PENDING.value if is_client_upload else CertificateStatus.VALID.value
+
         cert = Certificate(
             type_id=type_id, filename=filename, file_path=file_path,
             company_id=company_id, expiration_date=expiration_date,
             authentication_code=authentication_code,
-            status=CertificateStatus.VALID.value
+            status=initial_status
         )
         try:
             db.add(cert)

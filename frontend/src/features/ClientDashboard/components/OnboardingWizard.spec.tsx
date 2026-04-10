@@ -4,12 +4,16 @@ import { OnboardingWizard } from './OnboardingWizard';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock do useNavigate
+
+
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', async () => {
-    const actual = await vi.importActual('react-router-dom');
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
     return {
         ...actual,
-        useNavigate: () => mockNavigate
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
 
@@ -65,8 +69,8 @@ describe('OnboardingWizard', () => {
     it('deve mostrar status Concluído para passos finalizados', () => {
         renderComponent({
             terms: true,
-            data: false,
             payment: false,
+            data: false,
             contract: false,
             approval: false,
             pendencies: null
@@ -78,35 +82,35 @@ describe('OnboardingWizard', () => {
         expect(screen.queryByText('Ler e Aceitar')).not.toBeInTheDocument();
     });
 
-    it('deve habilitar e navegar para o próximo passo pendente', () => {
+    it('deve habilitar e navegar para o próximo passo pendente (Pagamento após Termos)', () => {
         renderComponent({
             terms: true,
-            data: false,
             payment: false,
+            data: false,
             contract: false,
             approval: false,
             pendencies: null
         });
 
-        // Passo 2 deve estar habilitado
-        const completeDataButton = screen.getByText('Completar Dados');
-        expect(completeDataButton).not.toBeDisabled();
+        // Passo 2 (Pagamento) deve estar habilitado
+        const paymentButton = screen.getByText('Realizar Pagamento');
+        expect(paymentButton).not.toBeDisabled();
         
-        fireEvent.click(completeDataButton);
-        expect(mockNavigate).toHaveBeenCalledWith('/company-settings');
+        fireEvent.click(paymentButton);
+        expect(mockNavigate).toHaveBeenCalledWith('/payment');
     });
 
-    it('deve manter desabilitado passos que dependem do anterior', () => {
+    it('deve manter desabilitado passos que dependem do anterior (Dados depende de Pagamento)', () => {
         renderComponent({
-            terms: false, // Termos não aceitos
+            terms: true,
+            payment: false, // Pagamento não realizado
             data: false,
-            payment: false,
             contract: false,
             approval: false,
             pendencies: null
         });
 
-        // Passo 2 (Dados) deve estar desabilitado porque Termos não foi concluído
+        // Passo 3 (Dados) deve estar desabilitado porque Pagamento não foi concluído
         const completeDataButton = screen.getByText('Completar Dados');
         expect(completeDataButton).toBeDisabled();
     });

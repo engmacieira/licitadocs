@@ -75,9 +75,13 @@ def require_role(allowed_roles: List[any]):
         user_role = str(current_user.role.value) if hasattr(current_user.role, 'value') else str(current_user.role)
         
         if user_role not in allowed_roles_str:
+            detail = f"Acesso negado: Requer privilégios de {', '.join(allowed_roles_str)}."
+            if "client" in allowed_roles_str and len(allowed_roles_str) == 1:
+                detail = "O Chatbot IA é um recurso exclusivo para clientes."
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Acesso negado: Requer privilégios de {', '.join(allowed_roles_str)}."
+                detail=detail
             )
         return current_user
         

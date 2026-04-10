@@ -18,6 +18,7 @@ class DocumentStatus(str, enum.Enum):
     VALID = "valid"       # ✅ Documento dentro do prazo
     WARNING = "warning"   # ⚠️ Próximo ao vencimento
     EXPIRED = "expired"   # ❌ Prazo de validade ultrapassado
+    PENDING = "pending"   # ⏳ Aguardando conferência (Upload do Cliente)
 
 class Document(Base, SoftDeleteMixin):
     """

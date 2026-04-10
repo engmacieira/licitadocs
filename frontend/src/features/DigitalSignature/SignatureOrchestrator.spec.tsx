@@ -14,15 +14,24 @@ vi.mock('../../contexts/AuthContext', () => ({
     useAuth: vi.fn(),
 }));
 
-vi.mock('react-router-dom', () => ({
-    useNavigate: vi.fn(),
-}));
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
 
 vi.mock('sonner', () => ({
     toast: {
         success: vi.fn(),
         error: vi.fn(),
         loading: vi.fn(),
+        warning: vi.fn(),
     },
 }));
 
@@ -34,6 +43,7 @@ vi.mock('../../services/api', () => ({
     default: {
         post: vi.fn(),
         patch: vi.fn(),
+        get: vi.fn(),
     },
 }));
 
@@ -66,7 +76,7 @@ vi.mock('./components/SignatureUpload', () => ({
 describe('SignatureOrchestrator', () => {
     afterEach(cleanup);
     
-    const mockNavigate = vi.fn();
+
     const mockPrintContract = vi.fn();
     const mockPrintProxy = vi.fn();
     
@@ -97,11 +107,20 @@ describe('SignatureOrchestrator', () => {
         // Mock API responses
         (api.post as any).mockResolvedValue({ data: {} });
         (api.patch as any).mockResolvedValue({ data: {} });
+        (api.get as any).mockImplementation((url: string) => {
+            if (url.includes('/companies/')) return Promise.resolve({ data: mockCompany });
+            if (url.includes('/users/me')) return Promise.resolve({ data: mockUser });
+            return Promise.reject(new Error('Not Found'));
+        });
     });
 
-    it('should render all subcomponents correctly', () => {
+    it('should render all subcomponents correctly', async () => {
         render(<SignatureOrchestrator />);
         
+        await waitFor(() => {
+            expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
+        });
+
         expect(screen.getByText(/Assinatura Digital/i)).toBeInTheDocument();
         expect(screen.getByTestId('mock-viewer')).toBeInTheDocument();
         expect(screen.getByTestId('mock-instructions')).toBeInTheDocument();
@@ -111,6 +130,10 @@ describe('SignatureOrchestrator', () => {
     it('should handle tab switching and print calls correctly', async () => {
         const user = userEvent.setup();
         render(<SignatureOrchestrator />);
+
+        await waitFor(() => {
+            expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
+        });
         
         expect(screen.getByText(/viewer-contract/i)).toBeInTheDocument();
         
@@ -127,6 +150,10 @@ describe('SignatureOrchestrator', () => {
     it('should handle submission validation error when files are missing', async () => {
         const user = userEvent.setup();
         render(<SignatureOrchestrator />);
+
+        await waitFor(() => {
+            expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
+        });
         
         await user.click(screen.getByText(/Submit Button/i));
         expect(toast.error).toHaveBeenCalledWith("Anexe os dois documentos", expect.anything());
@@ -135,6 +162,10 @@ describe('SignatureOrchestrator', () => {
     it('should handle successful submission flow', async () => {
         const user = userEvent.setup();
         render(<SignatureOrchestrator />);
+
+        await waitFor(() => {
+            expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
+        });
         
         // Add "files" via mock buttons
         await user.click(screen.getByText(/Add Contract/i));
@@ -162,6 +193,10 @@ describe('SignatureOrchestrator', () => {
         (api.post as any).mockRejectedValue(new Error('API Error'));
         
         render(<SignatureOrchestrator />);
+
+        await waitFor(() => {
+            expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
+        });
         
         await user.click(screen.getByText(/Add Contract/i));
         await user.click(screen.getByText(/Add Proxy/i));

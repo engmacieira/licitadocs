@@ -26,12 +26,18 @@ vi.mock('../../contexts/AuthContext', () => ({
     }),
 }));
 
+
+
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-    useNavigate: () => mockNavigate,
-    useLocation: () => ({ state: { legalName: 'Empresa Teste' } }),
-    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
 
 vi.mock('sonner', () => ({
     toast: {

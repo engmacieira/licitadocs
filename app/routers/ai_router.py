@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.dependencies import get_current_user
-from app.models.user_model import User
+from app.dependencies import get_current_user, require_role
+from app.models.user_model import User, UserRole
 from app.services.ai_service import AIService
 from app.schemas.ai_schemas import ChatRequest, ChatResponse
 from app.core.rate_limit import limiter
@@ -32,7 +32,7 @@ def chat_with_concierge(
     request: Request,
     chat_request: ChatRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_role([UserRole.CLIENT.value]))
 ):
     """
     Endpoint que atua estritamente como Controller.
