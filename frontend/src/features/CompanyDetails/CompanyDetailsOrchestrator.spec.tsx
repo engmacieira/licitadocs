@@ -38,6 +38,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
         ...actual,
         useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
         useNavigate: () => mockNavigate,
+        useParams: vi.fn().mockReturnValue({ id: '123' }), // 🎯 O SEGREDO ESTÁ AQUI!
         Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
@@ -133,7 +134,7 @@ describe('CompanyDetailsOrchestrator', () => {
 
     it('deve lidar com erro na API chamando o toast', async () => {
         vi.mocked(companyService.getById).mockRejectedValue(new Error('API Error'));
-        
+
         render(
             <MemoryRouter>
                 <CompanyDetailsOrchestrator />
@@ -162,7 +163,7 @@ describe('CompanyDetailsOrchestrator', () => {
         fireEvent.click(approveButton);
 
         expect(window.confirm).toHaveBeenCalled();
-        
+
         await waitFor(() => {
             expect(companyService.update).toHaveBeenCalledWith('123', { is_admin_verified: true });
             expect(toast.success).toHaveBeenCalledWith('Empresa aprovada com sucesso!');
@@ -204,7 +205,7 @@ describe('CompanyDetailsOrchestrator', () => {
         // Já o botão de 'Voltar' e 'Aprovar' têm texto.
         const allButtons = screen.getAllByRole('button');
         const downloadButton = allButtons.find(btn => !btn.textContent);
-        
+
         if (!downloadButton) throw new Error('Download button not found');
         fireEvent.click(downloadButton);
 

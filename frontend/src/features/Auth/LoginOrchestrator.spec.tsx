@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { expect, it, describe, vi, beforeEach } from 'vitest';
 import { LoginOrchestrator } from './LoginOrchestrator';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { userService } from '../../services/userService';
 import { toast } from 'sonner';
@@ -42,7 +42,7 @@ describe('LoginOrchestrator', () => {
     const mockSignIn = vi.fn();
 
     let user: ReturnType<typeof userEvent.setup>;
- 
+
     beforeEach(() => {
         vi.clearAllMocks();
         user = userEvent.setup();
@@ -59,7 +59,7 @@ describe('LoginOrchestrator', () => {
 
     it('deve renderizar o formulário de login corretamente', () => {
         renderComponent();
-        
+
         expect(screen.getByText('Acesse sua conta')).toBeInTheDocument();
         expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/Senha/i)).toBeInTheDocument();
@@ -68,7 +68,7 @@ describe('LoginOrchestrator', () => {
 
     it('deve exibir mensagens de erro de validação para campos vazios', async () => {
         renderComponent();
-        
+
         const submitButton = screen.getByRole('button', { name: /Entrar na Plataforma/i });
         await user.click(submitButton);
 
@@ -80,10 +80,10 @@ describe('LoginOrchestrator', () => {
 
     it('deve exibir mensagem de erro para e-mail inválido', async () => {
         renderComponent();
-        
+
         const emailInput = screen.getByLabelText(/E-mail/i);
         await user.type(emailInput, 'email-invalido');
-        
+
         const submitButton = screen.getByRole('button', { name: /Entrar na Plataforma/i });
         await user.click(submitButton);
 
@@ -97,7 +97,7 @@ describe('LoginOrchestrator', () => {
         (userService.getMe as any).mockResolvedValueOnce({ role: 'admin' });
 
         renderComponent();
-        
+
         const emailInput = screen.getByLabelText(/E-mail/i);
         const passwordInput = screen.getByLabelText(/Senha/i);
         await user.type(emailInput, 'admin@teste.com');
@@ -121,8 +121,13 @@ describe('LoginOrchestrator', () => {
         mockSignIn.mockResolvedValueOnce(undefined);
         (userService.getMe as any).mockResolvedValueOnce({ role: 'user' });
 
+        (useLocation as any).mockReturnValue({
+            pathname: '/login',
+            state: { from: { pathname: '/previous-page' } }
+        });
+
         renderComponent();
-        
+
         const emailInput = screen.getByLabelText(/E-mail/i);
         const passwordInput = screen.getByLabelText(/Senha/i);
         await user.type(emailInput, 'user@teste.com');
@@ -140,7 +145,7 @@ describe('LoginOrchestrator', () => {
         mockSignIn.mockRejectedValueOnce(new Error('Invalid credentials'));
 
         renderComponent();
-        
+
         const emailInput = screen.getByLabelText(/E-mail/i);
         const passwordInput = screen.getByLabelText(/Senha/i);
         await user.type(emailInput, 'errado@teste.com');
@@ -156,7 +161,7 @@ describe('LoginOrchestrator', () => {
 
     it('deve navegar de volta para o site ao clicar no botão "Voltar para o site"', async () => {
         renderComponent();
-        
+
         const backButton = screen.getByLabelText('Voltar para a página inicial');
         await user.click(backButton);
 

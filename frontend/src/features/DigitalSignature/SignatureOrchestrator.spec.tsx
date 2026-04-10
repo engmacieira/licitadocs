@@ -21,7 +21,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
     return {
         ...actual,
         useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
-        useNavigate: () => mockNavigate,
+        useNavigate: vi.fn(), // ✅ AGORA SIM! É um mock do Vitest!
         Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
@@ -75,17 +75,17 @@ vi.mock('./components/SignatureUpload', () => ({
 
 describe('SignatureOrchestrator', () => {
     afterEach(cleanup);
-    
+
 
     const mockPrintContract = vi.fn();
     const mockPrintProxy = vi.fn();
-    
+
     const mockUser = {
         nome: 'João Silva',
         cpf: '123.456.789-00',
         genero: 'masculino'
     };
-    
+
     const mockCompany = {
         id: 'company-123',
         razao_social: 'Empresa Teste LTDA',
@@ -103,7 +103,7 @@ describe('SignatureOrchestrator', () => {
             if (config.documentTitle?.includes('Contrato_SaaS')) return mockPrintContract;
             return mockPrintProxy;
         });
-        
+
         // Mock API responses
         (api.post as any).mockResolvedValue({ data: {} });
         (api.patch as any).mockResolvedValue({ data: {} });
@@ -116,7 +116,7 @@ describe('SignatureOrchestrator', () => {
 
     it('should render all subcomponents correctly', async () => {
         render(<SignatureOrchestrator />);
-        
+
         await waitFor(() => {
             expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
         });
@@ -134,15 +134,15 @@ describe('SignatureOrchestrator', () => {
         await waitFor(() => {
             expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
         });
-        
+
         expect(screen.getByText(/viewer-contract/i)).toBeInTheDocument();
-        
+
         await user.click(screen.getByText(/Print Button/i));
         expect(mockPrintContract).toHaveBeenCalled();
-        
+
         await user.click(screen.getByText(/Set Proxy/i));
         expect(screen.getByText(/viewer-proxy/i)).toBeInTheDocument();
-        
+
         await user.click(screen.getByText(/Print Button/i));
         expect(mockPrintProxy).toHaveBeenCalled();
     });
@@ -154,7 +154,7 @@ describe('SignatureOrchestrator', () => {
         await waitFor(() => {
             expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
         });
-        
+
         await user.click(screen.getByText(/Submit Button/i));
         expect(toast.error).toHaveBeenCalledWith("Anexe os dois documentos", expect.anything());
     });
@@ -166,23 +166,23 @@ describe('SignatureOrchestrator', () => {
         await waitFor(() => {
             expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
         });
-        
+
         // Add "files" via mock buttons
         await user.click(screen.getByText(/Add Contract/i));
         await user.click(screen.getByText(/Add Proxy/i));
-        
+
         // Submit
         await user.click(screen.getByText(/Submit Button/i));
-        
+
         // Verify loading toast
         expect(toast.loading).toHaveBeenCalledWith(expect.stringContaining("Enviando documentos"));
-        
+
         // Verify API calls
         await waitFor(() => {
             expect(api.post).toHaveBeenCalledTimes(2);
             expect(api.patch).toHaveBeenCalledWith(expect.stringContaining('/companies/company-123/onboarding-step'));
         });
-        
+
         // Verify success and navigation
         expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("sucesso"), expect.anything());
         expect(mockNavigate).toHaveBeenCalledWith('/');
@@ -191,17 +191,17 @@ describe('SignatureOrchestrator', () => {
     it('should handle API errors during submission', async () => {
         const user = userEvent.setup();
         (api.post as any).mockRejectedValue(new Error('API Error'));
-        
+
         render(<SignatureOrchestrator />);
 
         await waitFor(() => {
             expect(screen.queryByText(/Sincronizando/i)).not.toBeInTheDocument();
         });
-        
+
         await user.click(screen.getByText(/Add Contract/i));
         await user.click(screen.getByText(/Add Proxy/i));
         await user.click(screen.getByText(/Submit Button/i));
-        
+
         await waitFor(() => {
             expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Erro ao processar"), expect.anything());
         });
