@@ -19,12 +19,18 @@ vi.mock('../../contexts/AuthContext', () => ({
     }),
 }));
 
+
+
 const mockNavigate = vi.fn();
-vi.mock('react-router-dom', () => ({
-    ...vi.importActual('react-router-dom'),
-    useNavigate: () => mockNavigate,
-    Link: ({ children, to }: any) => <a href={to}>{children}</a>,
-}));
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<any>();
+    return {
+        ...actual,
+        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useNavigate: () => mockNavigate,
+        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+    };
+});
 
 vi.mock('sonner', () => ({
     toast: {
@@ -32,6 +38,7 @@ vi.mock('sonner', () => ({
         error: vi.fn(),
         loading: vi.fn(),
         dismiss: vi.fn(),
+        info: vi.fn(),
     },
 }));
 
@@ -158,7 +165,9 @@ describe('RegisterWizard', () => {
         await user.click(screen.getByRole('button', { name: /Finalizar Cadastro/i }));
 
         await waitFor(() => {
-            expect(toast.error).toHaveBeenCalledWith("Erro de validação", expect.anything());
+            expect(toast.error).toHaveBeenCalledWith("Erro de validação", expect.objectContaining({
+                description: "Verifique se o CNPJ e CPF estão corretos."
+            }));
         });
     });
 });

@@ -21,6 +21,7 @@ const TestWrapper = ({ onSaveProfile, onChangePassword }: any) => {
 
     const passwordForm = useForm<PasswordFormSchema>({
         defaultValues: {
+            currentPassword: '',
             password: '',
             confirmPassword: ''
         }
@@ -65,8 +66,9 @@ describe('ProfileTab', () => {
 
         expect(screen.getByText('Segurança')).toBeInTheDocument();
         // Como o label não está associado por ID, buscamos pelo texto do label e pegamos o input seguinte
+        expect(screen.getByText('Senha Atual')).toBeInTheDocument();
         expect(screen.getByText('Nova Senha')).toBeInTheDocument();
-        expect(screen.getByText('Confirmar Senha')).toBeInTheDocument();
+        expect(screen.getByText('Confirmar Nova Senha')).toBeInTheDocument();
         expect(screen.getByText('Trocar Senha')).toBeInTheDocument();
     });
 
@@ -91,9 +93,11 @@ describe('ProfileTab', () => {
         render(<TestWrapper onSaveProfile={onSaveProfile} onChangePassword={onChangePassword} />);
 
         // Encontrar inputs de password via parent element do label já que label association falha
+        const currentInput = screen.getByText('Senha Atual').parentElement?.querySelector('input');
         const passwordInput = screen.getByText('Nova Senha').parentElement?.querySelector('input');
-        const confirmInput = screen.getByText('Confirmar Senha').parentElement?.querySelector('input');
+        const confirmInput = screen.getByText('Confirmar Nova Senha').parentElement?.querySelector('input');
         
+        if (currentInput) fireEvent.change(currentInput, { target: { value: 'oldpassword123' } });
         if (passwordInput) fireEvent.change(passwordInput, { target: { value: 'newpassword123' } });
         if (confirmInput) fireEvent.change(confirmInput, { target: { value: 'newpassword123' } });
 

@@ -33,6 +33,13 @@ describe('userService', () => {
         expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
     });
 
+    it('updateMe should handle password change correctly', async () => {
+        const payload = { password: 'new-password', current_password: 'old-password' };
+        vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 'u1' } });
+        await userService.updateMe(payload);
+        expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
+    });
+
     it('should throw error when API fails (Error Handling)', async () => {
         vi.mocked(api.get).mockRejectedValueOnce(new Error('Auth failed'));
         await expect(userService.getMe()).rejects.toThrow('Auth failed');
