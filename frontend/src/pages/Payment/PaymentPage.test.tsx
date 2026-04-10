@@ -16,7 +16,6 @@ vi.mock('react-router-dom', async (importOriginal) => {
         Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
-const navigate = mockNavigate;
 
 // Mock do AuthContext
 vi.mock('../../contexts/AuthContext', () => ({

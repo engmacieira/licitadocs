@@ -23,6 +23,9 @@
 * **[Qualidade] Testes End-to-End (E2E) no Frontend**
     * *Problema:* Não temos testes cobrindo a jornada real do usuário no navegador.
     * *Solução:* Configurar Playwright/Cypress para testar o fluxo de cadastro e envio de documentos.
+* **[Segurança/Arquitetura] Separação de Endpoint para Troca de Senha**
+    * *Problema:* O endpoint genérico de atualização de perfil (`PATCH /users/me`) mistura a edição de dados pessoais (nome, CPF) com dados sensíveis (alteração de senha e senha atual). Isso é uma brecha arquitetural que dificulta a implementação de fluxos de segurança específicos, como auditoria, invalidação de sessões antigas ou bloqueio por tentativas falhas.
+    * *Solução:* Isolar a lógica de senhas criando um endpoint dedicado (ex: `POST /users/me/password` ou `PATCH /users/me/password`) recebendo um DTO exclusivo (`PasswordUpdateDTO`), além de remover esses campos da interface genérica `UserProfile`.
 
 ---
 

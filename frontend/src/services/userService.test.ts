@@ -36,7 +36,7 @@ describe('userService', () => {
     it('updateMe should handle password change correctly', async () => {
         const payload = { password: 'new-password', current_password: 'old-password' };
         vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 'u1' } });
-        await userService.updateMe(payload);
+        await userService.updateMe(payload as any);
         expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
     });
 
