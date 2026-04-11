@@ -14,12 +14,16 @@ vi.mock('jwt-decode', () => ({
 }));
 
 const mockToken = 'mock-access-token';
-const mockUser = { 
-    id: 'user-123', 
-    sub: 'test@example.com', 
-    role: 'client', 
-    user_id: 'u-1', 
-    exp: Math.floor(Date.now() / 1000) + 3600 
+const mockUser = {
+    id: 'user-123',
+    sub: 'test@example.com',
+    email: 'test@example.com',
+    nome: 'Usuário Teste',
+    is_active: true,
+    role: 'client',
+    user_id: 'u-1',
+    exp: Math.floor(Date.now() / 1000) + 3600,
+    is_email_verified: true
 };
 
 const mockProfile = {
@@ -27,7 +31,8 @@ const mockProfile = {
     email: 'test@example.com',
     is_active: true,
     role: 'client',
-    nome: 'Test User'
+    nome: 'Test User',
+    is_email_verified: true
 };
 
 const mockCompanies: UserCompany[] = [
@@ -39,7 +44,7 @@ describe('AuthContext', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         localStorage.clear();
-        
+
         // Default mock implementations
         vi.mocked(authService.signIn).mockResolvedValue({ access_token: mockToken, token_type: 'bearer' });
         vi.mocked(userService.getMe).mockResolvedValue(mockProfile);
@@ -55,14 +60,14 @@ describe('AuthContext', () => {
         const { result } = renderHook(() => useAuth(), { wrapper });
 
         await waitFor(() => expect(result.current.loading).toBe(false));
-        
+
         expect(result.current.isAuthenticated).toBe(false);
         expect(result.current.user).toBeNull();
     });
 
     it('restores session if a valid token exists in localStorage', async () => {
         localStorage.setItem('@LicitaDoc:token', mockToken);
-        
+
         const { result } = renderHook(() => useAuth(), { wrapper });
 
         await waitFor(() => expect(result.current.loading).toBe(false));
@@ -121,7 +126,7 @@ describe('AuthContext', () => {
 
     it('switches current company successfully', async () => {
         localStorage.setItem('@LicitaDoc:token', mockToken);
-        
+
         const { result } = renderHook(() => useAuth(), { wrapper });
 
         await waitFor(() => expect(result.current.companies.length).toBeGreaterThan(0));
@@ -146,7 +151,7 @@ describe('AuthContext', () => {
     });
 
     it('logs error and continues if profile loading fails during restoration', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         localStorage.setItem('@LicitaDoc:token', mockToken);
         vi.mocked(userService.getMe).mockRejectedValue(new Error('API Failure'));
 
@@ -157,7 +162,7 @@ describe('AuthContext', () => {
         expect(result.current.isAuthenticated).toBe(true); // Token is still valid
         expect(result.current.userProfile).toBeNull();
         expect(consoleSpy).toHaveBeenCalled();
-        
+
         consoleSpy.mockRestore();
     });
 });

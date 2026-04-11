@@ -120,7 +120,7 @@ describe('OnboardingWizard', () => {
             <MemoryRouter>
                 <OnboardingWizard
                     currentCompany={mockCompany}
-                    companyStatus={{ terms: false, data: false, payment: false, contract: false, approval: false, pendencies: null }}
+                    companyStatus={{ terms: false, data: false, payment: false, emailVerified: false, contract: false, approval: false, pendencies: null }}
                     loadData={mockLoadData}
                 />
             </MemoryRouter>
@@ -133,7 +133,7 @@ describe('OnboardingWizard', () => {
             <MemoryRouter>
                 <OnboardingWizard
                     currentCompany={mockCompany}
-                    companyStatus={{ terms: true, data: true, payment: false, contract: false, approval: false, pendencies: null }}
+                    companyStatus={{ terms: true, data: true, payment: false, emailVerified: false, contract: false, approval: false, pendencies: null }}
                     loadData={mockLoadData}
                 />
             </MemoryRouter>
@@ -146,7 +146,7 @@ describe('OnboardingWizard', () => {
             <MemoryRouter>
                 <OnboardingWizard
                     currentCompany={mockCompany}
-                    companyStatus={{ terms: true, data: true, payment: true, contract: false, approval: false, pendencies: null }}
+                    companyStatus={{ terms: true, data: true, payment: true, emailVerified: false, contract: false, approval: false, pendencies: null }}
                     loadData={mockLoadData}
                 />
             </MemoryRouter>
