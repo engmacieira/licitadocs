@@ -118,25 +118,33 @@ jobs:
 
             git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
 
-            # 🧹 0. A FAXINA PRÉ-BUILD (Libera espaço antes de tentar instalar coisas novas)
-            docker system prune -af --volumes
-            docker builder prune -af
-
             # 🪂 1. O PARAQUEDAS (Backup antes de qualquer alteração)
             echo "A iniciar backup da base de dados..."
             docker compose exec -T postgres pg_dump -U postgres licitadocs_test > backup_$(date +%F_%H-%M-%S).sql || true
+            
+            # 🛑 2. A PARADA TÉCNICA (Desliga o sistema antigo para libertar 100% da RAM!)
+            echo "A desligar os serviços para poupar memória..."
+            docker compose -f docker-compose.staging.yaml down
+
+            # 🧹 3. A FAXINA PROFUNDA (Agora que tudo está desligado, limpa o disco a sério)
+            echo "A limpar o cache e imagens antigas do Docker..."
+            docker system prune -af --volumes
+            docker builder prune -af
+            
+            # 🚀 4. O DEPLOY (Constrói a versão nova com a máquina leve e fresca)
+            echo "A construir a nova versão..."
             docker compose -f docker-compose.staging.yaml up -d --build
+
+            # 🔄 5. MIGRATIONS
+            echo "A atualizar a base de dados..."
             docker compose exec -T backend alembic upgrade head
 
-            # 🩺 2. O TESTE DE PULSO (Health Check)
+            # 🩺 6. O TESTE DE PULSO (Health Check)
             echo "A aguardar 10 segundos para a aplicação iniciar..."
             sleep 10
             echo "A testar resposta do servidor..."
             curl --fail --silent http://localhost:8000/docs > /dev/null
             echo "✅ Servidor online e saudável!"
-
-            # A FAXINA AUTOMÁTICA
-            docker system prune -af --volumes
 
       # 📢 3. O MEGAFONE (Slack)
       # Este passo roda FORA do SSH, diretamente nos servidores do GitHub, e só dispara se o script acima não falhar.
