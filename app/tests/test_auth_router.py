@@ -6,7 +6,7 @@ from app.models.user_model import User
 from app.tests.conftest import generate_valid_cnpj, generate_valid_cpf
 
 @pytest.mark.asyncio
-async def test_register_success(client, monkeypatch):
+async def test_register_success(client, db_session, monkeypatch, mock_email_service):
     """Valida o Happy Path do registro completo (Onboarding)."""
     import io
     async def fake_save(f, d): return (f"/tmp/fake_{f.filename}", 1024)
@@ -25,11 +25,18 @@ async def test_register_success(client, monkeypatch):
         "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf"),
         "responsible_doc": ("id.pdf", io.BytesIO(b"%PDF-1.4\ncontent"), "application/pdf")
     }
+    
     response = client.post("/auth/register", data=payload, files=files)
+    
+    # Validações do Negócio
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert "access_token" in data
     assert data["user"]["email"] == "newuser@example.com"
+    
+    # 2. SE QUISER VALIDAR OS EMAILS, USE A FIXTURE INJETADA!
+    assert mock_email_service["verify"].called
+    assert mock_email_service["alert"].called
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client, test_user, monkeypatch):

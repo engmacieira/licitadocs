@@ -2,7 +2,8 @@ import pytest
 from fastapi import status
 from datetime import timedelta, datetime, timezone
 from jose import jwt
-from app.core.security import SECRET_KEY, ALGORITHM, create_access_token
+from app.core.config import settings
+from app.core.security import create_access_token
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
 from app.models.document_model import Document
 from app.repositories.document_repository import DocumentRepository
@@ -140,7 +141,7 @@ def test_jwt_expired(client, user_a):
 def test_jwt_invalid_signature(client, user_a):
     """Teste: Token com assinatura inválida (Fake Secret)."""
     payload = {"sub": user_a.email, "exp": datetime.now(timezone.utc) + timedelta(minutes=30)}
-    invalid_token = jwt.encode(payload, "fake_secret_123", algorithm=ALGORITHM)
+    invalid_token = jwt.encode(payload, "fake_secret_123", algorithm=settings.ALGORITHM)
     
     response = client.get(
         "/documents/",

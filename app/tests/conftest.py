@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 # Carregar o arquivo .env.test
 env_path = os.path.join(os.path.dirname(__file__), "../../.env.test")
@@ -210,3 +211,24 @@ def admin_headers(admin_user):
     from app.core.security import create_access_token
     access_token = create_access_token(data={"sub": admin_user.email})
     return {"Authorization": f"Bearer {access_token}"}
+
+@pytest.fixture(autouse=True)
+def mock_email_service():
+    """
+    Vacina Global de QA: Impede que qualquer e-mail real seja disparado 
+    acidentalmente durante a execução da suíte de testes inteira.
+    """
+    # Fazemos o patch diretamente na origem (no Service), assim não importa
+    # qual Router chame o serviço, ele será interceptado!
+    with patch("app.services.email_service.EmailService.send_verification_email") as mock_verify, \
+         patch("app.services.email_service.EmailService.send_new_company_alert") as mock_alert, \
+         patch("app.services.email_service.EmailService.send_password_reset_email") as mock_reset, \
+         patch("app.services.email_service.EmailService.send_email_recovery_email") as mock_recovery:
+        
+        # O yield permite que o teste rode enquanto esses Mocks estão ativos
+        yield {
+            "verify": mock_verify,
+            "alert": mock_alert,
+            "reset": mock_reset,
+            "recovery": mock_recovery
+        }

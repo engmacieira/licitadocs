@@ -52,8 +52,26 @@ def test_company_null_razao_social(db_session):
     db_session.rollback()
 
 def test_company_is_regular_logic(db_session):
+    from app.models.user_model import User # Importamos o User
+    import uuid
+    
+    # 1. Criamos um Dono com e-mail VERIFICADO
+    uid = uuid.uuid4().hex[:6]
+    owner = User(
+        email=f"dono_{uid}@regularidade.com", 
+        password_hash="123",
+        is_email_verified=True # <-- A regra de negócio exige isso agora!
+    )
+    db_session.add(owner)
+    db_session.commit()
+
+    # 2. Criamos a empresa e atrelamos ao Dono
     cnpj = generate_valid_cnpj()
-    company = Company(cnpj=cnpj, razao_social="Empresa Regularidade")
+    company = Company(
+        cnpj=cnpj, 
+        razao_social="Empresa Regularidade",
+        owner_id=owner.id # <-- Vínculo criado!
+    )
     db_session.add(company)
     db_session.commit()
 
@@ -68,9 +86,9 @@ def test_company_is_regular_logic(db_session):
     company.is_payment_active = True
     assert company.is_regular is False
 
-    # Todos os requisitos preenchidos
+    # Todos os requisitos da empresa + e-mail do dono preenchidos
     company.is_admin_verified = True
-    assert company.is_regular is True
+    assert company.is_regular is True # Agora vai passar brilhantemente!
 
 def test_company_owner_relationship(db_session):
     uid = uuid.uuid4().hex[:6]

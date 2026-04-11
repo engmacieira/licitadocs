@@ -16,7 +16,7 @@ from jose import jwt, JWTError
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
+from app.core.security import create_access_token, verify_password, get_password_hash
 from app.core.rate_limit import limiter
 from app.dependencies import require_role
 from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
@@ -204,7 +204,7 @@ async def register(
         # 10. Auto-Login (Retorna o JWT para o Frontend não precisar logar de novo)
         access_token = create_access_token(
             data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
 
         return {
@@ -262,7 +262,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role, "user_id": user.id},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
