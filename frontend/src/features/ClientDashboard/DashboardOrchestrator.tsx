@@ -138,6 +138,7 @@ export function DashboardOrchestrator() {
         companyStatus.terms &&
         companyStatus.data &&
         companyStatus.payment &&
+        companyStatus.emailVerified &&
         companyStatus.contract &&
         companyStatus.approval;
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TypeModal } from './TypeModal';
@@ -35,7 +35,7 @@ describe('TypeModal', () => {
 
     it('deve renderizar corretamente para novo documento', () => {
         render(<TypeModal {...defaultProps} />);
-        
+
         expect(screen.getByText('Novo Documento')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Ex: CND Federal')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Ex: cnd_federal')).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe('TypeModal', () => {
     it('deve exibir campos de automação quando o checkbox for marcado', async () => {
         render(<TypeModal {...defaultProps} />);
         const user = userEvent.setup();
-        
+
         // O checkbox está dentro da label, então getByLabelText deve funcionar se o seletor for exato
         const automationCheckbox = screen.getByLabelText('É Automatizável? (Buscar via Robô)');
         await user.click(automationCheckbox);
@@ -61,7 +61,7 @@ describe('TypeModal', () => {
     it('deve exibir erro de validação se campos obrigatórios estiverem vazios', async () => {
         render(<TypeModal {...defaultProps} />);
         const user = userEvent.setup();
-        
+
         // Limpar campos que podem ter defaults (validity_days_default tem default 30)
         // Precisamos garantir que name está vazio
         await user.click(screen.getByRole('button', { name: /Salvar/i }));
@@ -70,25 +70,25 @@ describe('TypeModal', () => {
             const errors = screen.getAllByText('Obrigatório');
             expect(errors.length).toBeGreaterThan(0);
         });
-        
+
         expect(documentService.createType).not.toHaveBeenCalled();
     });
 
     it('deve chamar documentService.createType com sucesso', async () => {
-        vi.mocked(documentService.createType).mockResolvedValue({ 
-            id: 'new-type-id', 
-            name: 'Certidão', 
-            slug: 'certidao', 
-            scope: 'NATIONAL', 
-            validity_days_default: 30 
+        vi.mocked(documentService.createType).mockResolvedValue({
+            id: 'new-type-id',
+            name: 'Certidão',
+            slug: 'certidao',
+            scope: 'NATIONAL',
+            validity_days_default: 30
         } as any);
-        
+
         render(<TypeModal {...defaultProps} />);
         const user = userEvent.setup();
 
         await user.type(screen.getByPlaceholderText('Ex: CND Federal'), 'Certidão');
         await user.type(screen.getByPlaceholderText('Ex: cnd_federal'), 'certidao');
-        
+
         await user.click(screen.getByRole('button', { name: /Salvar/i }));
 
         await waitFor(() => {
@@ -105,29 +105,29 @@ describe('TypeModal', () => {
     });
 
     it('deve chamar documentService.updateType com os dados de automação', async () => {
-        const initialData = { 
-            id: 'type-1', 
-            name: 'Doc 1', 
-            slug: 'doc-1', 
-            scope: 'NATIONAL', 
+        const initialData = {
+            id: 'type-1',
+            name: 'Doc 1',
+            slug: 'doc-1',
+            scope: 'NATIONAL',
             validity_days_default: 30,
             automation_config: { is_automatable: false, requires_captcha: false }
         } as any;
-        
+
         vi.mocked(documentService.updateType).mockResolvedValue({ ...initialData, name: 'Doc Updated' });
-        
+
         render(<TypeModal {...defaultProps} initialData={initialData} />);
         const user = userEvent.setup();
 
         // Ativa automação e preenche
         await user.click(screen.getByLabelText('É Automatizável? (Buscar via Robô)'));
-        
+
         await waitFor(() => {
             expect(screen.getByPlaceholderText('Ex: TST_CRAWLER_V1')).toBeInTheDocument();
         });
 
         await user.type(screen.getByPlaceholderText('Ex: TST_CRAWLER_V1'), 'STRATEGY_A');
-        
+
         await user.click(screen.getByRole('button', { name: /Salvar/i }));
 
         await waitFor(() => {
@@ -146,13 +146,13 @@ describe('TypeModal', () => {
         vi.mocked(documentService.createType).mockRejectedValue({
             response: { data: { detail: 'Erro Servidor' } }
         });
-        
+
         render(<TypeModal {...defaultProps} />);
         const user = userEvent.setup();
 
         await user.type(screen.getByPlaceholderText('Ex: CND Federal'), 'Certidão');
         await user.type(screen.getByPlaceholderText('Ex: cnd_federal'), 'certidao');
-        
+
         await user.click(screen.getByRole('button', { name: /Salvar/i }));
 
         await waitFor(() => {
@@ -173,9 +173,12 @@ describe('TypeModal', () => {
      * Simula múltiplos cliques rápidos no botão de salvar.
      */
     it('SPAM: should prevent multiple submissions when clicked rapidly', async () => {
-        // Mock com delay para simular rede lenta e manter o estado isSaving=true
-        vi.mocked(documentService.createType).mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
-        
+        // 1. A VACINA: Criamos uma Promise controlada para travar a tela no estado "A salvar..."
+        // Usamos *Once* para não envenenar os testes seguintes!
+        let resolveApi: any;
+        const controlledPromise = new Promise(resolve => { resolveApi = resolve; });
+        vi.mocked(documentService.createType).mockReturnValueOnce(controlledPromise as any);
+
         render(<TypeModal {...defaultProps} />);
         const user = userEvent.setup();
 
@@ -184,16 +187,23 @@ describe('TypeModal', () => {
 
         const saveButton = screen.getByRole('button', { name: /Salvar/i });
 
-        // Dispara 20 cliques sem esperar o anterior terminar
-        const clicks = Array.from({ length: 20 }).map(() => user.click(saveButton));
-        await Promise.all(clicks);
+        // 2. O ATAQUE: Disparamos cliques super rápidos de forma síncrona.
+        for (let i = 0; i < 10; i++) {
+            fireEvent.click(saveButton);
+        }
 
-        // Verifica se o serviço foi chamado apenas UMA vez
-        expect(documentService.createType).toHaveBeenCalledTimes(1);
-        // Verifica se o botão ficou desativado (loading state)
+        // 3. A ESPERA: Aguardamos o React Hook Form processar a validação assíncrona 
+        // e travar o botão (setIsSaving(true)).
         await waitFor(() => {
             expect(saveButton).toBeDisabled();
         });
+
+        // 4. A DEFESA: Agora que a execução aconteceu, garantimos que a trava de 
+        // segurança (isSubmitting.current) impediu que os outros 9 cliques passassem!
+        expect(documentService.createType).toHaveBeenCalledTimes(1);
+
+        // 5. CLEANUP: Liberamos a Promise para o teste encerrar limpo
+        resolveApi({});
     });
 
     /**
@@ -210,7 +220,7 @@ describe('TypeModal', () => {
 
         await user.type(nameInput, xssPayload);
         await user.type(slugInput, 'xss-slug');
-        
+
         // Verifica se o valor no input é exatamente o que foi digitado (escapado pelo browser/React no value)
         expect(nameInput).toHaveValue(xssPayload);
 

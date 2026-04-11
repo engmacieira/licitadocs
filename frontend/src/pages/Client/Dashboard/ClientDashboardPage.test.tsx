@@ -49,6 +49,18 @@ vi.mock('../../../services/documentService', () => ({
     }
 }));
 
+vi.mock('../../../services/userService', () => ({
+    userService: {
+        getMe: vi.fn().mockResolvedValue({
+            id: 'user123',
+            nome: 'João Dono da Empresa',
+            email: 'contato@empresateste.com',
+            role: 'client',
+            is_email_verified: true // 🟢 A CHAVE PARA O HAPPY PATH!
+        })
+    }
+}));
+
 describe('ClientDashboardPage Integration Test', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -64,7 +76,8 @@ describe('ClientDashboardPage Integration Test', () => {
 
         // Verifica o nome da empresa e o status de monitoramento
         expect(screen.getByText('Empresa Teste Ltda')).toBeInTheDocument();
-        expect(screen.getByText(/Monitoramento Ativo/i)).toBeInTheDocument();
+        const monitoramentoElements = screen.getAllByText(/Monitoramento Ativo/i);
+        expect(monitoramentoElements.length).toBeGreaterThan(0);
 
         // Verifica os StatsCards
         expect(screen.getByText('Total no Cofre')).toBeInTheDocument();

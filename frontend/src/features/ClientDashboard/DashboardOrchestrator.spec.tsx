@@ -3,6 +3,7 @@ import { expect, it, describe, vi, beforeEach } from 'vitest';
 import { DashboardOrchestrator } from './DashboardOrchestrator';
 import { companyService } from '../../services/companyService';
 import { documentService } from '../../services/documentService';
+import { userService } from '../../services/userService';
 import { useAuth } from '../../contexts/AuthContext';
 import { MemoryRouter } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -18,6 +19,12 @@ vi.mock('../../services/documentService', () => ({
     documentService: {
         getAll: vi.fn(),
         downloadDocument: vi.fn()
+    }
+}));
+
+vi.mock('../../services/userService', () => ({
+    userService: {
+        getMe: vi.fn()
     }
 }));
 
@@ -82,6 +89,10 @@ describe('DashboardOrchestrator', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         (useAuth as any).mockReturnValue({ currentCompany: mockCompany });
+        (userService.getMe as any).mockResolvedValue({
+            id: 'user-1',
+            is_email_verified: true
+        });
     });
 
     const renderComponent = () => render(
@@ -91,16 +102,16 @@ describe('DashboardOrchestrator', () => {
     );
 
     it('deve exibir o estado de loading inicialmente', () => {
-        (companyService.getById as any).mockReturnValue(new Promise(() => {})); // Never resolves
+        (companyService.getById as any).mockReturnValue(new Promise(() => { })); // Never resolves
         renderComponent();
-        
+
         // Verifica se os skeletons aparecem (temos div com animate-pulse)
         expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
     });
 
     it('deve renderizar o OnboardingWizard se a empresa não estiver regular', async () => {
         (companyService.getById as any).mockResolvedValue(mockFreshCompanyPending);
-        
+
         renderComponent();
 
         await waitFor(() => {
@@ -192,7 +203,7 @@ describe('DashboardOrchestrator', () => {
     });
 
     it('deve lidar com erro ao carregar dados', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         (companyService.getById as any).mockRejectedValue(new Error('API Error'));
 
         renderComponent();

@@ -95,7 +95,7 @@ describe('OnboardingWizard', () => {
         // Passo 2 (Pagamento) deve estar habilitado
         const paymentButton = screen.getByText('Realizar Pagamento');
         expect(paymentButton).not.toBeDisabled();
-        
+
         fireEvent.click(paymentButton);
         expect(mockNavigate).toHaveBeenCalledWith('/payment');
     });
@@ -166,7 +166,7 @@ describe('OnboardingWizard', () => {
             pendencies: null
         });
 
-        expect(screen.getByText('5. Validação da Equipe')).toBeInTheDocument();
+        expect(screen.getByText('6. Validação da Equipe')).toBeInTheDocument();
         expect(screen.getByText('Em Análise')).toBeInTheDocument();
     });
 
