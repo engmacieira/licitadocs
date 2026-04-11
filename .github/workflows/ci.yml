@@ -117,6 +117,10 @@ jobs:
 
             git pull https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git main
 
+            # 🧹 0. A FAXINA PRÉ-BUILD (Libera espaço antes de tentar instalar coisas novas)
+            docker system prune -af --volumes
+            docker builder prune -af
+
             # 🪂 1. O PARAQUEDAS (Backup antes de qualquer alteração)
             echo "A iniciar backup da base de dados..."
             docker compose exec -T postgres pg_dump -U postgres licitadocs_test > backup_$(date +%F_%H-%M-%S).sql || true
