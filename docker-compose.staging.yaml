@@ -8,12 +8,8 @@ services:
     container_name: licitadocs_backend
     ports:
       - "8000:8000"
-    environment:
-      # Agora sim, todas as variáveis serão puxadas do arquivo .env do servidor
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY}
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    env_file:
+      - .env
     restart: unless-stopped
 
   frontend:
