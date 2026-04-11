@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Importações de Base de Dados e Segurança
 from app.core.database import engine, Base
-from app.core.security import SECRET_KEY
 
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
