@@ -18,14 +18,19 @@ async def test_stress_auth_concurrency(client, db_session, monkeypatch, mock_ema
     # Se a base já tiver o app async:
     from app.main import app
 
+    # Use TestClient assíncrono moderno com transporte ASGI pra contornar o TypeError do init antigo do AsyncClient
+    from httpx import ASGITransport
+    transport = ASGITransport(app=app)
+
     async def make_request(i):
-        # Vamos usar o ASyncClient diretamente no app FastAPI para stress real de concorrência
-        async with httpx.AsyncClient(app=app, base_url="http://test") as ac:
+        # Usando transporte ASGI explícito para rodar via httpx.AsyncClient
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
             # Misturar alguns requests de "forgot password" e "recover_email"
             if i % 2 == 0:
                 resp = await ac.post("/auth/forgot-password", json={"email": f"teste{i}@example.com"})
             else:
-                resp = await ac.post("/auth/recover-email", json={"document": f"{11111111111 + i}"})
+                from app.tests.conftest import generate_valid_cpf
+                resp = await ac.post("/auth/recover-email", json={"document": generate_valid_cpf()})
             return resp.status_code
 
     # Dispara 50 requests simultâneos

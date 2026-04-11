@@ -27,7 +27,8 @@ def test_recover_email_success(client, db_session, test_user, mock_email_service
     """
     Testa a rota de recuperar e-mail informando um documento (CNPJ/CPF) válido.
     """
-    response = client.post("/auth/recover-email", json={"document": test_user.document})
+    # Use o CPF do test_user, document não é um atributo na model User, e sim cpf ou cnpj_cpf. No nosso caso cpf.
+    response = client.post("/auth/recover-email", json={"document": test_user.cpf})
     assert response.status_code == 200
     assert "mensagem" in response.json() or "message" in response.json()
 
@@ -35,9 +36,13 @@ def test_recover_email_success(client, db_session, test_user, mock_email_service
 def test_recover_email_document_not_found(client, db_session, mock_email_service):
     """
     Testa Anti-Enumeração: Documento não cadastrado deve retornar a MESMA resposta
-    de sucesso (HTTP 200).
+    de sucesso (HTTP 200) ou pelo menos ser igual ao caso de sucesso pra não ser enumeravel, mas o nosso
+    sistema valida matematicamente o CPF/CNPJ, então "00000000000" dá 422 Unprocessable Entity de erro de formato
+    antes de bater na logica de não-encontrado. Se usarmos um CPF matematicamente valido, mas não cadastrado:
     """
-    response = client.post("/auth/recover-email", json={"document": "00000000000"})
+    from app.tests.conftest import generate_valid_cpf
+    # cpf não existente
+    response = client.post("/auth/recover-email", json={"document": generate_valid_cpf()})
     assert response.status_code == 200
     assert "mensagem" in response.json() or "message" in response.json()
 
