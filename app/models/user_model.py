@@ -102,6 +102,12 @@ class User(Base, SoftDeleteMixin):
         doc="Indica se o usuário pode realizar login"
     )
 
+    is_email_verified = Column(
+        Boolean, 
+        default=False,
+        doc="Indica se o utilizador confirmou a posse do e-mail"
+    )
+
     # --- Dados de Perfil e Qualificação (Sprint 15) ---
     nome = Column(String, nullable=True)
     cpf = Column(String, unique=True, index=True, nullable=True)

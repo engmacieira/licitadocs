@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
     AlertTriangle, RefreshCw, AlertOctagon, ScrollText,
-    Building2, CreditCard, FileSignature, ShieldCheck, ArrowRight
+    Building2, CreditCard, FileSignature, ShieldCheck, ArrowRight, MailCheck
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
@@ -15,6 +15,7 @@ interface OnboardingWizardProps {
         terms: boolean;
         data: boolean;
         payment: boolean;
+        emailVerified: boolean;
         contract: boolean;
         approval: boolean;
         pendencies: string | null;
@@ -83,7 +84,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     </div>
                 </div>
 
-                {/* STEP 2: PAGAMENTO (NOVA ORDEM) */}
+                {/* STEP 2: PAGAMENTO */}
                 <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.payment ? 'border-green-200 bg-green-50' : (companyStatus.terms ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
                         <div className={`p-3 rounded-xl shrink-0 ${companyStatus.payment ? 'bg-green-200 text-green-700' : (companyStatus.terms ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
@@ -104,7 +105,28 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     </div>
                 </div>
 
-                {/* STEP 3: DADOS DA EMPRESA (NOVA ORDEM) */}
+                {/* STEP 3: VERIFICAÇÃO DE E-MAIL */}
+                <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.emailVerified ? 'border-green-200 bg-green-50' : (companyStatus.payment ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
+                    <div className="flex flex-col sm:flex-row items-center gap-5">
+                        <div className={`p-3 rounded-xl shrink-0 ${companyStatus.emailVerified ? 'bg-green-200 text-green-700' : (companyStatus.payment ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
+                            <MailCheck className="h-6 w-6" />
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                            <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
+                                3. Confirmação de E-mail
+                                {companyStatus.emailVerified && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
+                            </h3>
+                            <p className="text-slate-600 text-sm mt-1">Verifique a sua caixa de entrada e clique no link de segurança que enviamos.</p>
+                        </div>
+                        {!companyStatus.emailVerified && companyStatus.payment && (
+                            <div className="text-center sm:text-right w-full sm:w-auto">
+                                <span className="text-sm font-bold text-blue-600 animate-pulse">Aguardando confirmação...</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* STEP 4: DADOS DA EMPRESA */}
                 <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.data ? 'border-green-200 bg-green-50' : (companyStatus.payment ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
                         <div className={`p-3 rounded-xl shrink-0 ${companyStatus.data ? 'bg-green-200 text-green-700' : (companyStatus.payment ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
@@ -112,7 +134,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                         </div>
                         <div className="flex-1 text-center sm:text-left">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
-                                3. Dados Cadastrais
+                                4. Dados Cadastrais
                                 {companyStatus.data && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
                             </h3>
                             <p className="text-slate-600 text-sm mt-1">Preenchimento completo dos dados da empresa e responsável legal.</p>
@@ -125,7 +147,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     </div>
                 </div>
 
-                {/* STEP 4: CONTRATO E PROCURAÇÃO */}
+                {/* STEP 5: CONTRATO E PROCURAÇÃO */}
                 <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.contract ? 'border-green-200 bg-green-50' : (companyStatus.data ? 'border-blue-200 bg-white shadow-md shadow-blue-50' : 'border-slate-200 bg-white opacity-60')}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
                         <div className={`p-3 rounded-xl shrink-0 ${companyStatus.contract ? 'bg-green-200 text-green-700' : (companyStatus.data ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400')}`}>
@@ -133,7 +155,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                         </div>
                         <div className="flex-1 text-center sm:text-left">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
-                                4. Contrato e Procuração
+                                5. Contrato e Procuração
                                 {companyStatus.contract && <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Concluído</span>}
                             </h3>
                             <p className="text-slate-600 text-sm mt-1">Assinatura digital dos documentos de representação.</p>
@@ -146,7 +168,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     </div>
                 </div>
 
-                {/* STEP 5: VALIDAÇÃO */}
+                {/* STEP 6: VALIDAÇÃO */}
                 <div className={`p-5 rounded-xl border-2 transition-all ${companyStatus.approval ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
                     <div className="flex flex-col sm:flex-row items-center gap-5">
                         <div className={`p-3 rounded-xl shrink-0 ${companyStatus.approval ? 'bg-green-200 text-green-700' : 'bg-amber-100 text-amber-600'}`}>
@@ -154,7 +176,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                         </div>
                         <div className="flex-1 text-center sm:text-left">
                             <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-3">
-                                5. Validação da Equipe
+                                6. Validação da Equipe
                                 {companyStatus.approval ?
                                     <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full font-bold">Aprovado</span> :
                                     <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">Em Análise</span>

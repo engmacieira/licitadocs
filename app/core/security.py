@@ -4,26 +4,15 @@ Responsável pela criptografia de senhas (hashing) e gerenciamento
 de tokens de acesso (JWT) para o LicitaDoc.
 """
 
-import os
 import sys
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from dotenv import load_dotenv
+from app.core.config import settings
 
-# Inicialização de ambiente
-load_dotenv()
-
-# --- Configurações de Segurança ---
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-# Protocolo de Tolerância Zero: O sistema não inicia sem uma chave mestra.
-if not SECRET_KEY:
+if not settings.SECRET_KEY:
     print("🚨 [SECURITY] ERRO CRÍTICO: Variável SECRET_KEY não definida no .env.")
-    print("Impossível gerar tokens seguros para autenticação dos clientes.")
     sys.exit(1)
 
 # Contexto de Criptografia (Bcrypt como padrão de mercado)
@@ -68,14 +57,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     
-    # Define o tempo de expiração do token
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire})
-    
-    # Assina o token com a nossa SECRET_KEY
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt

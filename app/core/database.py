@@ -3,41 +3,29 @@ Configuração do Banco de Dados (SQLAlchemy).
 Gerencia a conexão, o pool de sessões e a base declarativa para os modelos.
 """
 
-import os
 import sys
 import uuid
 from sqlalchemy import create_engine, Column, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import func
-from dotenv import load_dotenv
+from app.core.config import settings
 
-# Inicialização de ambiente
-load_dotenv()
-
-# 1. Configurações de Conexão
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-# Protocolo de Tolerância Zero: Interrompe a execução se o banco não estiver configurado
-if not DATABASE_URL:
+# Protocolo de Tolerância Zero (A validação agora é feita pelo Pydantic no config.py)
+# Mas mantemos a trava de segurança por garantia.
+if not settings.DATABASE_URL:
     print("🚨 [DATABASE] ERRO CRÍTICO: Variável DATABASE_URL não encontrada.")
-    print("O LicitaDoc exige uma string de conexão PostgreSQL válida no arquivo .env.")
     sys.exit(1)
 
 # 2. Engine & Session
-# Configurado para PostgreSQL com pool resiliente (Enterprise Ready)
 engine = create_engine(
-    DATABASE_URL, 
+    settings.DATABASE_URL, 
     pool_pre_ping=True,
     pool_size=50,
     max_overflow=150,
     pool_timeout=30
 )
 
-# Fábrica de sessões com controle transacional manual (ACID)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# 3. Base Declarativa
-# Todos os models em app/models devem herdar desta classe
 Base = declarative_base()
 
 # --- Funções Utilitárias ---

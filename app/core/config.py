@@ -1,0 +1,65 @@
+"""
+Configurações Centrais do Sistema (Settings).
+Utiliza pydantic-settings para carregar e validar variáveis do .env.
+"""
+
+from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    # ==========================================
+    # 🌍 AMBIENTE E INFRAESTRUTURA
+    # ==========================================
+    ENV: str
+    FRONTEND_URL: str
+    CORS_ORIGINS: str
+    STORAGE_PATH: Optional[str] = None
+    
+    # ==========================================
+    # 🗄️ BANCO DE DADOS
+    # ==========================================
+    DATABASE_URL: str
+    BANCO_AWS: Optional[str] = None
+    SENHA_AWS: Optional[str] = None
+    
+    # ==========================================
+    # 🔐 SEGURANÇA GERAL
+    # ==========================================
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    RESET_TOKEN_EXPIRE_MINUTES: int
+    
+    # ==========================================
+    # 🚀 INTEGRAÇÕES ATUAIS (Terceiros)
+    # ==========================================
+    GOOGLE_API_KEY: Optional[str] = None
+    GITHUB: Optional[str] = None
+    TELEGRAM_TOKEN: Optional[str] = None
+    TELEGRAM_CHAT_ID: Optional[str] = None
+
+    # ==========================================
+    # 📦 SPRINT 28: INTEGRAÇÕES E COMUNICAÇÃO
+    # ==========================================
+    
+    # --- 1. Mensageria e E-mail ---
+    SMTP_SERVER: Optional[str] = None
+    SMTP_PORT: Optional[int] = None
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAILS_FROM_EMAIL: Optional[str] = None
+    EMAILS_FROM_NAME: str
+    ADMIN_EMAIL_NOTIFICATIONS: Optional[str] = None
+
+    # --- 2. WhatsApp ---
+    WHATSAPP_API_URL: Optional[str] = None
+    WHATSAPP_API_TOKEN: Optional[str] = None
+
+    # --- 3. Pagamentos Infinite Pay ---
+    INFINITEPAY_API_KEY: Optional[str] = None
+    INFINITEPAY_WEBHOOK_SECRET: Optional[str] = None
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+# Instância global das configurações
+settings = Settings()

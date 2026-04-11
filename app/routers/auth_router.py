@@ -3,6 +3,7 @@ Router de Autenticação e Onboarding.
 Controla as rotas de cadastro complexo (Multipart Form), login JWT e utilitários de acesso.
 """
 import os
+import re
 import contextlib
 import asyncio
 from datetime import timedelta
@@ -11,7 +12,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile,
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+from jose import jwt, JWTError
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, verify_password, get_password_hash
 from app.core.rate_limit import limiter
@@ -24,7 +27,8 @@ from app.models.company_model import Company
 from app.models.document_model import Document, DocumentStatus 
 from app.utils.file_helper import save_upload_file
 from app.repositories.user_repository import UserRepository
-from app.schemas.user_schemas import Token
+from app.services.email_service import EmailService
+from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest
 
 DUMMY_HASH = get_password_hash("dummy")
 
@@ -102,6 +106,7 @@ async def register(
             cnpj=cnpj,
             razao_social=legal_name,
             nome_fantasia=trade_name,
+            email_corporativo=email,
             owner_id=new_user.id,
             responsavel_nome=responsible_name, 
             responsavel_cpf=cpf 
@@ -172,8 +177,31 @@ async def register(
 
         # 6. Finaliza a Transação Atômica com Sucesso
         db.commit()
+
+        # 7. Gera Token de Verificação (Expiração de 24h para dar tempo ao cliente)
+        verify_token = create_access_token(
+            data={"sub": new_user.email, "type": "email_verification"},
+            expires_delta=timedelta(hours=24)
+        )
+
+        # 8. Dispara E-mail de Boas-vindas/Verificação
+        EmailService.send_verification_email(to_email=new_user.email, token=verify_token)
         
-        # 7. Auto-Login (Retorna o JWT para o Frontend não precisar logar de novo)
+        # 9. Alerta Administrativo
+        if settings.ADMIN_EMAIL_NOTIFICATIONS:
+            company_summary = {
+                "razao_social": new_company.razao_social,
+                "cnpj": new_company.cnpj,
+                "responsavel": new_company.responsavel_nome,
+                "email": new_company.email_corporativo
+            }
+            # Notifica a equipa do LicitaDoc
+            EmailService.send_new_company_alert(
+                admin_email=settings.ADMIN_EMAIL_NOTIFICATIONS, 
+                company_data=company_summary
+            )
+
+        # 10. Auto-Login (Retorna o JWT para o Frontend não precisar logar de novo)
         access_token = create_access_token(
             data={"sub": new_user.email, "role": new_user.role, "user_id": new_user.id},
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -298,3 +326,152 @@ def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_d
     user.is_active = True
     db.commit()
     return {"message": f"Pagamento simulado (Modo: {env}). Conta de {user.email} ativada com sucesso."}
+
+# ==========================================
+# RECUPERAÇÃO DE SENHA
+# ==========================================
+
+@router.post(
+    "/forgot-password", 
+    status_code=status.HTTP_200_OK,
+    summary="Solicitar Recuperação de Senha",
+    description="Gera um token JWT curto e dispara um e-mail com o link de recuperação. Sempre retorna sucesso por segurança (Anti-Enumeração)."
+)
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = UserRepository.get_by_email(db, email=data.email)
+    
+    # 🛡️ Blindagem: Retornar sempre a mesma mensagem para não vazar a existência do cliente
+    success_message = {"message": "Se o e-mail estiver cadastrado, as instruções foram enviadas."}
+    
+    if not user or not user.is_active:
+        return success_message
+
+    # Gera token específico para reset (Não pode ser usado para Login)
+    reset_token = create_access_token(
+        data={"sub": user.email, "type": "password_reset"},
+        expires_delta=timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    )
+
+    # Dispara e-mail via serviço assíncrono (Adapter)
+    EmailService.send_password_reset_email(to_email=user.email, reset_token=reset_token)
+
+    return success_message
+
+@router.post(
+    "/reset-password", 
+    status_code=status.HTTP_200_OK,
+    summary="Redefinir Senha",
+    description="Recebe o Token JWT validado e altera a senha no banco de dados."
+)
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token de recuperação expirado ou inválido.",
+    )
+    
+    try:
+        # 1. Valida o Token
+        payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        # 2. Garante que é um token de reset, e não um token de sessão interceptado
+        if email is None or token_type != "password_reset":
+            raise credentials_exception
+            
+    except JWTError:
+        raise credentials_exception
+
+    # 3. Busca o usuário
+    user = UserRepository.get_by_email(db, email=email)
+    if not user:
+        raise credentials_exception
+
+    # 4. Atualiza a senha no banco
+    user.password_hash = get_password_hash(data.new_password)
+    db.commit()
+
+    return {"message": "Sua senha foi redefinida com sucesso. Faça login para continuar."}
+
+# ==========================================
+# VALIDAÇÃO DE E-MAIL
+# ==========================================
+
+@router.get(
+    "/verify-email", 
+    status_code=status.HTTP_200_OK,
+    summary="Validar E-mail do Utilizador",
+    description="Recebe o token enviado por e-mail e ativa a flag is_email_verified."
+)
+def verify_email(token: str, db: Session = Depends(get_db)):
+    exception = HTTPException(status_code=400, detail="Token inválido ou expirado.")
+    
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        
+        if email is None or token_type != "email_verification":
+            raise exception
+            
+    except JWTError:
+        raise exception
+
+    user = UserRepository.get_by_email(db, email=email)
+    if not user:
+        raise exception
+
+    if user.is_email_verified:
+        return {"message": "E-mail já estava validado."}
+
+    user.is_email_verified = True
+    db.commit()
+
+    return {"message": "E-mail validado com sucesso! A sua conta está pronta."}
+
+# ==========================================
+# RECUPERAÇÃO DE E-MAIL
+# ==========================================
+
+@router.post(
+    "/recover-email", 
+    status_code=status.HTTP_200_OK,
+    summary="Recuperar E-mail Esquecido (Anti-Enumeração)",
+    description="Recebe um CPF ou CNPJ e, se existir, dispara um e-mail com o endereço de acesso. Sempre retorna a mesma mensagem para evitar vazamento de dados."
+)
+def recover_email(data: RecoverEmailRequest, db: Session = Depends(get_db)):
+    # 🛡️ Blindagem Máxima: Mensagem genérica idêntica para qualquer cenário
+    success_message = {
+        "message": "Se o documento estiver cadastrado, enviamos um lembrete para o e-mail oficial (verifique também a caixa de spam). Se o erro persistir, favor nos contatar pelos canais oficiais."
+    }
+
+    # 1. Limpa o documento (remove pontos, traços, barras)
+    doc_clean = re.sub(r'\D', '', data.documento)
+    email_encontrado = None
+    
+    # 2. Lógica de Busca Silenciosa
+    if len(doc_clean) == 11:
+        # É um CPF: Busca no perfil do Usuário
+        user = UserRepository.get_by_cpf(db, cpf=doc_clean)
+        if user:
+            email_encontrado = user.email
+            
+    elif len(doc_clean) == 14:
+        # É um CNPJ: Busca a Empresa e pega o e-mail do Dono (Owner)
+        from app.repositories.company_repository import CompanyRepository
+        company = CompanyRepository.get_by_cnpj(db, cnpj=doc_clean)
+        if company and company.owner:
+            email_encontrado = company.owner.email
+            
+    else:
+        # Erro de formatação de documento pode retornar 400, pois não vaza dados do banco
+        raise HTTPException(status_code=400, detail="Formato inválido. Envie um CPF (11) ou CNPJ (14) válido.")
+
+    # 3. Disparo do E-mail (Se encontrou)
+    if email_encontrado:
+        # Como o envio usa smtplib que pode demorar alguns segundos, 
+        # idealmente usaríamos BackgroundTasks aqui no futuro.
+        EmailService.send_email_recovery_email(to_email=email_encontrado)
+
+    # 4. Retorno Cego
+    return success_message

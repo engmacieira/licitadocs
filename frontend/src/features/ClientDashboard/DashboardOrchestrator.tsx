@@ -7,6 +7,7 @@ import { Building2, CheckCircle, AlertTriangle, ShieldCheck, FileText, FileSigna
 import { documentService } from '../../services/documentService';
 import type { DocumentDTO } from '../../services/documentService';
 import { companyService } from '../../services/companyService';
+import { userService } from '../../services/userService'
 import { useAuth } from '../../contexts/AuthContext';
 
 // Componentes UI Puros
@@ -39,6 +40,7 @@ export function DashboardOrchestrator() {
         terms: false,
         data: false,
         payment: false,
+        emailVerified: false,
         contract: false,
         approval: false,
         pendencies: null as string | null
@@ -54,11 +56,13 @@ export function DashboardOrchestrator() {
         setLoading(true);
         try {
             const freshCompany = await companyService.getById(currentCompany.id) as any;
+            const me = await userService.getMe();
 
             const currentStatus = {
                 terms: freshCompany.is_terms_accepted || false,
                 data: freshCompany.is_data_completed || false,
                 payment: freshCompany.is_payment_active || false,
+                emailVerified: me.is_email_verified || false,
                 contract: freshCompany.is_contract_signed || false,
                 approval: freshCompany.is_admin_verified || false,
                 pendencies: freshCompany.admin_pendencies || null
@@ -69,6 +73,7 @@ export function DashboardOrchestrator() {
                 currentStatus.terms &&
                 currentStatus.data &&
                 currentStatus.payment &&
+                currentStatus.emailVerified &&
                 currentStatus.contract &&
                 currentStatus.approval;
 
