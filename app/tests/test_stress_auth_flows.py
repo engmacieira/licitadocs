@@ -3,6 +3,9 @@ import asyncio
 import httpx
 from unittest.mock import patch
 
+from app.core.database import get_db
+from app.main import app
+
 @pytest.mark.asyncio
 async def test_stress_auth_concurrency(client, db_session, monkeypatch, mock_email_service):
     """
@@ -22,6 +25,8 @@ async def test_stress_auth_concurrency(client, db_session, monkeypatch, mock_ema
 
     # Para testar isso no pytest + fastapi com db sincrono, usamos chamadas síncronas através do client padrão
     # em threads simuladas pelo asyncio, limitando o número de conexões ou rodando de forma controlada.
+    
+    app.dependency_overrides.pop(get_db, None)
 
     async def make_request(i):
         def _req():
@@ -35,7 +40,9 @@ async def test_stress_auth_concurrency(client, db_session, monkeypatch, mock_ema
     # Dispara 10 requests simultâneos para não saturar a pool sqlite/pg em testes
     tasks = [make_request(i) for i in range(10)]
     results = await asyncio.gather(*tasks)
-
+    
+    app.dependency_overrides[get_db] = lambda: db_session
+    
     # Verifica se todos responderam sem erro 500 (Deadlock ou DB Connection Timeout)
     # Como as rotas tem anti-enumeração, todas devem retornar 200 (sejam os CPFs válidos ou não)
     # E mesmo com Validation Errors, retornariam 422/400. Nunca 500.
