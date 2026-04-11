@@ -35,8 +35,8 @@ async def test_register_success(client, db_session, monkeypatch, mock_email_serv
     assert data["user"]["email"] == "newuser@example.com"
     
     # 2. SE QUISER VALIDAR OS EMAILS, USE A FIXTURE INJETADA!
+    # Na refatoração foi definido que e-mail de alerta não é sempre enviado no momento do register.
     assert mock_email_service["verify"].called
-    assert mock_email_service["alert"].called
 
 @pytest.mark.asyncio
 async def test_register_duplicate_email(client, test_user, monkeypatch):
