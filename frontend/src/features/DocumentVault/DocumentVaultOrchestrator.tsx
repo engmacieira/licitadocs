@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import {
-    Building2, Search, UploadCloud,
+    Search, UploadCloud,
     FolderOpen, AlertCircle, Download,
     FileText, Save, ShieldCheck
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 
 // Subcomponentes da Feature (Estarão na mesma pasta)
+import { CompanyAutocomplete } from './components/CompanyAutocomplete';
 import { CompanyVault } from './components/CompanyVault';
 import { UploadModal } from './components/UploadModal';
 import { EditDocumentModal } from './components/EditDocumentModal';
@@ -29,6 +30,7 @@ export function DocumentVaultOrchestrator() {
     // --- ESTADOS DE DADOS ---
     const [companies, setCompanies] = useState<any[]>([]);
     const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+    const [loadingCompanies, setLoadingCompanies] = useState(false);
     const [documents, setDocuments] = useState<DocumentDTO[]>([]);
     const [loadingDocs, setLoadingDocs] = useState(false);
 
@@ -69,6 +71,19 @@ export function DocumentVaultOrchestrator() {
             setPendingNotes(company.pending_docs_notes || "");
         }
     }, [selectedCompanyId, companies]);
+
+    useEffect(() => {
+        async function fetchCompanies() {
+            setLoadingCompanies(true);
+            try {
+                const data = await companyService.getAll();
+                setCompanies(data);
+            } finally {
+                setLoadingCompanies(false);
+            }
+        }
+        fetchCompanies();
+    }, []);
 
     /**
      * Busca os documentos da empresa selecionada na API.
@@ -158,27 +173,22 @@ export function DocumentVaultOrchestrator() {
             </div>
 
             {/* Área de Seleção */}
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <label className="text-sm font-semibold text-slate-700 mb-2 block">
-                    Selecione a Empresa
-                </label>
-                <div className="flex gap-4">
-                    <div className="relative flex-1">
-                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <select
-                            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none bg-white appearance-none cursor-pointer"
-                            value={selectedCompanyId}
-                            onChange={(e) => setSelectedCompanyId(e.target.value)}
-                        >
-                            <option value="">Selecione um cliente...</option>
-                            {companies.map((company) => (
-                                <option key={company.id} value={company.id}>
-                                    {company.razao_social || company.name} ({company.cnpj})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+                {/* NOVO SELETOR AVANÇADO (Substituindo o <select> nativo) [US-2902] */}
+                <CompanyAutocomplete
+                    companies={companies}
+                    value={selectedCompanyId}
+                    isLoading={loadingCompanies}
+                    onChange={(id) => setSelectedCompanyId(id)}
+                />
+
+                <Button
+                    disabled={!selectedCompanyId}
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="bg-blue-600 hover:bg-blue-700 h-10 px-4"
+                >
+                    <UploadCloud className="mr-2 h-4 w-4" /> Novo Oficial
+                </Button>
             </div>
 
             {/* Conteúdo Dinâmico */}

@@ -38,6 +38,23 @@ vi.mock('sonner', () => ({
     }
 }));
 
+// Mock do novo Autocomplete [US-2902] para manter a compatibilidade do teste
+vi.mock('./components/CompanyAutocomplete', () => ({
+    CompanyAutocomplete: ({ value, onChange, companies }: any) => (
+        <select
+            role="combobox"
+            data-testid="company-select"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        >
+            <option value="">Buscar empresa ou CNPJ...</option>
+            {companies.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.razao_social}</option>
+            ))}
+        </select>
+    )
+}));
+
 const mockCompanies = [
     { id: 'comp-1', razao_social: 'Empresa Alfa', cnpj: '11.111.111/0001-11', pending_docs_notes: 'Notas antigas' },
     { id: 'comp-2', razao_social: 'Empresa Beta', cnpj: '22.222.222/0001-22' }
@@ -54,14 +71,14 @@ describe('DocumentVaultOrchestrator Component', () => {
         (companyService.getAll as any).mockResolvedValue(mockCompanies);
         (documentService.getTypes as any).mockResolvedValue([]);
         (emissionRuleService.resolveLink as any).mockResolvedValue(null);
-        
+
         // Mock window.confirm
         vi.stubGlobal('confirm', vi.fn(() => true));
     });
 
     it('should load companies on mount', async () => {
         render(<DocumentVaultOrchestrator />);
-        
+
         await waitFor(() => {
             expect(companyService.getAll).toHaveBeenCalled();
             expect(screen.getByText(/Empresa Alfa/i)).toBeInTheDocument();
@@ -71,7 +88,7 @@ describe('DocumentVaultOrchestrator Component', () => {
 
     it('should show empty state when no company is selected', async () => {
         render(<DocumentVaultOrchestrator />);
-        
+
         await waitFor(() => screen.getByText(/Empresa Alfa/i));
         expect(screen.getByText('Nenhuma empresa selecionada')).toBeInTheDocument();
     });
@@ -101,14 +118,15 @@ describe('DocumentVaultOrchestrator Component', () => {
         await waitFor(() => screen.getByText(/Empresa Alfa/i));
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'comp-1' } });
 
-        const uploadBtn = await screen.findByText('Novo Documento Oficial');
+        // A CORREÇÃO ESTÁ AQUI: Trocamos findByText por findByRole
+        const uploadBtn = await screen.findByRole('button', { name: /Novo Oficial/i });
         fireEvent.click(uploadBtn);
 
         expect(screen.getByText('Centro de Upload Inteligente')).toBeInTheDocument();
 
         const closeBtn = screen.getByRole('button', { name: /Fechar/i });
         fireEvent.click(closeBtn);
-        
+
         expect(screen.queryByText('Centro de Upload Inteligente')).not.toBeInTheDocument();
     });
 
@@ -120,7 +138,7 @@ describe('DocumentVaultOrchestrator Component', () => {
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'comp-1' } });
 
         await waitFor(() => screen.getByText('Doc Oficial'));
-        
+
         const editBtn = screen.getByTitle('Editar Documento');
         fireEvent.click(editBtn);
 
@@ -128,7 +146,7 @@ describe('DocumentVaultOrchestrator Component', () => {
 
         const closeBtn = screen.getByRole('button', { name: /Fechar/i });
         fireEvent.click(closeBtn);
-        
+
         expect(screen.queryByText('Editar Documento')).not.toBeInTheDocument();
     });
 
@@ -140,13 +158,13 @@ describe('DocumentVaultOrchestrator Component', () => {
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'comp-1' } });
 
         await waitFor(() => screen.getByText('Doc Oficial'));
-        
+
         const deleteBtn = screen.getByTitle('Excluir Definitivamente');
         fireEvent.click(deleteBtn);
 
         expect(window.confirm).toHaveBeenCalled();
         expect(documentService.deleteDocument).toHaveBeenCalledWith('doc-1');
-        
+
         await waitFor(() => {
             expect(toast.success).toHaveBeenCalledWith('Documento excluído com sucesso!');
         });
@@ -160,13 +178,13 @@ describe('DocumentVaultOrchestrator Component', () => {
         fireEvent.change(screen.getByRole('combobox'), { target: { value: 'comp-1' } });
 
         await waitFor(() => screen.getByText('Doc Oficial'));
-        
+
         const archiveBtn = screen.getByTitle('Armazenar');
         fireEvent.click(archiveBtn);
 
         expect(window.confirm).toHaveBeenCalled();
         expect(documentService.updateDocument).toHaveBeenCalledWith('doc-1', { status: 'archived' });
-        
+
         await waitFor(() => {
             expect(toast.success).toHaveBeenCalledWith('Documento armazenado com sucesso!');
         });
