@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, AlertTriangle, ShieldAlert, Clock, FolderOpen } from 'lucide-react';
+import { Building2, AlertTriangle, ShieldAlert, Clock, FolderOpen, UserPlus } from 'lucide-react';
 
 // Integrações e Serviços
-import { companyService } from '../../services/companyService';
+import { companyService, type Company } from '../../services/companyService';
 import { documentService } from '../../services/documentService';
 import type { DocumentDTO } from '../../services/documentService';
 
@@ -15,6 +15,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 // Subcomponentes da Feature
 import { UrgentAttentionPanel } from './components/UrgentAttentionPanel';
 import { ExpiringDocsPanel } from './components/ExpiringDocsPanel';
+import { PendingCompaniesPanel } from './components/PendingCompaniesPanel';
 
 /**
  * Orquestrador principal do Admin Dashboard.
@@ -27,6 +28,7 @@ export function DashboardOrchestrator() {
 
     // --- ESTADOS DE DADOS (KPIs) ---
     const [totalCompanies, setTotalCompanies] = useState(0);
+    const [pendingCompanies, setPendingCompanies] = useState<Company[]>([]);
     const [expiringDocs, setExpiringDocs] = useState<DocumentDTO[]>([]);
     const [irregularDocs, setIrregularDocs] = useState<DocumentDTO[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,6 +47,7 @@ export function DashboardOrchestrator() {
                 ]);
 
                 setTotalCompanies(companiesData.length);
+                setPendingCompanies(companiesData.filter(c => !c.is_admin_verified));
                 setExpiringDocs(expiringData);
                 setIrregularDocs(irregularData);
             } catch (error) {
@@ -102,13 +105,14 @@ export function DashboardOrchestrator() {
 
             {/* Grid de KPIs (Health Check) */}
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Skeleton className="h-28 w-full rounded-xl" />
                     <Skeleton className="h-28 w-full rounded-xl" />
                     <Skeleton className="h-28 w-full rounded-xl" />
                     <Skeleton className="h-28 w-full rounded-xl" />
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <StatsCard
                         title="Empresas na Base"
                         value={totalCompanies}
@@ -117,17 +121,24 @@ export function DashboardOrchestrator() {
                         color="blue"
                     />
                     <StatsCard
+                        title="Novos Cadastros"
+                        value={pendingCompanies.length}
+                        icon={UserPlus}
+                        description="Aguardando validação"
+                        color={pendingCompanies.length > 0 ? "indigo" : "green"}
+                    />
+                    <StatsCard
                         title="A Vencer (30 dias)"
                         value={expiringDocs.length}
                         icon={Clock}
-                        description="Documentos que exigem renovação"
+                        description="Exigem renovação"
                         color={expiringDocs.length > 0 ? "amber" : "green"}
                     />
                     <StatsCard
-                        title="Irregularidades / Erros"
+                        title="Irregularidades"
                         value={irregularDocs.length}
                         icon={AlertTriangle}
-                        description="Pendências bloqueantes ativas"
+                        description="Pendências ativas"
                         color={irregularDocs.length > 0 ? "red" : "green"}
                     />
                 </div>
@@ -135,6 +146,11 @@ export function DashboardOrchestrator() {
 
             {/* Painéis Visuais Isolados */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <PendingCompaniesPanel
+                    loading={loading}
+                    companies={pendingCompanies}
+                />
+
                 <UrgentAttentionPanel
                     loading={loading}
                     groupedIrregular={groupedIrregular}

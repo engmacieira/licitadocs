@@ -19,9 +19,6 @@ vi.mock('../../services/documentService', () => ({
     }
 }));
 
-// Mock do useNavigate
-
-
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
     const actual = await importOriginal<any>();
@@ -34,9 +31,12 @@ vi.mock('react-router-dom', async (importOriginal) => {
 });
 
 describe('DashboardOrchestrator', () => {
+    // [US-2901] Atualizado o mock para refletir a flag de verificação e a Razão Social real
     const mockCompanies = [
-        { id: 'c1', name: 'Empresa 1' },
-        { id: 'c2', name: 'Empresa 2' }
+        { id: 'c1', razao_social: 'Empresa 1', cnpj: '11.111.111/0001-11', is_admin_verified: true },
+        { id: 'c2', razao_social: 'Empresa 2', cnpj: '22.222.222/0001-22', is_admin_verified: true },
+        { id: 'c3', razao_social: 'Empresa 3', cnpj: '33.333.333/0001-33', is_admin_verified: false },
+        { id: 'c4', razao_social: 'Empresa 4', cnpj: '44.444.444/0001-44', is_admin_verified: false }
     ];
 
     const mockExpiring = [
@@ -64,10 +64,7 @@ describe('DashboardOrchestrator', () => {
 
     it('deve exibir o estado de loading inicialmente', () => {
         renderComponent();
-        
-        // Verifica se os skeletons dos StatsCard aparecem (3 skeletons de 28px altura no orquestrador direto)
-        // Mais fácil buscar pelas classes de esqueleto ou apenas ver se os valores finais ainda não estão lá
-        expect(screen.queryByText('2')).not.toBeInTheDocument(); // Total de empresas
+        expect(screen.queryByText('4')).not.toBeInTheDocument(); // Total de empresas
     });
 
     it('deve carregar e exibir os dados do dashboard com sucesso', async () => {
@@ -79,34 +76,33 @@ describe('DashboardOrchestrator', () => {
             expect(documentService.getIrregular).toHaveBeenCalledTimes(1);
         });
 
-        // KPIs
+        // KPIs - Agora com números únicos para não dar conflito!
         expect(screen.getByText('Empresas na Base')).toBeInTheDocument();
-        expect(screen.getByText('2')).toBeInTheDocument(); // mockCompanies.length
+        expect(screen.getByText('4')).toBeInTheDocument(); // Total
+
+        expect(screen.getByText('Novos Cadastros')).toBeInTheDocument();
+        expect(screen.getByText('2')).toBeInTheDocument(); // Apenas as is_admin_verified === false
 
         expect(screen.getByText('A Vencer (30 dias)')).toBeInTheDocument();
-        expect(screen.getByText('1')).toBeInTheDocument(); // mockExpiring.length
+        expect(screen.getByText('1')).toBeInTheDocument(); // Expirando
 
-        expect(screen.getByText('Irregularidades / Erros')).toBeInTheDocument();
-        expect(screen.getByText('3')).toBeInTheDocument(); // mockIrregular.length
+        expect(screen.getByText('Irregularidades')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument(); // Irregulares
     });
 
     it('deve processar o agrupamento de documentos irregulares corretamente (Top 5)', async () => {
         renderComponent();
 
         await waitFor(() => {
-            // Empresa 1 tem 2 docs (1 erro, 1 irregular) -> Deve aparecer como "Erro na Emissão" (maior gravidade)
-            // Usamos getAllByText e verificamos se pelo menos um está no painel correto ou apenas validamos a existência
             const name1 = screen.getAllByText('Empresa 1');
             expect(name1.length).toBeGreaterThanOrEqual(1);
-            
+
             expect(screen.getByText('2 pendências')).toBeInTheDocument();
-            
-            // A lógica do orquestrador define o tipo da empresa pelo doc.status mais grave (error > irregular)
             expect(screen.getAllByText('Erro na Emissão').length).toBeGreaterThanOrEqual(1);
 
             const name2 = screen.getAllByText('Empresa 2');
             expect(name2.length).toBeGreaterThanOrEqual(1);
-            
+
             expect(screen.getByText('1 pendência')).toBeInTheDocument();
             expect(screen.getByText('Irregular')).toBeInTheDocument();
         });
@@ -125,7 +121,7 @@ describe('DashboardOrchestrator', () => {
     });
 
     it('deve lidar com erro na API graciosamente', async () => {
-        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
         (companyService.getAll as any).mockRejectedValue(new Error('API Failure'));
 
         renderComponent();
@@ -141,6 +137,5 @@ describe('DashboardOrchestrator', () => {
 
 // Helper para verificar se o loading acabou
 function loadingStateFinished() {
-    // Quando o loading acaba, o título "Visão Operacional" aparece e os skeletons somem
     return screen.queryByText('Visão Operacional') !== null && document.querySelectorAll('.animate-pulse').length === 0;
 }

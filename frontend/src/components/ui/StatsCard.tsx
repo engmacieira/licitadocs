@@ -17,7 +17,7 @@ export interface StatsCardProps {
     /** Indicador visual de tendência (seta para cima/baixo). */
     trend?: 'up' | 'down' | 'neutral';
     /** Tema de cor do card. Afeta o fundo do ícone e seu contorno. */
-    color?: 'blue' | 'green' | 'red' | 'purple' | 'amber';
+    color?: 'blue' | 'green' | 'red' | 'purple' | 'amber' | 'indigo';
     /** Se true, exibe a versão de carregamento (Skeleton) do card. */
     loading?: boolean;
 }
@@ -42,6 +42,7 @@ export function StatsCard({
         red: { bg: 'bg-red-50', text: 'text-red-600' },
         purple: { bg: 'bg-purple-50', text: 'text-purple-600' },
         amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
+        indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600' },
     };
 
     const theme = themes[color] || themes.blue;
