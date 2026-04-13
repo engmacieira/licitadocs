@@ -9,7 +9,7 @@
 ## 🎯 Backlog da Sprint (User Stories)
 
 ### 📦 1. Experiência Administrativa (Painel Global)
-* **[ ] [US-2901] Triagem de Novas Empresas:** Criar componente na `/admin/dashboard` para listar empresas recém-cadastradas aguardando a flag `is_admin_verified`.
+* **[x] [US-2901] Triagem de Novas Empresas:** Criar componente na `/admin/dashboard` para listar empresas recém-cadastradas aguardando a flag `is_admin_verified`.
 * **[ ] [US-2902] Filtro de Upload Avançado:** No ecrã `/admin/upload`, substituir o select de empresas por um Autocomplete com busca por Razão Social ou CNPJ.
 * **[ ] [US-2903] Inbox de Alta Volumetria:** Implementar filtros avançados na `/admin/inbox` (Filtrar por empresa específica, status pendente e tipo de mensagem).
 
