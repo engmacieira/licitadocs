@@ -105,6 +105,29 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
+      # --- PASSO 1: AGENDA O REBOOT ---
+      - name: 🧹 Agendar Limpeza de Memória (Reboot)
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Agendando reinicialização para liberar RAM..."
+            # Agenda o reboot para daqui a 1 minuto exato
+            sudo shutdown -r +1 "Limpando memoria para o Deploy"
+            # Sai graciosamente para o GitHub não dar erro de conexão
+            exit 0
+
+      # --- PASSO 2: O RELÓGIO (A contagem que você pediu) ---
+      - name: ⏱️ Aguardar o Servidor Reiniciar
+        # Roda na máquina do GitHub, apenas esperando o tempo passar
+        run: |
+          echo "Aguardando 5 minutos (1 min para a AWS desligar, 4 min para ligar)..."
+          sleep 300 
+          echo "Servidor deve estar pronto!"
+
+      # --- PASSO 3: O DEPLOY REAL ---
       - name: Executando Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
