@@ -1,4 +1,5 @@
-import { MessageSquare, Megaphone, Building2, CheckCircle2, Clock, User } from 'lucide-react';
+import { Search, Building2, MessageSquare, Megaphone, CheckCircle2, Clock, User } from 'lucide-react';
+import { CompanyAutocomplete } from '../../DocumentVault/components/CompanyAutocomplete';
 import type { InboxTab } from '../InboxOrchestrator';
 
 /**
@@ -15,6 +16,17 @@ interface InboxSidebarProps {
     setSelectedTicketId: (id: string | null) => void;
     selectedAlertId: string | null;
     setSelectedAlertId: (id: string | null) => void;
+    filters: {
+        searchTerm: string;
+        setSearchTerm: (v: string) => void;
+        statusFilter: 'all' | 'open' | 'resolved';
+        setStatusFilter: (v: 'all' | 'open' | 'resolved') => void;
+        selectedCompanyId: string;
+        setSelectedCompanyId: (v: string) => void;
+        sortOrder: 'recent' | 'oldest';
+        setSortOrder: (v: 'recent' | 'oldest') => void;
+        companies: any[];
+    }
 }
 
 /**
@@ -24,7 +36,7 @@ interface InboxSidebarProps {
  */
 export function InboxSidebar({
     activeTab, setActiveTab, isLoading, parentTickets, alerts,
-    selectedTicketId, setSelectedTicketId, selectedAlertId, setSelectedAlertId
+    selectedTicketId, setSelectedTicketId, selectedAlertId, setSelectedAlertId, filters
 }: InboxSidebarProps) {
     return (
         <div className="w-full md:w-1/3 bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
@@ -47,71 +59,116 @@ export function InboxSidebar({
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
+            {/* BARRA DE FILTROS AVANÇADOS */}
+            {activeTab === 'tickets' && (
+                <div className="p-3 border-b border-slate-100 bg-white space-y-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar no assunto ou empresa..."
+                            value={filters.searchTerm}
+                            onChange={(e) => filters.setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-purple-500/20 outline-none"
+                        />
+                    </div>
+
+                    <div className="flex gap-2">
+                        <select
+                            value={filters.statusFilter}
+                            onChange={(e) => filters.setStatusFilter(e.target.value as any)}
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-[11px] font-medium text-slate-600 outline-none"
+                        >
+                            <option value="all">Todos Status</option>
+                            <option value="open">Abertos</option>
+                            <option value="resolved">Resolvidos</option>
+                        </select>
+
+                        <select
+                            value={filters.sortOrder}
+                            onChange={(e) => filters.setSortOrder(e.target.value as any)}
+                            className="bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-[11px] font-medium text-slate-600 outline-none"
+                        >
+                            <option value="recent">Mais Recentes</option>
+                            <option value="oldest">Mais Antigos</option>
+                        </select>
+                    </div>
+
+                    <CompanyAutocomplete
+                        companies={filters.companies}
+                        value={filters.selectedCompanyId}
+                        onChange={filters.setSelectedCompanyId}
+                    />
+                </div>
+            )}
+
+            {/* LISTAGEM (Manteve a lógica original, mas usando parentTickets filtrados) */}
+            <div className="flex-1 overflow-y-auto bg-white">
                 {isLoading ? (
-                    <div className="p-4 text-center text-slate-400 text-sm">A carregar...</div>
-                ) : activeTab === 'tickets' ? (
-                    // --- LISTA DE TICKETS ---
-                    parentTickets.length === 0 ? (
-                        <div className="p-8 text-center text-slate-400 text-sm">Nenhum ticket aberto.</div>
-                    ) : (
-                        parentTickets.map(ticket => (
-                            <button
-                                key={ticket.id}
-                                onClick={() => setSelectedTicketId(ticket.id)}
-                                className={`w-full text-left p-4 hover:bg-slate-50 transition-colors flex flex-col gap-2 ${selectedTicketId === ticket.id ? 'bg-purple-50/50 border-l-4 border-purple-500' : 'border-l-4 border-transparent'}`}
-                            >
-                                <div className="flex justify-between items-start">
-                                    <h3 className="font-semibold text-slate-900 text-sm truncate pr-2">{ticket.subject || 'Sem Assunto'}</h3>
-                                    <span className="text-[10px] text-slate-400 shrink-0">{new Date(ticket.created_at).toLocaleDateString('pt-BR')}</span>
-                                </div>
-                                <div className="text-[11px] font-medium text-purple-600 truncate flex items-center gap-1 mt-0.5 mb-1.5">
-                                    <Building2 className="h-3 w-3" /> {ticket.company_name}
-                                </div>
-                                <p className="text-xs text-slate-500 line-clamp-1">{ticket.content}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ticket.is_resolved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                        {ticket.is_resolved ? 'Resolvido' : 'Aberto'}
-                                    </span>
-                                </div>
-                            </button>
-                        ))
-                    )
+                    <div className="p-8 text-center text-slate-400 italic">Carregando...</div>
                 ) : (
-                    // --- LISTA DE AVISOS EMITIDOS ---
-                    <div className="divide-y divide-slate-100">
-                        {alerts.length === 0 ? (
-                            <div className="p-6 text-center text-slate-400 text-sm">Nenhum aviso disparado.</div>
+                    activeTab === 'tickets' ? (
+                        parentTickets.length === 0 ? (
+                            <div className="p-8 text-center text-slate-400 text-sm">Nenhum ticket encontrado com estes filtros.</div>
                         ) : (
-                            alerts.map(alert => (
+                            parentTickets.map(ticket => (
                                 <button
-                                    key={alert.id}
-                                    onClick={() => setSelectedAlertId(alert.id)}
-                                    className={`w-full text-left p-4 transition-colors flex flex-col gap-1.5 ${selectedAlertId === alert.id ? 'bg-purple-50/50 border-l-4 border-purple-500' : 'bg-white hover:bg-slate-50 border-l-4 border-transparent'}`}
+                                    key={ticket.id}
+                                    onClick={() => setSelectedTicketId(ticket.id)}
+                                    className={`w-full p-4 text-left border-b border-slate-50 transition-colors ${selectedTicketId === ticket.id ? 'bg-purple-50 border-l-4 border-l-purple-600' : 'hover:bg-slate-50'}`}
                                 >
-                                    <div className="flex justify-between items-start w-full">
-                                        <h4 className="text-sm font-bold text-slate-800 truncate pr-2">{alert.subject}</h4>
-                                        {alert.is_read ? (
-                                            <span title="Lido pelo cliente" className="flex shrink-0">
-                                                <CheckCircle2 className="h-4 w-4 text-green-500" />
-                                            </span>
-                                        ) : (
-                                            <span title="Ainda não lido" className="flex shrink-0">
-                                                <Clock className="h-4 w-4 text-slate-300" />
-                                            </span>
-                                        )}
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-semibold text-slate-900 text-sm truncate pr-2">{ticket.subject || 'Sem Assunto'}</h3>
+                                        <span className="text-[10px] text-slate-400 shrink-0">{new Date(ticket.created_at).toLocaleDateString('pt-BR')}</span>
                                     </div>
-                                    <div className="text-[11px] font-medium text-purple-600 truncate flex items-center gap-1 mb-1">
-                                        <Building2 className="h-3 w-3" /> {alert.company_name}
+                                    <div className="text-[11px] font-medium text-purple-600 truncate flex items-center gap-1 mt-0.5 mb-1.5">
+                                        <Building2 className="h-3 w-3" /> {ticket.company_name}
                                     </div>
-                                    <p className="text-xs text-slate-600 line-clamp-2">{alert.content}</p>
-                                    <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                                        <User className="h-3 w-3" /> Disparado por {alert.sender_name} em {new Date(alert.created_at).toLocaleDateString('pt-BR')}
+                                    <p className="text-xs text-slate-500 line-clamp-1">{ticket.content}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ticket.is_resolved ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                            {ticket.is_resolved ? 'Resolvido' : 'Aberto'}
+                                        </span>
                                     </div>
                                 </button>
                             ))
-                        )}
-                    </div>
+                        )
+                    ) : (
+                        // --- LISTA DE AVISOS EMITIDOS ---
+                        <div className="divide-y divide-slate-100">
+                            {alerts.length === 0 ? (
+                                <div className="p-6 text-center text-slate-400 text-sm">Nenhum aviso disparado.</div>
+                            ) : (
+                                alerts.map(alert => (
+                                    <button
+                                        key={alert.id}
+                                        onClick={() => setSelectedAlertId(alert.id)}
+                                        className={`w-full text-left p-4 transition-colors flex flex-col gap-1.5 ${selectedAlertId === alert.id ? 'bg-purple-50/50 border-l-4 border-purple-500' : 'bg-white hover:bg-slate-50 border-l-4 border-transparent'}`}
+                                    >
+                                        <div className="flex justify-between items-start w-full">
+                                            <h4 className="text-sm font-bold text-slate-800 truncate pr-2">{alert.subject}</h4>
+                                            {alert.is_read ? (
+                                                <span title="Lido pelo cliente" className="flex shrink-0">
+                                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                                </span>
+                                            ) : (
+                                                <span title="Ainda não lido" className="flex shrink-0">
+                                                    <Clock className="h-4 w-4 text-slate-300" />
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-[11px] font-medium text-purple-600 truncate flex items-center gap-1 mb-1">
+                                            <Building2 className="h-3 w-3" /> {alert.company_name}
+                                        </div>
+                                        <p className="text-xs text-slate-600 line-clamp-2">{alert.content}</p>
+                                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                            <User className="h-3 w-3" /> Disparado por {alert.sender_name} em {new Date(alert.created_at).toLocaleDateString('pt-BR')}
+                                        </div>
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    )
                 )}
             </div>
         </div>

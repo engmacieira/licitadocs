@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import api from '../../services/api';
 import { useUnreadCount } from '../../hooks/useUnreadCount';
+
+import { companyService, type Company } from '../../services/companyService';
 
 // Subcomponentes da Feature
 import { InboxSidebar } from './components/InboxSidebar';
@@ -21,6 +23,7 @@ export type InboxTab = 'tickets' | 'alerts';
 export function InboxOrchestrator() {
     // --- ESTADOS DE NAVEGAÇÃO ---
     const [activeTab, setActiveTab] = useState<InboxTab>('tickets');
+    const [companies, setCompanies] = useState<Company[]>([]);
 
     // --- ESTADOS DE TICKETS (CHAT) ---
     const [messages, setMessages] = useState<any[]>([]);
@@ -36,6 +39,12 @@ export function InboxOrchestrator() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // --- ESTADOS DE FILTRO ---
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'resolved'>('all');
+    const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+    const [sortOrder, setSortOrder] = useState<'recent' | 'oldest'>('recent');
+
     // --- CONTAGEM GLOBAL ---
     const { fetchUnreadCount } = useUnreadCount();
 
@@ -43,6 +52,7 @@ export function InboxOrchestrator() {
     useEffect(() => {
         loadTickets();
         loadAlerts();
+        companyService.getAll().then(setCompanies).catch(console.error);
     }, []);
 
     // --- MARCAR TICKET COMO LIDO AO ABRIR ---
@@ -77,6 +87,42 @@ export function InboxOrchestrator() {
             toast.error("Erro ao carregar o histórico de avisos.");
         }
     };
+
+    /**
+     * Lógica de Filtragem e Ordenação de Tickets [US-2903]
+     */
+    const filteredTickets = useMemo(() => {
+        let result = messages.filter(m => m.is_parent);
+
+        // 1. Filtro por Empresa
+        if (selectedCompanyId) {
+            result = result.filter(t => t.company_id === selectedCompanyId);
+        }
+
+        // 2. Filtro por Status
+        if (statusFilter !== 'all') {
+            const isResolvedTarget = statusFilter === 'resolved';
+            result = result.filter(t => !!t.is_resolved === isResolvedTarget);
+        }
+
+        // 3. Busca Textual (Assunto ou Nome da Empresa)
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            result = result.filter(t =>
+                t.subject?.toLowerCase().includes(term) ||
+                t.company_name?.toLowerCase().includes(term)
+            );
+        }
+
+        // 4. Ordenação
+        result.sort((a, b) => {
+            const dateA = new Date(a.created_at).getTime();
+            const dateB = new Date(b.created_at).getTime();
+            return sortOrder === 'recent' ? dateB - dateA : dateA - dateB;
+        });
+
+        return result;
+    }, [messages, searchTerm, statusFilter, selectedCompanyId, sortOrder]);
 
     // --- DERIVAÇÕES E FILTROS DE DADOS ---
     const parentTickets = messages.filter(m => m.parent_id === null);
@@ -132,12 +178,19 @@ export function InboxOrchestrator() {
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
                 isLoading={isLoading}
-                parentTickets={parentTickets}
+                parentTickets={filteredTickets}
                 alerts={alerts}
                 selectedTicketId={selectedTicketId}
                 setSelectedTicketId={setSelectedTicketId}
                 selectedAlertId={selectedAlertId}
                 setSelectedAlertId={setSelectedAlertId}
+                filters={{
+                    searchTerm, setSearchTerm,
+                    statusFilter, setStatusFilter,
+                    selectedCompanyId, setSelectedCompanyId,
+                    sortOrder, setSortOrder,
+                    companies
+                }}
             />
 
             {/* COLUNA DIREITA: VISUALIZAÇÃO E AÇÕES */}
