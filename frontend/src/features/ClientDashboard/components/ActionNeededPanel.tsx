@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { AlertOctagon, CheckCircle, XOctagon, AlertTriangle, ArrowRight } from 'lucide-react';
+import { AlertOctagon, CheckCircle, XOctagon, AlertTriangle, ArrowRight, User, Shield } from 'lucide-react';
 import type { DocumentDTO } from '../../../services/documentService';
 
 /**
@@ -52,9 +52,22 @@ export function ActionNeededPanel({ attentionDocs }: ActionNeededPanelProps) {
                                             {isError ? <XOctagon size={20} /> : <AlertTriangle size={20} />}
                                         </div>
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-slate-900 text-sm truncate" title={doc.title || doc.filename}>
-                                                {doc.title || doc.filename}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-semibold text-slate-900 text-sm truncate" title={doc.title || doc.filename}>
+                                                    {doc.title || doc.filename}
+                                                </p>
+                                                {/* Início: Distinção de Origem [US-2904] */}
+                                                {doc.is_client_upload ? (
+                                                    <span className="flex items-center gap-1 bg-blue-50 text-blue-700 text-[9px] px-1.5 py-0.5 rounded border border-blue-200 font-bold uppercase tracking-tight shrink-0">
+                                                        <User size={10} /> Seu Envio
+                                                    </span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1 bg-slate-100 text-slate-600 text-[9px] px-1.5 py-0.5 rounded border border-slate-200 font-bold uppercase tracking-tight shrink-0">
+                                                        <Shield size={10} /> Oficial
+                                                    </span>
+                                                )}
+                                                {/* Fim: Distinção de Origem */}
+                                            </div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isError ? 'bg-red-100 text-red-700' : isIrregular ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
                                                     {isError ? 'Erro na Emissão' : isIrregular ? 'Irregularidade' : 'Vencido'}
