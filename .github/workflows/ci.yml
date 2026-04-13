@@ -119,13 +119,34 @@ jobs:
             # Sai graciosamente para o GitHub não dar erro de conexão
             exit 0
 
-      # --- PASSO 2: O RELÓGIO (A contagem que você pediu) ---
+      # --- PASSO 2: O RELÓGIO INTELIGENTE ---
       - name: ⏱️ Aguardar o Servidor Reiniciar
-        # Roda na máquina do GitHub, apenas esperando o tempo passar
         run: |
-          echo "Aguardando 5 minutos (1 min para a AWS desligar, 4 min para ligar)..."
-          sleep 300 
-          echo "Servidor deve estar pronto!"
+          echo "Aguardando 80 segundos para o servidor iniciar o processo de desligamento..."
+          sleep 80 
+          
+          MAX_TENTATIVAS=10
+          TENTATIVA=1
+          ESPERA=60
+          
+          echo "Iniciando verificação de pulso na porta SSH (22)..."
+          
+          while [ $TENTATIVA -le $MAX_TENTATIVAS ]; do
+            echo "Tentativa $TENTATIVA de $MAX_TENTATIVAS..."
+            
+            # O Netcat (nc) tenta conectar na porta 22 por no máximo 5 segundos (-w 5)
+            if nc -w 5 -z ${{ secrets.EC2_HOST }} 22; then
+              echo "✅ PULSO DETECTADO! Servidor está online e aceitando conexões!"
+              exit 0
+            else
+              echo "⏳ Servidor ainda offline. Aguardando mais $ESPERA segundos..."
+              sleep $ESPERA
+              TENTATIVA=$((TENTATIVA+1))
+            fi
+          done
+          
+          echo "🚨 ERRO FATAL: Tempo limite esgotado. O servidor não voltou após 10 tentativas."
+          exit 1
 
       # --- PASSO 3: O DEPLOY REAL ---
       - name: Executando Deploy via SSH
