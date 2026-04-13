@@ -48,6 +48,7 @@ const TestWrapper = ({ onSaveDetails, selectedUf = 'SP', cities = mockCities }: 
             currentCompany={mockCompany}
             companyForm={companyForm}
             onSaveDetails={onSaveDetails}
+            onResendVerification={vi.fn()}
             ufs={mockUfs}
             cities={cities}
             selectedUf={selectedUf}
@@ -72,7 +73,7 @@ describe('DetailsTab', () => {
 
         expect(screen.getByText('Endereço')).toBeInTheDocument();
         expect(screen.getByDisplayValue('01001-000')).toBeInTheDocument();
-        
+
         const stateSelect = screen.getByText('Estado').parentElement?.querySelector('select');
         expect(stateSelect).toHaveValue('SP');
         expect(stateSelect).toContainElement(screen.getByText('RJ'));
@@ -92,7 +93,7 @@ describe('DetailsTab', () => {
         render(<TestWrapper onSaveDetails={vi.fn()} />);
 
         expect(screen.getByText('Situação Cadastral')).toBeInTheDocument();
-        
+
         // Dados da Empresa (true)
         expect(screen.getByText('Dados da Empresa')).toBeInTheDocument();
         expect(screen.getByText('Preenchidos')).toBeInTheDocument();
@@ -134,6 +135,7 @@ describe('DetailsTab', () => {
                 currentCompany={mockCompany}
                 companyForm={companyForm}
                 onSaveDetails={vi.fn()}
+                onResendVerification={vi.fn()}
                 ufs={mockUfs}
                 cities={mockCities}
                 selectedUf="SP"
