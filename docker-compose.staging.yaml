@@ -13,9 +13,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_REPOSITORY,,}-frontend:latest
     container_name: licitadocs_frontend
     ports:
       - "80:80"

@@ -93,15 +93,41 @@ jobs:
           npx vitest run --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   # ==========================================
+  # 🏗️ FASE DE CONSTRUÇÃO (CI - Build Pesado)
+  # ==========================================
+  build-frontend:
+    needs: [frontend-tests, backend-tests] 
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e Push da Imagem Docker (Frontend)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/licitadocs-frontend:latest
+
+  # ==========================================
   # 🚀 FASE DE DEPLOY (CD)
   # ==========================================
   deploy-staging:
     name: Deploy para AWS EC2
     runs-on: ubuntu-latest
-    # A MÁGICA AQUI: O deploy SÓ acontece se os dois jobs acima passarem!
-    needs: [backend-tests, frontend-tests] 
-    
-    # Regra de Segurança: Só faz deploy se o código estiver indo para a branch main ou master
+    needs: [build-frontend] 
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
 
     steps:
