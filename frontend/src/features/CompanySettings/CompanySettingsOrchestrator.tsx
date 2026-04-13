@@ -45,7 +45,7 @@ export function CompanySettingsOrchestrator() {
 
     // --- ESTADOS DE NAVEGAÇÃO E UI ---
     const [activeTab, setActiveTab] = useState<SettingsTab>('details');
-    const [statusFlags, setStatusFlags] = useState({ data: false, contract: false, payment: false, approval: false });
+    const [statusFlags, setStatusFlags] = useState({ data: false, contract: false, payment: false, approval: false, data_email_verified: false });
 
     // --- ESTADOS DE DADOS (EQUIPA E DOCUMENTOS) ---
     const [team, setTeam] = useState<MemberResponse[]>([]);
@@ -89,7 +89,8 @@ export function CompanySettingsOrchestrator() {
                     data: freshCompany.is_data_completed || false,
                     contract: freshCompany.is_contract_signed || false,
                     payment: freshCompany.is_payment_active || false,
-                    approval: freshCompany.is_admin_verified || false
+                    approval: freshCompany.is_admin_verified || false,
+                    data_email_verified: freshCompany.is_email_verified || (user as any)?.is_email_verified || false
                 });
 
                 companyForm.reset({
@@ -247,6 +248,29 @@ export function CompanySettingsOrchestrator() {
         }
     };
 
+    const handleResendVerification = async () => {
+        const email = companyForm.getValues('email_corporativo');
+
+        if (!email) {
+            toast.error("Por favor, preencha o e-mail corporativo primeiro.");
+            return;
+        }
+
+        const toastId = toast.loading("Enviando link de verificação...");
+
+        try {
+            // Atenção: Ajuste a rota '/auth/resend-verification' para bater certinho com seu Backend (FastAPI/Node)
+            await api.post('/auth/resend-verification', { email });
+
+            toast.success("Link enviado com sucesso!", {
+                id: toastId,
+                description: "Verifique sua caixa de entrada e pasta de spam."
+            });
+        } catch (error: any) {
+            toast.error(error.response?.data?.detail || "Erro ao reenviar e-mail. Tente novamente.", { id: toastId });
+        }
+    };
+
     const isRegular = statusFlags.data && statusFlags.contract && statusFlags.payment && statusFlags.approval;
 
     if (!currentCompany) return <Skeleton className="h-64 w-full" />;
@@ -281,6 +305,7 @@ export function CompanySettingsOrchestrator() {
                     currentCompany={currentCompany}
                     companyForm={companyForm}
                     onSaveDetails={onSaveDetails}
+                    onResendVerification={handleResendVerification}
                     ufs={ufs}
                     cities={cities}
                     selectedUf={selectedUf}

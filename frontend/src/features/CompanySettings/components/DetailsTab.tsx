@@ -1,4 +1,4 @@
-import { Building2, ShieldCheck, CheckCircle2, XCircle, Save, FileText } from 'lucide-react';
+import { Building2, ShieldCheck, CheckCircle2, XCircle, Save, FileText, Mail, AlertTriangle } from 'lucide-react';
 import type { UseFormReturn } from 'react-hook-form';
 
 import { Button } from '../../../components/ui/Button';
@@ -13,10 +13,17 @@ interface DetailsTabProps {
     currentCompany: any;
     companyForm: UseFormReturn<CompanyFormSchema>;
     onSaveDetails: (data: CompanyFormSchema) => void;
+    onResendVerification: () => void;
     ufs: { sigla: string; nome: string }[];
     cities: { nome: string }[];
     selectedUf: string;
-    statusFlags: { data: boolean; contract: boolean; payment: boolean; approval: boolean };
+    statusFlags: {
+        data: boolean;
+        contract: boolean;
+        payment: boolean;
+        approval: boolean;
+        data_email_verified?: boolean;
+    };
 }
 
 /**
@@ -24,7 +31,7 @@ interface DetailsTabProps {
  * com integração aos selects de Estado e Município do IBGE.
  * Inclui o painel lateral com o progresso do Onboarding.
  */
-export function DetailsTab({ currentCompany, companyForm, onSaveDetails, ufs, cities, selectedUf, statusFlags }: DetailsTabProps) {
+export function DetailsTab({ currentCompany, companyForm, onSaveDetails, onResendVerification, ufs, cities, selectedUf, statusFlags }: DetailsTabProps) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Formulário Principal */}
@@ -40,8 +47,34 @@ export function DetailsTab({ currentCompany, companyForm, onSaveDetails, ufs, ci
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input id="nome_fantasia" label="Nome Fantasia" {...companyForm.register("nome_fantasia")} />
-                            <Input label="E-mail Corporativo" type="email" {...companyForm.register("email_corporativo")} />
+
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-end mb-1.5">
+                                    <label className="text-sm font-medium text-slate-700">E-mail Corporativo</label>
+                                    {statusFlags.data_email_verified ? (
+                                        <span className="text-[10px] font-bold text-green-600 flex items-center gap-1 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">
+                                            <CheckCircle2 size={12} /> VERIFICADO
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-amber-600 flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                                            <AlertTriangle size={12} /> PENDENTE
+                                        </span>
+                                    )}
+                                </div>
+                                <Input type="email" {...companyForm.register("email_corporativo")} />
+
+                                {!statusFlags.data_email_verified && (
+                                    <button
+                                        type="button"
+                                        onClick={onResendVerification}
+                                        className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-medium mt-1 flex items-center gap-1"
+                                    >
+                                        <Mail size={12} /> Reenviar link de validação
+                                    </button>
+                                )}
+                            </div>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input label="Responsável Legal" {...companyForm.register("responsavel_nome")} />
                             <Input label="Telefone / WhatsApp" {...companyForm.register("telefone")} />
