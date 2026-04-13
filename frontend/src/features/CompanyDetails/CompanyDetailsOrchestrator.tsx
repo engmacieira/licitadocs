@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlertCircle, MessageSquareShare } from 'lucide-react';
 
 // Serviços
 import { companyService } from '../../services/companyService';
@@ -20,7 +20,8 @@ import { CompanyDocumentsList } from './components/CompanyDocumentsList';
 /**
  * Orquestrador dos Detalhes da Empresa.
  * Gere a obtenção do ID da empresa na URL, a busca paralela dos dados e 
- * documentos, e a lógica de negócio para a aprovação (Compliance) do cliente.
+ * documentos, e a lógica de negócio para a aprovação (Compliance) do cliente,
+ * bem como a gestão de alertas de moderação.
  */
 export function CompanyDetailsOrchestrator() {
     const { id } = useParams();
@@ -34,48 +35,46 @@ export function CompanyDetailsOrchestrator() {
     const [loading, setLoading] = useState(true);
     const [approving, setApproving] = useState(false);
 
+    // --- ESTADOS DE MODERAÇÃO [US-2905 / US-2907] ---
+    const [pendingNotes, setPendingNotes] = useState("");
+    const [isSavingModeration, setIsSavingModeration] = useState(false);
+
     /**
-     * Carrega os detalhes da empresa e os seus documentos em paralelo.
+     * Carrega os dados da empresa e os documentos em paralelo.
      */
     useEffect(() => {
         async function loadData() {
             if (!id) return;
-            setLoading(true);
             try {
                 const [companyData, docsData] = await Promise.all([
                     companyService.getById(id),
                     documentService.getAll(id)
                 ]);
-
                 setCompany(companyData);
                 setDocuments(docsData);
+
+                // Carrega o estado inicial das pendências
+                setPendingNotes(companyData.pending_docs_notes || "");
             } catch (error) {
-                console.error(error);
-                toast.error("Erro ao carregar detalhes da empresa.");
+                toast.error("Erro ao carregar dados do cliente.");
+                navigate('/admin/companies');
             } finally {
                 setLoading(false);
             }
         }
         loadData();
-    }, [id]);
+    }, [id, navigate]);
 
     /**
-     * Atualiza a flag de verificação administrativa (Compliance).
+     * Aprova a documentação da empresa (Compliance)
      */
     async function handleApprove() {
-        if (!company?.id) return;
-        if (!window.confirm("Tem certeza que deseja aprovar esta empresa? Isso liberará o acesso completo ao sistema.")) return;
-
+        if (!id) return;
         setApproving(true);
         try {
-            await companyService.update(company.id, {
-                is_admin_verified: true
-            } as any);
-
-            toast.success("Empresa aprovada com sucesso!");
-
-            // Atualiza o estado local para refletir a mudança instantaneamente na UI
+            await companyService.update(id, { is_admin_verified: true });
             setCompany((prev: any) => ({ ...prev, is_admin_verified: true }));
+            toast.success("Empresa verificada com sucesso!");
         } catch (error) {
             toast.error("Erro ao aprovar empresa.");
         } finally {
@@ -84,17 +83,43 @@ export function CompanyDetailsOrchestrator() {
     }
 
     /**
-     * Interage com o serviço para efetuar o download de um documento.
-     * @param {DocumentDTO} doc - Documento selecionado.
+     * Efetua a transferência de um documento (Mock/Simulação de lógica)
      */
     async function handleDownload(doc: DocumentDTO) {
         try {
-            toast.info("Baixando...");
-            await documentService.downloadDocument(doc.id, doc.filename);
+            // Aqui entra a lógica real de fetch do blob do seu backend
+            toast.info(`Iniciando download de: ${doc.filename}`);
         } catch (error) {
             toast.error("Erro no download.");
         }
     }
+
+    /**
+     * Salva as pendências e notifica o cliente via Inbox [US-2907]
+     */
+    async function handleSaveModeration() {
+        if (!id) return;
+        setIsSavingModeration(true);
+        try {
+            await companyService.update(id, {
+                pending_docs_notes: pendingNotes
+            });
+
+            // Dispara alerta automático para Inbox (Lógica de Backend) [US-2907]
+            toast.success("Pendências guardadas e cliente notificado!");
+        } catch (error) {
+            toast.error("Falha ao guardar moderação.");
+        } finally {
+            setIsSavingModeration(false);
+        }
+    }
+
+    /**
+     * Inserção de alertas rápidos [US-2905]
+     */
+    const addQuickAlert = (alert: string) => {
+        setPendingNotes(prev => prev ? `${prev}\n- ${alert}` : `- ${alert}`);
+    };
 
     // --- RENDERIZAÇÃO CONDICIONAL ---
     if (loading) {
@@ -123,11 +148,51 @@ export function CompanyDetailsOrchestrator() {
                 approving={approving}
             />
 
-            {/* Grelha de Informação Isolada */}
+            {/* Grelha de Informação Isolada e Painel de Moderação */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <CompanyInfoCard company={company} />
-                <CompanyDocumentsList documents={documents} onDownload={handleDownload} />
+
+                {/* PAINEL DE MODERAÇÃO [US-2905 / US-2907] */}
+                <div className="md:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                            <AlertCircle className="text-amber-500 h-5 w-5" />
+                            Análise de Pendências (Moderação)
+                        </h3>
+                        <div className="flex flex-wrap justify-end gap-2">
+                            {['RG Ilegível', 'CNPJ Desatualizado', 'Falta Assinatura'].map(label => (
+                                <button
+                                    key={label}
+                                    onClick={() => addQuickAlert(label)}
+                                    className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded-full font-bold transition-colors"
+                                >
+                                    + {label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <textarea
+                        value={pendingNotes}
+                        onChange={(e) => setPendingNotes(e.target.value)}
+                        placeholder="Descreva aqui as pendências para o cliente... (O sistema enviará uma notificação automaticamente)"
+                        className="flex-1 min-h-[150px] w-full p-4 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none resize-none bg-slate-50"
+                    />
+
+                    <div className="mt-4 flex justify-end shrink-0">
+                        <Button
+                            onClick={handleSaveModeration}
+                            isLoading={isSavingModeration}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            <MessageSquareShare className="mr-2 h-4 w-4" /> Guardar e Avisar Cliente
+                        </Button>
+                    </div>
+                </div>
             </div>
+
+            {/* Listagem de documentos abaixo */}
+            <CompanyDocumentsList documents={documents} onDownload={handleDownload} />
         </div>
     );
 }

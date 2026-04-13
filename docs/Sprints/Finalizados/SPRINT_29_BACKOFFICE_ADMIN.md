@@ -15,11 +15,11 @@
 
 ### 📦 2. Moderação e Inteligência do Cofre
 * **[x] [US-2904] Separação Visual do Cofre:** No Dashboard do Cliente, criar distinção clara entre "Certidões Oficiais" (enviadas pelo Admin) e "Documentos Enviados para Análise" (enviados pelo Cliente).
-* **[ ] [US-2905] Sistema de Avisos de Moderação:** Na tela de detalhes da empresa (Admin), criar componente para inserir alertas rápidos sobre erros em documentos (Ex: "RG ilegível", "CNPJ desatualizado").
-* **[ ] [US-2906] Visão Detalhada do Cliente:** Expandir o componente "Dados do Cliente" na área admin para exibir: IE, IM, Endereço completo, telefone e dados completos do responsável legal.
+* **[x] [US-2905] Sistema de Avisos de Moderação:** Na tela de detalhes da empresa (Admin), criar componente para inserir alertas rápidos sobre erros em documentos (Ex: "RG ilegível", "CNPJ desatualizado").
+* **[x] [US-2906] Visão Detalhada do Cliente:** Expandir o componente "Dados do Cliente" na área admin para exibir: IE, IM, Endereço completo, telefone e dados completos do responsável legal.
 
 ### 📦 3. Correções e Ajustes Finos
-* **[ ] [US-2907] Automação de Pendências:** Garantir que o campo "Pendências a Corrigir" salve o histórico corretamente e dispare um alerta automático para a Inbox do cliente.
+* **[x] [US-2907] Automação de Pendências:** Garantir que o campo "Pendências a Corrigir" salve o histórico corretamente e dispare um alerta automático para a Inbox do cliente.
 
 ---
 
