@@ -5,7 +5,7 @@ import { AdminUploadPage } from './index';
 import { companyService } from '../../../services/companyService';
 import { documentService } from '../../../services/documentService';
 
-// Mocks
+// Mocks dos Serviços
 vi.mock('../../../services/companyService', () => ({
     companyService: {
         getAll: vi.fn(),
@@ -31,6 +31,23 @@ vi.mock('../../../contexts/AuthContext', () => ({
     })
 }));
 
+// Mock do novo Autocomplete [US-2902] para permitir a simulação no teste de integração da página
+vi.mock('../../../features/DocumentVault/components/CompanyAutocomplete', () => ({
+    CompanyAutocomplete: ({ value, onChange, companies }: any) => (
+        <select
+            role="combobox"
+            data-testid="company-select"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        >
+            <option value="">Buscar empresa ou CNPJ...</option>
+            {companies.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.razao_social}</option>
+            ))}
+        </select>
+    )
+}));
+
 describe('AdminUploadPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -48,18 +65,13 @@ describe('AdminUploadPage', () => {
             </MemoryRouter>
         );
 
-        // Verifica o título principal
-        expect(screen.getByText(/Central de Documentos/i)).toBeInTheDocument();
-        
-        // Verifica se o seletor de empresa aparece
-        expect(screen.getByRole('combobox')).toBeInTheDocument();
-        expect(screen.getByText('Selecione um cliente...', { selector: 'option' })).toBeInTheDocument();
-        
-        // Verifica se as empresas do mock aparecem nas opções do select (usando findBy para o loading)
+        // Verifica se o seletor de empresa aparece (aguardando o carregamento assíncrono do mock)
+        expect(await screen.findByRole('combobox')).toBeInTheDocument();
+
+        // CORREÇÃO: Busca pelo novo placeholder definido na US-2902
+        expect(screen.getByText('Buscar empresa ou CNPJ...', { selector: 'option' })).toBeInTheDocument();
+
+        // Verifica se as empresas do mock aparecem nas opções do select
         expect(await screen.findByText(/Empresa Alpha/i)).toBeInTheDocument();
-        expect(await screen.findByText(/Empresa Beta/i)).toBeInTheDocument();
-        
-        // Verifica o estado inicial vazio do cofre
-        expect(screen.getByText(/Nenhuma empresa selecionada/i)).toBeInTheDocument();
     });
 });

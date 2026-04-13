@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AdminInboxPage } from './index';
 import api from '../../../services/api';
 
-// Mocks
+// Mocks dos Serviços
 vi.mock('../../../services/api', () => ({
     default: {
         get: vi.fn(),
@@ -22,6 +22,11 @@ vi.mock('../../../contexts/AuthContext', () => ({
     })
 }));
 
+// Mock do Autocomplete de Empresa [US-2903]
+vi.mock('../../../features/DocumentVault/components/CompanyAutocomplete', () => ({
+    CompanyAutocomplete: () => <div data-testid="company-autocomplete-mock" />
+}));
+
 describe('AdminInboxPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -36,6 +41,7 @@ describe('AdminInboxPage', () => {
                             company_id: 'c1',
                             company_name: 'Empresa Alpha',
                             parent_id: null,
+                            is_parent: true, // CORREÇÃO US-2903: Flag necessária para o filtro
                             created_at: new Date().toISOString()
                         },
                     ]
@@ -44,12 +50,16 @@ describe('AdminInboxPage', () => {
             if (url.includes('/messages/admin/alerts')) {
                 return Promise.resolve({
                     data: [
-                        { id: 'alert1', content: 'Aviso 1', title: 'Título 1', created_at: new Date().toISOString() },
+                        { id: 'alert1', content: 'Aviso 1', subject: 'Título 1', company_name: 'Empresa Alpha', created_at: new Date().toISOString() },
                     ]
                 });
             }
             if (url.includes('unread-count')) {
                 return Promise.resolve({ data: { unread_count: 0 } });
+            }
+            // Mock para a lista de empresas do filtro
+            if (url.includes('/companies')) {
+                return Promise.resolve({ data: [] });
             }
             return Promise.resolve({ data: [] });
         });
@@ -62,14 +72,14 @@ describe('AdminInboxPage', () => {
             </MemoryRouter>
         );
 
-        // Verifica as abas do sidebar (conforme InboxSidebar.tsx)
-        expect(await screen.findByText(/Tickets/i)).toBeInTheDocument();
-        expect(screen.getByText(/Avisos Emitidos/i)).toBeInTheDocument();
+        // Verifica as abas do sidebar (Texto atualizado na US-2903)
+        expect(await screen.findByText(/Suporte/i)).toBeInTheDocument();
+        expect(screen.getByText(/Avisos/i)).toBeInTheDocument();
 
-        // Verifica se o ticket do mock aparece (findBy para o loading)
+        // Verifica se o ticket do mock aparece (findBy para aguardar o loading da API)
         expect(await screen.findByText(/Ticket 1/i)).toBeInTheDocument();
 
-        // Verifica a área de conversa (padrão quando nada selecionado)
+        // Verifica a área de conversa (estado vazio inicial)
         expect(screen.getByText(/Selecione um ticket na lista ao lado/i)).toBeInTheDocument();
     });
 });
