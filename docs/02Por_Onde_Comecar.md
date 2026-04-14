@@ -4,19 +4,19 @@
 > Este arquivo é o seu Ponto de Restauração. Leia-o antes de iniciar qualquer nova funcionalidade.
 
 ## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Geração de Valor e Customização.
-* **Sprint Atual:** **Sprint 30: Personalização de Documentos (Fase 5 do Roadmap)**.
-* **Última Ação Realizada:** Finalização do planejamento da Sprint 29 (Backoffice). Agora o foco é a experiência de geração de documentos do cliente, tornando-a didática e personalizada.
-* **PRÓXIMO PASSO IMEDIATO:** Executar o Backlog da Sprint 30, focado em:
-  1. **Personalização:** Implementar upload de logo e injeção dinâmica de dados em modelos.
-  2. **Formatos:** Garantir exportação para `.doc` (editável) e `.pdf`.
-  3. **Didática:** Refatorar a página de modelos com conteúdos explicativos e alertas legais.
+* **Fase do Projeto:** Inteligência de Mercado e Crescimento.
+* **Sprint Atual:** **Sprint 31: Inteligência de Mercado e Leads (Fase 4 do Roadmap)**.
+* **Última Ação Realizada:** Finalização do planejamento da Sprint 30 (Personalização). O foco agora expande para a prospecção ativa de novos clientes utilizando dados oficiais do governo (PNCP).
+* **PRÓXIMO PASSO IMEDIATO:** Executar o Backlog da Sprint 31, focado em:
+  1. **Integração PNCP:** Capturar dados de empresas cadastradas e participantes de licitações.
+  2. **CRM de Leads:** Criar entidade `Lead` e interface administrativa para prospecção.
+  3. **Controle LGPD:** Implementar sistema de anti-spam e frequência de contatos.
 
 ## 🏗️ Definições Arquiteturais (Não Quebrar)
 * **Arquitetura:** MVC/Repository (Backend) e Orchestrator/Feature (Frontend).
-* **Processamento de Documentos:** Utilizar bibliotecas robustas para manipulação de templates (Ex: `python-docx` para DOCX e `ReportLab`/`WeasyPrint` para PDF).
-* **Storage:** Logos de empresa devem ser armazenadas de forma isolada e otimizada no S3/Storage.
+* **Entidades:** A tabela `leads` deve ser independente da tabela `companies` para gerenciar prospectos antes da conversão.
+* **Integração Externa:** O orquestrador de captura PNCP deve respeitar os limites de taxa (Rate Limit) da API oficial.
 
 ---
-**Atualizado em:** Março de 2024
+**Atualizado em:** 14/04/2026
 **Responsável:** Jules (Software Engineer)

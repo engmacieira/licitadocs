@@ -11,7 +11,7 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 
 ---
 
-## 🚀 Fase 1: Estabilidade e Experiência do Usuário (UX/Fixes)
+## [x] 🚀 Fase 1: Estabilidade e Experiência do Usuário (UX/Fixes)
 *Foco: Corrigir atritos críticos que prejudicam a conversão e retenção.*
 
 ### 🛠️ Estabilidade Técnica
@@ -40,7 +40,7 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 
 ---
 
-## 📩 Fase 2: Integrações e Comunicação
+## [-] 📩 Fase 2: Integrações e Comunicação
 *Foco: Conectar o sistema com o mundo externo e automatizar avisos.*
 
 ### 📧 Sistema de E-mail
@@ -59,7 +59,7 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 
 ---
 
-## 🏛️ Fase 3: Backoffice e Gestão Administrativa
+## [x] 🏛️ Fase 3: Backoffice e Gestão Administrativa
 *Foco: Dar superpoderes à equipe de operação para gerenciar milhares de empresas.*
 
 ### 📊 Admin Dashboard, Upload & Inbox
@@ -78,7 +78,7 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 
 ---
 
-## 🔍 Fase 4: Inteligência de Mercado e Leads (PNCP)
+## [ ] 🔍 Fase 4: Inteligência de Mercado e Leads (PNCP)
 *Foco: Prospecção ativa e novos fluxos de receita.*
 
 ### 🏢 Integração PNCP (Portal Nacional de Contratações Públicas)
@@ -92,7 +92,7 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 
 ---
 
-## 📄 Fase 5: Personalização de Documentos
+## [x] 📄 Fase 5: Personalização de Documentos
 *Foco: Facilitar a geração de declarações e documentos técnicos.*
 
 ### 📑 `/document-templates` (Refatoração)
