@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
 
 jobs:
+  # ==========================================
+  # FASE DOS TESTES
+  # ==========================================
   backend-tests:
     runs-on: ubuntu-latest
 
@@ -65,6 +68,21 @@ jobs:
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
 
+      - name: 📲 Notificar Telegram (Erro no Backend Test)
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            🚨 *FALHA NOS TESTES: Backend*
+            Ocorreu um erro ao rodar o Pytest. O deploy foi cancelado por segurança. 🛑
+            
+            👨‍💻 Autor: ${{ github.actor }}
+            🌿 Branch: ${{ github.ref_name }}
+            🔗 Link: [Ver log do erro](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
   frontend-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -91,6 +109,21 @@ jobs:
           cd frontend
           # 🟢 A MÁGICA: O Vitest divide os arquivos sozinho e roda a fatia certa!
           npx vitest run --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: 📲 Notificar Telegram (Erro no Frontend Test)
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            🚨 *FALHA NOS TESTES: Frontend*
+            O Vitest encontrou erros nos componentes React. O deploy foi interrompido. 🛑
+            
+            👨‍💻 Autor: ${{ github.actor }}
+            🌿 Branch: ${{ github.ref_name }}
+            🔗 Link: [Ver log do erro](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   # ==========================================
   # 🏗️ FASE DE CONSTRUÇÃO (CI - Build Pesado)
@@ -120,6 +153,21 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/licitadocs-frontend:latest
+
+      - name: 📲 Notificar Telegram (Erro no Build Docker)
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            🚨 *FALHA NO BUILD: Docker Frontend*
+            Houve um erro ao gerar a imagem no GitHub Registry. Verifique o Vite ou as dependências. 🛑
+            
+            👨‍💻 Autor: ${{ github.actor }}
+            🌿 Branch: ${{ github.ref_name }}
+            🔗 Link: [Ver log do erro](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   # ==========================================
   # 🚀 FASE DE DEPLOY (CD)
