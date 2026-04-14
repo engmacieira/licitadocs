@@ -1,122 +1,13 @@
 import api from './api';
-
-/** Escopos geográficos possíveis para um tipo de documento. */
-export type DocumentScope = "NATIONAL" | "STATE" | "MUNICIPAL";
-
-// ============================================================================
-// 1. TIPAGENS (Interfaces)
-// ============================================================================
-
-/**
- * Configurações técnicas para a automação de emissão de um documento.
- * @interface DocumentAutomationConfigDTO
- */
-export interface DocumentAutomationConfigDTO {
-    /** Indica se o documento pode ser emitido automaticamente por um robô. */
-    is_automatable: boolean;
-    /** Nome da estratégia/script de automação (ex: 'ibge_crawler'). */
-    strategy_name?: string | null;
-    /** URL do portal de origem para a emissão. */
-    source_url?: string | null;
-    /** Indica se o portal exige resolução de CAPTCHA. */
-    requires_captcha: boolean;
-    /** Expressão Cron para o agendamento da verificação automática. */
-    cron_schedule?: string | null;
-    /** Parâmetros JSON adicionais específicos da estratégia. */
-    extra_params?: Record<string, any> | null;
-}
-
-/**
- * Definição de um Tipo de Documento no catálogo.
- * @interface DocumentTypeDTO
- */
-export interface DocumentTypeDTO {
-    /** Identificador único (UUID). */
-    id: string;
-    /** Nome legível (ex: 'Certidão Negativa de Débitos Federais'). */
-    name: string;
-    /** Identificador simplificado para URLs e filtros. */
-    slug: string;
-    /** Prazo padrão de validade em dias após a emissão. */
-    validity_days_default: number;
-    description?: string;
-    /** Nível geográfico da certidão. */
-    scope: DocumentScope;
-    /** Metadados para o motor de automação. */
-    automation_config?: DocumentAutomationConfigDTO;
-}
-
-/**
- * Agrupamento lógico de tipos de documentos (ex: 'Fiscal', 'Trabalhista').
- * @interface DocumentCategoryDTO
- */
-export interface DocumentCategoryDTO {
-    id: string;
-    name: string;
-    slug: string;
-    /** Ordem de exibição na interface do utilizador. */
-    order: number;
-    /** Lista de tipos pertencentes a esta categoria. */
-    types: DocumentTypeDTO[];
-}
-
-/**
- * Objeto unificado que representa um ficheiro no cofre digital.
- * Suporta tanto o modelo legado (uploads manuais) quanto o modelo estruturado (certidões).
- * @interface DocumentDTO
- */
-export interface DocumentDTO {
-    id: string;
-    /** Nome original do ficheiro armazenado. */
-    filename: string;
-    /** Título descritivo definido pelo utilizador ou sistema. */
-    title?: string;
-    /** Status atual (valid, expired, irregular, error, archived). */
-    status: string;
-    /** Data limite de validade do documento. */
-    expiration_date?: string;
-    /** Data de processamento/upload. */
-    created_at: string;
-
-    company_id?: string;
-    company_name?: string;
-    company_cnpj?: string;
-
-    // --- Metadados do Cofre Inteligente ---
-    /** Indica se o documento está vinculado a um tipo e categoria formais. */
-    is_structured: boolean;
-    type_id?: string;
-    category_id?: string;
-    type_name?: string;
-    category_name?: string;
-    /** Chave de validação para conferência em portais governamentais. */
-    authentication_code?: string;
-    /** Indica se o ficheiro foi enviado pelo cliente (pendente de validação). */
-    is_client_upload?: boolean;
-}
-
-export interface DocumentCategoryCreateDTO { name: string; slug: string; order: number; }
-export interface DocumentCategoryUpdateDTO { name?: string; slug?: string; order?: number; }
-
-export interface DocumentTypeCreateDTO {
-    name: string;
-    slug: string;
-    validity_days_default: number;
-    description?: string;
-    category_id: string;
-    scope: DocumentScope;
-    automation_config?: DocumentAutomationConfigDTO;
-}
-
-export interface DocumentTypeUpdateDTO {
-    name?: string; slug?: string; validity_days_default?: number;
-    description?: string; category_id?: string; scope?: DocumentScope;
-    automation_config?: DocumentAutomationConfigDTO;
-}
-
-// ============================================================================
-// 2. SERVIÇO (API Calls)
-// ============================================================================
+import type {
+    DocumentCategoryDTO,
+    DocumentDTO,
+    DocumentCategoryCreateDTO,
+    DocumentCategoryUpdateDTO,
+    DocumentTypeCreateDTO,
+    DocumentTypeUpdateDTO,
+    DocumentTypeDTO
+} from '../types';
 
 /**
  * Serviço responsável por toda a gestão documental da plataforma.
@@ -270,7 +161,7 @@ export const documentService = {
     },
 
     /** Atualiza metadados específicos de um documento existente. */
-    updateDocument: async (id: string, payload: any): Promise<void> => {
+    updateDocument: async (id: string, payload: Partial<DocumentDTO>): Promise<void> => {
         await api.patch(`/documents/${id}`, payload);
     },
 };

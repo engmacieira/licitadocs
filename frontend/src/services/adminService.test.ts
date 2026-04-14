@@ -64,7 +64,7 @@ describe('adminService', () => {
                 },
                 { 
                     id: '2', 
-                    name: 'Company B', 
+                    nome_fantasia: 'Company B',
                     cnpj: '222', 
                     is_admin_verified: false, 
                     is_contract_signed: true, 
@@ -115,7 +115,7 @@ describe('adminService', () => {
 
         it('should handle company name fallbacks correctly', async () => {
             const mockCompanies = [
-                { id: '1', is_admin_verified: false, name: 'Name Only' },
+                { id: '1', is_admin_verified: false, razao_social: 'Name Only' },
                 { id: '2', is_admin_verified: false },
             ];
             vi.mocked(api.get).mockResolvedValueOnce({ data: mockCompanies });

@@ -1,6 +1,6 @@
 import Select from 'react-select';
 import { Building2 } from 'lucide-react';
-import type { Company } from '../../../services/companyService';
+import type { Company } from '@/types';
 
 interface CompanyAutocompleteProps {
     /** Lista completa de empresas carregadas do backend. */

@@ -2,8 +2,8 @@ import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RuleModal } from './RuleModal';
 import { emissionRuleService } from '../../../services/emissionRuleService';
-import type { DocumentTypeDTO } from '../../../services/documentService';
-import type { EmissionRuleDTO } from '../../../services/emissionRuleService';
+import type { DocumentTypeDTO } from '@/types';
+import type { EmissionRuleDTO } from '@/types';
 import type { ScopeTab } from '../RulesOrchestrator';
 
 // Mock Services

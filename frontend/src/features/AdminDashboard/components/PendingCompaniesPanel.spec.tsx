@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, it, describe, vi, beforeEach } from 'vitest';
 import { PendingCompaniesPanel } from './PendingCompaniesPanel';
-import type { Company } from '../../../services/companyService';
+import type { Company } from '@/types';
 
 // Mock do hook de navegação do react-router-dom
 const mockNavigate = vi.fn();

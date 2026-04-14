@@ -1,6 +1,6 @@
 import { Search, FileText, Link as LinkIcon, Mail, Edit, Trash2 } from 'lucide-react';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import type { EmissionRuleDTO } from '../../../services/emissionRuleService';
+import type { EmissionRuleDTO } from '@/types';
 import type { ScopeTab } from '../RulesOrchestrator';
 
 /**

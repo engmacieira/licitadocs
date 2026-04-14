@@ -1,14 +1,5 @@
 import api from './api';
-
-/**
- * Estrutura da resposta retornada pela API do Consultor de IA.
- * @interface ChatResponse
- */
-export interface ChatResponse {
-    /** Texto da resposta gerada pela inteligência artificial. */
-    response: string;
-    // Futuro: Adicionar citations, sources, etc.
-}
+import type { ChatResponse } from '../types';
 
 /**
  * Serviço responsável pela comunicação com os endpoints de Inteligência Artificial.

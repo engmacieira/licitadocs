@@ -1,23 +1,5 @@
 import api from './api';
-
-/**
- * Interface que representa um item no histórico de solicitações de emissão.
- * @interface RequestHistoryItem
- */
-export interface RequestHistoryItem {
-    /** Identificador único do registo de solicitação. */
-    id: string;
-    /** Data e hora em que o requerimento foi disparado. */
-    date: Date;
-    /** ID da empresa solicitante. */
-    companyId: string;
-    /** Nome/Razão Social da empresa solicitante. */
-    companyName: string;
-    /** Data de previsão de retorno informada pelo órgão (formato YYYY-MM-DD). */
-    estimatedDate: string;
-    /** Status atual da solicitação (pending | completed). */
-    status: 'pending' | 'completed';
-}
+import type { RequestHistoryItem } from '../types';
 
 /**
  * Serviço responsável pela gestão das solicitações de emissão manual.
@@ -33,12 +15,16 @@ export const emissionRequestService = {
      * @returns {Promise<RequestHistoryItem[]>} Lista de interações formatada para a UI.
      */
     getByRuleAndCompany: async (ruleId: string, companyId: string): Promise<RequestHistoryItem[]> => {
-        const { data } = await api.get(`/emission-rules/${ruleId}/requests`, {
+        const { data } = await api.get<any[]>(`/emission-rules/${ruleId}/requests`, {
             params: { company_id: companyId }
         });
 
         return data.map((item: any) => ({
-            ...item,
+            id: item.id,
+            companyId: item.companyId,
+            companyName: item.companyName,
+            estimatedDate: item.estimatedDate,
+            status: item.status,
             date: new Date(item.date)
         }));
     },

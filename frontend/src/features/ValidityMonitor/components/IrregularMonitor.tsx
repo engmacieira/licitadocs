@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ShieldAlert, Building2, FileText, XOctagon, AlertTriangle } from 'lucide-react';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '@/types';
 
 /**
  * Propriedades do componente IrregularMonitor.

@@ -1,34 +1,6 @@
 import api from './api';
 import type { PaginatedAuditLogs, AuditLogFilters } from '../schemas/audit';
-
-
-/**
- * Interface que representa as estatísticas vitais exibidas no Dashboard do Administrador.
- * @interface AdminStats
- */
-export interface AdminStats {
-    /** Total de empresas cadastradas na base de dados. */
-    total_companies: number;
-    /** Empresas que já possuem uma subscrição/pagamento ativo. */
-    active_companies: number;
-    /** Empresas que concluíram o onboarding, mas aguardam validação do Admin. */
-    pending_approval: number;
-    /** Quantidade de documentos gerados no mês (Métrica em desenvolvimento). */
-    documents_generated_month: number;
-}
-
-/**
- * Interface que representa uma empresa na fila de aprovação (Onboarding Incompleto).
- * @interface PendingAction
- */
-export interface PendingAction {
-    company_id: string;
-    company_name: string;
-    /** O passo atual em que a empresa está travada. */
-    step: 'contract' | 'docs' | 'payment' | 'validation';
-    date: string;
-    cnpj: string;
-}
+import type { AdminStats, PendingAction, Company } from '../types';
 
 /**
  * Serviço responsável pelas chamadas à API exclusivas do Painel Administrativo.
@@ -42,7 +14,7 @@ export const adminService = {
      */
     getStats: async (): Promise<AdminStats> => {
         try {
-            const { data: companies } = await api.get<any[]>('/companies');
+            const { data: companies } = await api.get<Company[]>('/companies');
 
             const total = companies.length;
             const active = companies.filter(c => c.is_payment_active).length;
@@ -73,11 +45,11 @@ export const adminService = {
      */
     getPendingQueue: async (): Promise<PendingAction[]> => {
         try {
-            const { data: companies } = await api.get<any[]>('/companies');
+            const { data: companies } = await api.get<Company[]>('/companies');
 
             return companies
-                .filter((c: any) => !c.is_admin_verified)
-                .map((c: any) => {
+                .filter((c: Company) => !c.is_admin_verified)
+                .map((c: Company) => {
                     // Determina qual o "passo" atual para exibir no card
                     let currentStep: PendingAction['step'] = 'validation';
 
@@ -86,7 +58,7 @@ export const adminService = {
 
                     return {
                         company_id: c.id,
-                        company_name: c.razao_social || c.name || "Empresa sem nome",
+                        company_name: c.razao_social || c.nome_fantasia || "Empresa sem nome",
                         step: currentStep,
                         date: c.created_at,
                         cnpj: c.cnpj

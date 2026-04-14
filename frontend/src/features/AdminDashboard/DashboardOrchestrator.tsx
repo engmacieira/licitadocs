@@ -5,7 +5,7 @@ import { Building2, AlertTriangle, ShieldAlert, Clock, FolderOpen, UserPlus } fr
 // Integrações e Serviços
 import { companyService, type Company } from '../../services/companyService';
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '../../services/documentService';
+import type { DocumentDTO } from '@/types';
 
 // Componentes Genéricos UI
 import { StatsCard } from '../../components/ui/StatsCard';

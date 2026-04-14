@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { AlertOctagon, CheckCircle, XOctagon, AlertTriangle, ArrowRight, User, Shield } from 'lucide-react';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '@/types';
 
 /**
  * Propriedades do componente ActionNeededPanel.

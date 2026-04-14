@@ -9,7 +9,7 @@ import {
 // Serviços (Clean Architecture)
 import { companyService } from '../../services/companyService';
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '../../services/documentService';
+import type { DocumentDTO } from '@/types';
 
 // Componentes Genéricos UI
 import { Button } from '../../components/ui/Button';

@@ -5,7 +5,7 @@ import { Building2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 // Serviços
 import { emissionRuleService } from '../../services/emissionRuleService';
-import type { EmissionRuleDTO } from '../../services/emissionRuleService';
+import type { EmissionRuleDTO } from '@/types';
 import { companyService } from '../../services/companyService';
 import { emissionRequestService } from '../../services/emissionRequestService';
 

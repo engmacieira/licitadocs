@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { documentService } from '../../../services/documentService';
-import type { DocumentTypeDTO, DocumentTypeCreateDTO, DocumentTypeUpdateDTO } from '../../../services/documentService';
+import type { DocumentTypeDTO, DocumentTypeCreateDTO, DocumentTypeUpdateDTO } from '@/types';
 
 /**
  * Propriedades do Modal de Tipo de Documento.
