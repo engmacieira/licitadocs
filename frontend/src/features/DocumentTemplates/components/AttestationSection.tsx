@@ -104,10 +104,12 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
             <div className="p-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                        {/* Adicionado htmlFor */}
+                        <label htmlFor="clientName" className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
                             <Building size={14} /> Razão Social do Cliente (Emissor)
                         </label>
                         <input
+                            id="clientName" // Adicionado id
                             type="text"
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all"
                             placeholder="Ex: Prefeitura Municipal de..."
@@ -116,10 +118,11 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                        <label htmlFor="clientCnpj" className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
                             <Hash size={14} /> CNPJ do Cliente
                         </label>
                         <input
+                            id="clientCnpj"
                             type="text"
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all"
                             placeholder="00.000.000/0000-00"
@@ -131,8 +134,9 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-600 uppercase">Tipo de Atuação</label>
+                        <label htmlFor="serviceType" className="text-xs font-bold text-slate-600 uppercase">Tipo de Atuação</label>
                         <select
+                            id="serviceType"
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500"
                             value={serviceType}
                             onChange={(e) => setServiceType(e.target.value as any)}
@@ -142,10 +146,11 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
                         </select>
                     </div>
                     <div className="md:col-span-2 space-y-2">
-                        <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                        <label htmlFor="serviceDescription" className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
                             <FileText size={14} /> Descrição resumida do objeto
                         </label>
                         <input
+                            id="serviceDescription"
                             type="text"
                             className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500"
                             placeholder="Ex: gêneros alimentícios, serviços de limpeza, etc."
@@ -156,10 +161,11 @@ export function AttestationSection({ companyData }: AttestationSectionProps) {
                 </div>
 
                 <div className="space-y-2 max-w-xs">
-                    <label className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
+                    <label htmlFor="invoiceNumber" className="text-xs font-bold text-slate-600 uppercase flex items-center gap-2">
                         <Hash size={14} /> Nota Fiscal Nº (Vínculo Jurídico)
                     </label>
                     <input
+                        id="invoiceNumber"
                         type="text"
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500"
                         placeholder="Ex: 1234/2024"

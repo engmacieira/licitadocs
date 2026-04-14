@@ -1,39 +1,27 @@
 import { useState } from 'react';
 import {
-    FileText,
     Download,
     AlertTriangle,
     ShieldCheck,
-    Info
+    Lightbulb,
+    FileText
 } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { Button } from '../../../components/ui/Button';
 import { type CompanyDocData, generateDocx } from '../utils/docxGenerator';
 import { PDFTemplate } from './PDFTemplate';
 
-/**
- * Propriedades do componente DeclarationSection.
- */
 interface DeclarationSectionProps {
     companyData: CompanyDocData;
 }
 
 const DOC_TITLE = "DECLARAÇÕES UNIFICADAS";
 
-/**
- * Feature: Declarações Unificadas (US-3004)
- * Gera o documento onde a empresa declara veracidade, cumprimento de edital e leis.
- * Foco: Injeção direta de dados para máxima autoridade visual.
- */
 export function DeclarationSection({ companyData }: DeclarationSectionProps) {
     const [isInfoExpanded, setIsInfoExpanded] = useState(false);
     const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
     const [downloadFormat, setDownloadFormat] = useState<'docx' | 'pdf' | null>(null);
 
-    /**
-     * Blocos de Conteúdo com Injeção Direta (Sprint 30)
-     * Substituímos placeholders manuais por Template Literals de 'companyData'.
-     */
     const contentBlocks = [
         `Eu, ${companyData.nomeRepresentante}, representante legal da empresa ${companyData.razaoSocial}, inscrita no CNPJ sob o n° ${companyData.cnpj}, com sede na ${companyData.endereco} em ${companyData.cidadeUf}, venho, para os devidos fins, apresentar as seguintes declarações, exigidas para fins de habilitação em processos licitatórios:`,
         `I – Declaração de Veracidade das Informações\nDeclaro que todas as informações prestadas e documentos apresentados são autênticos e verídicos, responsabilizando-me por sua veracidade, sob as penas da lei.`,
@@ -69,85 +57,80 @@ export function DeclarationSection({ companyData }: DeclarationSectionProps) {
     };
 
     const confirmDocxDownload = () => {
-        // Chamada validada: (title, blocks, data, filename)
-        generateDocx(DOC_TITLE, contentBlocks, companyData, "Declaracoes_Unificadas_LicitaDocs");
+        generateDocx(DOC_TITLE, contentBlocks, companyData, 'Declaracoes_Unificadas_Habilitacao');
         setIsSafetyModalOpen(false);
     };
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
-            {/* Header Didático */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            {/* Header com Lâmpada (US-3001) */}
             <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                         <FileText size={20} />
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-800">{DOC_TITLE}</h3>
-                        <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Documento Próprio</p>
-                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">{DOC_TITLE}</h3>
                 </div>
                 <button
                     onClick={() => setIsInfoExpanded(!isInfoExpanded)}
                     className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                    title="O que é este documento?"
                 >
-                    <Info size={20} className={isInfoExpanded ? "text-blue-500" : ""} />
+                    <Lightbulb size={20} className={isInfoExpanded ? "text-amber-500" : ""} />
                 </button>
             </div>
 
-            {/* Conteúdo Educativo Expandível (US-3001) */}
+            {/* Conteúdo Didático Expandível (US-3001) */}
             {isInfoExpanded && (
-                <div className="p-6 bg-blue-50 border-b border-blue-100 animate-in slide-in-from-top duration-300">
-                    <p className="text-blue-800 text-sm leading-relaxed">
-                        <strong>O que é?</strong> Um documento único que agrupa várias obrigações legais solicitadas na fase de habilitação. Ajuda a reduzir o volume de papel e simplifica a análise do pregoeiro.
-                    </p>
+                <div className="p-6 bg-amber-50 border-b border-amber-100 animate-in slide-in-from-top duration-300">
+                    <div className="space-y-3 text-sm text-amber-900 leading-relaxed">
+                        <p><strong>Para que serve?</strong> Gera o documento onde a empresa declara veracidade, cumprimento de edital e demais leis exigidas em habilitações.</p>
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-700 uppercase tracking-wider bg-white/50 w-fit px-2 py-1 rounded">
+                            <ShieldCheck size={14} /> Base Legal: Lei nº 14.133/2021 e LC 123/2006
+                        </div>
+                    </div>
                 </div>
             )}
 
-            {/* Preview e Ação */}
-            <div className="p-6 flex-1 flex flex-col">
-                <div className="flex-1 bg-slate-50 rounded-xl border border-slate-200 p-4 mb-6">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-2">Prévia do Texto</p>
-                    <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-6">
-                        {contentBlocks[0]}
+            {/* Prévia do Documento */}
+            <div className="p-6 bg-slate-50/50 border-b border-slate-100 text-sm text-slate-700 space-y-4 max-h-60 overflow-y-auto">
+                {contentBlocks.map((paragraph, index) => (
+                    <p key={index} className="text-justify leading-relaxed whitespace-pre-wrap">
+                        {paragraph}
                     </p>
-                </div>
+                ))}
+            </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Button
-                        onClick={() => handleDownloadClick('pdf')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
+            {/* Botões de Download */}
+            <div className="p-6">
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Button onClick={() => handleDownloadClick('pdf')} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
                         <Download className="h-4 w-4 mr-2" /> Gerar PDF
                     </Button>
-                    <Button
-                        onClick={() => handleDownloadClick('docx')}
-                        variant="secondary"
-                        className="border-slate-200 hover:bg-slate-50"
-                    >
-                        <FileText className="h-4 w-4 mr-2 text-blue-600" /> Baixar Word
+                    <Button onClick={() => handleDownloadClick('docx')} variant="secondary" className="flex-1 border-2 border-slate-200">
+                        <FileText className="h-4 w-4 mr-2 text-blue-600" /> Baixar em Word (.docx)
                     </Button>
                 </div>
             </div>
 
-            {/* Modal de Alerta Legal (US-3002) */}
+            {/* Modal de Alerta de Responsabilidade (US-3002) */}
             {isSafetyModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl border border-slate-100">
                         <div className="flex flex-col items-center text-center">
-                            <div className="p-4 bg-amber-50 text-amber-500 rounded-full mb-4">
+                            <div className="p-4 bg-red-50 text-red-500 rounded-full mb-4">
                                 <AlertTriangle size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-800">Responsabilidade Jurídica</h3>
-                            <p className="text-sm text-slate-500 mt-3">
-                                Ao baixar este documento, você confirma que todas as informações injetadas de <strong>{companyData.razaoSocial}</strong> são verdadeiras. Declarações falsas podem levar à desclassificação e sanções administrativas.
+                            <h3 className="text-xl font-bold text-slate-800">Atenção e Responsabilidade</h3>
+                            <p className="text-sm text-slate-500 mt-3 leading-relaxed">
+                                Ao gerar este documento, confirma que todas as informações são verdadeiras. Prestar informações falsas em licitações pode resultar em <strong>consequências criminais e administrativas</strong> severas.
                             </p>
                         </div>
 
                         <div className="mt-8 space-y-3">
                             {downloadFormat === 'docx' ? (
-                                <Button onClick={confirmDocxDownload} className="w-full bg-slate-800">
-                                    <ShieldCheck className="h-4 w-4 mr-2" /> Ciente e Baixar Word
+                                <Button onClick={confirmDocxDownload} className="w-full bg-slate-800 hover:bg-slate-900">
+                                    <ShieldCheck className="h-4 w-4 mr-2" /> Entendi e baixar Word
                                 </Button>
                             ) : (
                                 <PDFDownloadLink
@@ -158,18 +141,22 @@ export function DeclarationSection({ companyData }: DeclarationSectionProps) {
                                             companyData={companyData}
                                         />
                                     }
-                                    fileName="Declaracoes_Unificadas.pdf"
+                                    fileName="Declaracoes_Unificadas_Habilitacao.pdf"
                                     onClick={() => setIsSafetyModalOpen(false)}
                                 >
                                     {({ loading }) => (
-                                        <Button className="w-full bg-blue-600">
-                                            <ShieldCheck className="h-4 w-4 mr-2" /> {loading ? 'Preparando...' : 'Ciente e Baixar PDF'}
+                                        <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                                            <ShieldCheck className="h-4 w-4 mr-2" />
+                                            {loading ? 'Preparando...' : 'Entendi e baixar PDF'}
                                         </Button>
                                     )}
                                 </PDFDownloadLink>
                             )}
-                            <button onClick={() => setIsSafetyModalOpen(false)} className="w-full text-xs text-slate-400 py-2">
-                                Voltar e Revisar
+                            <button
+                                onClick={() => setIsSafetyModalOpen(false)}
+                                className="w-full text-xs text-slate-400 hover:text-slate-600 font-medium py-2 transition-colors"
+                            >
+                                Voltar para revisar
                             </button>
                         </div>
                     </div>

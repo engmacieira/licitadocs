@@ -14,7 +14,7 @@
 
 ### 📦 2. Personalização Dinâmica
 * **[-] [US-3003] Gestão de Marca (Logo):** Criar campo de upload para a Logo da Empresa em `company-settings`. Garantir que esta logo seja redimensionada e armazenada corretamente.
-* **[ ] [US-3004] Injeção de Dados em Templates:** Automatizar o preenchimento de cabeçalhos e rodapés nos documentos com:
+* **[x] [US-3004] Injeção de Dados em Templates:** Automatizar o preenchimento de cabeçalhos e rodapés nos documentos com:
     - Razão Social e CNPJ
     - Endereço Completo
     - Dados do Responsável Legal
