@@ -13,9 +13,8 @@
 * **[x] [US-3002] Alerta de Responsabilidade Legal:** Implementar modal de confirmação ou aviso fixo sobre as consequências criminais/administrativas de prestar informações falsas em declarações oficiais.
 
 ### 📦 2. Personalização Dinâmica
-* **[ ] [US-3003] Gestão de Marca (Logo):** Criar campo de upload para a Logo da Empresa em `company-settings`. Garantir que esta logo seja redimensionada e armazenada corretamente.
+* **[-] [US-3003] Gestão de Marca (Logo):** Criar campo de upload para a Logo da Empresa em `company-settings`. Garantir que esta logo seja redimensionada e armazenada corretamente.
 * **[ ] [US-3004] Injeção de Dados em Templates:** Automatizar o preenchimento de cabeçalhos e rodapés nos documentos com:
-    - Logo da Empresa
     - Razão Social e CNPJ
     - Endereço Completo
     - Dados do Responsável Legal
