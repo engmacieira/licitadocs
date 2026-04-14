@@ -1,7 +1,8 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { authService } from '../services/authService';
-import { userService, type UserCompany } from '../services/userService';
+import { userService } from '../services/userService';
+import type { UserCompany } from '../types';
 import * as jwtDecodeModule from 'jwt-decode';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';

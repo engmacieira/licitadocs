@@ -24,6 +24,7 @@ export interface Company {
     is_contract_signed?: boolean;
     is_payment_active?: boolean;
     is_admin_verified?: boolean;
+    pending_docs_notes?: string;
 }
 
 /** Perfil completo do utilizador autenticado. */

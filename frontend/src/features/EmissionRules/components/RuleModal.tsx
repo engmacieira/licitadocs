@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { emissionRuleService } from '../../../services/emissionRuleService';
-import type { EmissionRuleCreatePayload, EmissionRuleDTO } from '@/types';
-import type { DocumentTypeDTO } from '@/types';
+import type { EmissionRuleCreatePayload, EmissionRuleDTO } from '../../../types';
+import type { DocumentTypeDTO } from '../../../types';
 import type { ScopeTab } from '../RulesOrchestrator';
 
 interface IBGEUF { sigla: string; nome: string; }

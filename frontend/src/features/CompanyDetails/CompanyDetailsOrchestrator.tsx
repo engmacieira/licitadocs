@@ -6,7 +6,7 @@ import { ArrowLeft, AlertCircle, MessageSquareShare } from 'lucide-react';
 // Serviços
 import { companyService } from '../../services/companyService';
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../types';
 
 // Componentes UI
 import { Button } from '../../components/ui/Button';

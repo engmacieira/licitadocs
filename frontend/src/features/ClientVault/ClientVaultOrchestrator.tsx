@@ -4,7 +4,7 @@ import { ShieldCheck } from 'lucide-react';
 
 // Serviços e Contexto
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Componentes UI e Partilhados

@@ -4,9 +4,9 @@ import { jwtDecode } from 'jwt-decode';
 
 // Imports dos Serviços (Clean Architecture)
 import { authService } from '../services/authService';
-import type { SignInCredentials } from '@/types';
+import type { SignInCredentials } from '../types';
 import { userService } from '../services/userService';
-import type { UserCompany, UserProfile } from '@/types';
+import type { UserCompany, UserProfile } from '../types';
 
 /**
  * Interface que representa o *payload* (conteúdo decodificado) do token JWT.

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Landmark, LinkIcon, AlertCircle, Phone, Mail } from 'lucide-react';
 import { emissionRuleService } from '../../../services/emissionRuleService';
-import type { EmissionRuleDTO } from '@/types';
+import type { EmissionRuleDTO } from '../../../types';
 import { Skeleton } from '../../../components/ui/Skeleton';
 
 /**

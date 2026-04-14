@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 import { documentService } from '../../../services/documentService';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 /**
  * Propriedades do componente CompanyVault.

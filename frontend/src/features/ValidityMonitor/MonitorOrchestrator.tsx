@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { ShieldAlert, Search, AlertTriangle, Clock } from 'lucide-react';
 
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../types';
 
 // Subcomponentes da Feature
 import { IrregularMonitor } from './components/IrregularMonitor';

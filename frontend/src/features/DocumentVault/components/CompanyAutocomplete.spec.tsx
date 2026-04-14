@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, describe, vi, beforeEach } from 'vitest';
 import { CompanyAutocomplete } from './CompanyAutocomplete';
-import type { Company } from '@/types';
+import type { Company } from '../../../types';
 
 describe('CompanyAutocomplete Component', () => {
     const mockOnChange = vi.fn();

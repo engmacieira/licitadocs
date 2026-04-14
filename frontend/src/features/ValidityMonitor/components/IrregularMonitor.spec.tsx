@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { IrregularMonitor } from './IrregularMonitor';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 const mockIrregularDocs: DocumentDTO[] = [
     {

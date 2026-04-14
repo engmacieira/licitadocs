@@ -1,6 +1,6 @@
 import { Phone, Send } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import type { EmissionRuleDTO } from '@/types';
+import type { EmissionRuleDTO } from '../../../types';
 
 /**
  * Propriedades do componente WhatsAppSection.

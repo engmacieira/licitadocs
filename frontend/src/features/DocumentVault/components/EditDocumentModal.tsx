@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { documentService } from '../../../services/documentService';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 import { EmissionLinkDisplay } from './EmissionLinkDisplay';
 import { RegularityAnalysis } from './RegularityAnalysis';
@@ -71,7 +71,7 @@ export function EditDocumentModal({ isOpen, onClose, onSuccess, document }: Edit
                 expiration_date: data.expiration_date || undefined,
                 authentication_code: data.authentication_code || undefined,
                 status: data.status,
-                notes: data.notes || undefined
+                ...((data.notes ? { notes: data.notes } : {}) as any)
             });
 
             toast.success("Documento atualizado com sucesso!");

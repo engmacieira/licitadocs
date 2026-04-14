@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ExpiringMonitor } from './ExpiringMonitor';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 const mockDocuments: DocumentDTO[] = [
     {

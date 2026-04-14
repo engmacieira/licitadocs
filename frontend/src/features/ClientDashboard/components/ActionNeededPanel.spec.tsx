@@ -2,7 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, it, describe, vi, beforeEach } from 'vitest';
 import { ActionNeededPanel } from './ActionNeededPanel';
 import { MemoryRouter } from 'react-router-dom';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 // Mock do useNavigate
 

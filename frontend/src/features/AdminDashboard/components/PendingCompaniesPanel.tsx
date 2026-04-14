@@ -2,7 +2,7 @@ import { UserPlus, CheckCircle2, ArrowRight, Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../components/ui/Button';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import type { Company } from '@/types';
+import type { Company } from '../../../types';
 
 interface PendingCompaniesPanelProps {
     loading: boolean;

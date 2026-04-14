@@ -7,7 +7,7 @@ import { Building2, Users, FileText, UserCircle, CheckCircle2, AlertTriangle } f
 import { useAuth } from '../../contexts/AuthContext';
 import { companyService } from '../../services/companyService';
 import api from '../../services/api';
-import type { CompanyUpdatePayload, MemberResponse } from '@/types';
+import type { CompanyUpdatePayload, MemberResponse } from '../../types';
 
 // Subcomponentes da Feature
 import { DetailsTab } from './components/DetailsTab';

@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { documentService } from '../../../services/documentService';
-import type { DocumentCategoryDTO } from '@/types';
+import type { DocumentCategoryDTO } from '../../../types';
 
 import { EmissionLinkDisplay } from './EmissionLinkDisplay';
 import { RegularityAnalysis } from './RegularityAnalysis';

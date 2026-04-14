@@ -2,7 +2,7 @@ import { Clock, CheckCircle2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Skeleton } from '../../../components/ui/Skeleton';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 /**
  * Propriedades do componente ExpiringDocsPanel.

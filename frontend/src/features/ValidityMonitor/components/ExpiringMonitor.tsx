@@ -1,7 +1,7 @@
 import { Calendar, FileText, Building2, Clock, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { DocumentDTO } from '@/types';
+import type { DocumentDTO } from '../../../types';
 
 /**
  * Propriedades do componente ExpiringMonitor.

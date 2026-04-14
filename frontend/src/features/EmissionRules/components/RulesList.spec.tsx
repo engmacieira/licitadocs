@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
 import { RulesList } from './RulesList';
-import type { EmissionRuleDTO } from '@/types';
+import type { EmissionRuleDTO } from '../../../types';
 import type { ScopeTab } from '../RulesOrchestrator';
 
 const mockRules: EmissionRuleDTO[] = [
