@@ -1,7 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import { type CompanyDocData } from '../utils/docxGenerator';
 
-// Registrar Fonte Arial para garantir o padrão oficial de documentos
+// Registrar Fonte Arial para garantir o padrão oficial de documentos (ABNT)
 Font.register({
     family: 'Arial',
     src: 'https://cdn.jsdelivr.net/npm/@canvas-fonts/arial@1.0.4/Arial.ttf'
@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
         lineHeight: 1.5,
         color: '#1a1a1a'
     },
-    // Cabeçalho de Autoridade (US-3004)
+    // Cabeçalho de Autoridade (Substitui a Logo temporariamente)
     headerContainer: {
         borderBottomWidth: 1,
         borderBottomColor: '#e2e8f0',
@@ -40,44 +40,47 @@ const styles = StyleSheet.create({
         marginTop: 2
     },
     headerPlatformTag: {
-        fontSize: 7,
-        color: '#94a3b8',
-        textAlign: 'right'
+        fontSize: 8,
+        color: '#cbd5e1',
+        fontWeight: 'bold',
+        letterSpacing: 1
     },
+    // Título e Corpo
     title: {
         fontSize: 14,
         fontWeight: 'bold',
         textAlign: 'center',
+        marginTop: 10,
         marginBottom: 30,
         textTransform: 'uppercase',
-        color: '#000'
+        textDecoration: 'underline'
     },
     paragraph: {
         marginBottom: 12,
         textAlign: 'justify',
-        textIndent: 40 // Recuo de parágrafo oficial
     },
-    // Zona de Respiro para Assinatura (Affordance Física)
+    // Área de Assinatura (Pixel Perfect)
     signatureArea: {
-        marginTop: 60, // 3-4cm de respiro conforme plano de ataque
+        marginTop: 60,
         alignItems: 'center',
-        flexDirection: 'column'
     },
     signatureLine: {
         width: '10cm',
         borderBottomWidth: 1,
         borderBottomColor: '#000',
-        marginBottom: 8
+        marginBottom: 6,
     },
     signatureName: {
         fontSize: 11,
         fontWeight: 'bold',
-        textTransform: 'uppercase'
+        textTransform: 'uppercase',
     },
     signatureRole: {
         fontSize: 10,
-        color: '#475569'
+        color: '#475569',
+        marginTop: 2,
     },
+    // Rodapé de Rastreabilidade
     footer: {
         position: 'absolute',
         bottom: '1cm',
@@ -85,7 +88,10 @@ const styles = StyleSheet.create({
         right: 0,
         textAlign: 'center',
         fontSize: 8,
-        color: '#94a3b8'
+        color: '#94a3b8',
+        borderTopWidth: 0.5,
+        borderTopColor: '#f1f5f9',
+        paddingTop: 10
     }
 });
 
@@ -98,9 +104,8 @@ interface PDFTemplateProps {
 }
 
 /**
- * PDFTemplate - Motor de Renderização Oficial (Sprint 30)
- * Responsável por gerar o visual final do documento.
- * Aplica lógica condicional para cabeçalhos e assinaturas.
+ * Componente Master de Renderização de PDF.
+ * Focado em conformidade legal e estética profissional.
  */
 export const PDFTemplate = ({
     title,
@@ -109,49 +114,54 @@ export const PDFTemplate = ({
     isAttestation = false,
     customSignatureName
 }: PDFTemplateProps) => (
-    <Document title={title}>
+    <Document title={title} author="LicitaDocs">
         <Page size="A4" style={styles.page}>
 
-            {/* Cabeçalho Dinâmico: Só exibe timbre se NÃO for atestado (Regra de UX) */}
-            {!isAttestation && (
-                <View style={styles.headerContainer}>
-                    <View style={styles.headerCompanyInfo}>
-                        <Text style={styles.headerCompanyName}>{companyData.razaoSocial}</Text>
-                        <Text style={styles.headerCompanyDetails}>
-                            CNPJ: {companyData.cnpj} | {companyData.endereco}
-                        </Text>
-                    </View>
-                    <Text style={styles.headerPlatformTag}>LicitaDocs</Text>
+            {/* Cabeçalho de Identidade */}
+            <View style={styles.headerContainer} fixed>
+                <View style={styles.headerCompanyInfo}>
+                    <Text style={styles.headerCompanyName}>{companyData.razaoSocial}</Text>
+                    <Text style={styles.headerCompanyDetails}>
+                        CNPJ: {companyData.cnpj} | {companyData.endereco}
+                    </Text>
                 </View>
-            )}
+                <Text style={styles.headerPlatformTag}>LICITADOCS</Text>
+            </View>
 
-            {/* Título do Documento */}
+            {/* Título Oficial */}
             <Text style={styles.title}>{title}</Text>
 
-            {/* Corpo do Texto Injetado */}
+            {/* Texto Jurídico */}
             {contentBlocks.map((block, index) => (
                 <Text key={index} style={styles.paragraph}>
-                    {block}
+                    {block.replace(/\\n/g, '\n')}
                 </Text>
             ))}
 
-            {/* Área de Assinatura com Contexto de Emissor */}
+            {/* Bloco de Assinatura Dinâmico */}
             <View style={styles.signatureArea} wrap={false}>
                 <View style={styles.signatureLine} />
+
+                {/* Lógica de Assinatura: Se for atestado, assina o Cliente. Se for declaração, assina a Empresa. */}
                 <Text style={styles.signatureName}>
                     {isAttestation ? (customSignatureName || "__________________________") : companyData.razaoSocial}
                 </Text>
+
                 <Text style={styles.signatureRole}>
-                    {isAttestation ? "Assinatura do Emissor" : `Representante Legal: ${companyData.nomeRepresentante}`}
+                    {isAttestation ? "Assinatura do Emissor (Atestante)" : `Representante Legal: ${companyData.nomeRepresentante}`}
                 </Text>
+
+                {!isAttestation && (
+                    <Text style={{ fontSize: 8, marginTop: 2 }}>CPF: {companyData.cpfRepresentante}</Text>
+                )}
             </View>
 
-            {/* Rodapé de Rastreabilidade */}
+            {/* Rodapé e Paginação */}
             <Text
                 style={styles.footer}
                 fixed
                 render={({ pageNumber, totalPages }) => (
-                    `Documento gerado via LicitaDocs em ${companyData.dataAtual} - Página ${pageNumber} de ${totalPages}`
+                    `Documento gerado eletronicamente via LicitaDocs em ${companyData.dataAtual} • Página ${pageNumber} de ${totalPages}`
                 )}
             />
         </Page>

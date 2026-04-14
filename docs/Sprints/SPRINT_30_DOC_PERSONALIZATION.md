@@ -20,8 +20,8 @@
     - Dados do Responsável Legal
 
 ### 📦 3. Flexibilidade de Formatos
-* **[ ] [US-3005] Geração de DOCX Editável:** Implementar motor de renderização para permitir o download de modelos em formato `.doc/.docx`, facilitando ajustes manuais pelo cliente.
-* **[ ] [US-3006] Geração de PDF Oficial:** Manter a opção de download em PDF para documentos que não requerem edição posterior, com layout otimizado e profissional.
+* **[x] [US-3005] Geração de DOCX Editável:** Implementar motor de renderização para permitir o download de modelos em formato `.doc/.docx`, facilitando ajustes manuais pelo cliente.
+* **[x] [US-3006] Geração de PDF Oficial:** Manter a opção de download em PDF para documentos que não requerem edição posterior, com layout otimizado e profissional.
 
 ---
 
