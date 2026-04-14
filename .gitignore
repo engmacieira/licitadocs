@@ -17,3 +17,6 @@ manual_test_ai.py
 storage/
 uploads/
 scripts/
+google_credentials.json
+client_secrets.json
+token.json
