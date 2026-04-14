@@ -4,19 +4,19 @@
 > Este arquivo é o seu Ponto de Restauração. Leia-o antes de iniciar qualquer nova funcionalidade.
 
 ## 📍 Estado Atual da Missão
-* **Fase do Projeto:** Otimização Operacional e Backoffice.
-* **Sprint Atual:** **Sprint 29: Backoffice e Gestão Administrativa (Fase 3 do Roadmap)**.
-* **Última Ação Realizada:** Finalização do planejamento da Sprint 28 (Integrações). Agora o foco é dar ferramentas de alta performance para a equipe interna gerenciar o crescimento da base de clientes.
-* **PRÓXIMO PASSO IMEDIATO:** Executar o Backlog da Sprint 29, focado em:
-  1. **Admin Dashboard:** Componentes para triagem de novas empresas e pendências.
-  2. **Gestão de Documentos:** Filtros avançados no Upload e separação visual do Cofre (Admin vs Cliente).
-  3. **Comunicação Interna:** Sistema de avisos de moderação e filtros na Inbox.
+* **Fase do Projeto:** Geração de Valor e Customização.
+* **Sprint Atual:** **Sprint 30: Personalização de Documentos (Fase 5 do Roadmap)**.
+* **Última Ação Realizada:** Finalização do planejamento da Sprint 29 (Backoffice). Agora o foco é a experiência de geração de documentos do cliente, tornando-a didática e personalizada.
+* **PRÓXIMO PASSO IMEDIATO:** Executar o Backlog da Sprint 30, focado em:
+  1. **Personalização:** Implementar upload de logo e injeção dinâmica de dados em modelos.
+  2. **Formatos:** Garantir exportação para `.doc` (editável) e `.pdf`.
+  3. **Didática:** Refatorar a página de modelos com conteúdos explicativos e alertas legais.
 
 ## 🏗️ Definições Arquiteturais (Não Quebrar)
 * **Arquitetura:** MVC/Repository (Backend) e Orchestrator/Feature (Frontend).
-* **Segurança (RBAC):** Garantir que as novas funções de moderação e visualização detalhada sejam restritas ao papel `ADMIN`.
-* **Performance:** Utilizar componentes de busca assíncrona (Autocomplete) para seleção de empresas em cenários de alta volumetria.
+* **Processamento de Documentos:** Utilizar bibliotecas robustas para manipulação de templates (Ex: `python-docx` para DOCX e `ReportLab`/`WeasyPrint` para PDF).
+* **Storage:** Logos de empresa devem ser armazenadas de forma isolada e otimizada no S3/Storage.
 
 ---
-**Atualizado em:** 13 de Abril 2026
+**Atualizado em:** Março de 2024
 **Responsável:** Jules (Software Engineer)
