@@ -56,11 +56,13 @@ def iniciar_sessao_jules(missao_especifica: str, branch: str = "main"):
     === SUA TAREFA IMEDIATA ===
     {missao_especifica}
     """
+    # O formato que você validou com sucesso:
+    source_identificador = f"sources/github/{REPO_OWNER}/{REPO_NAME}"
 
     payload = {
         "prompt": prompt_final,
         "sourceContext": {
-            "source": f"sources/github-{REPO_OWNER}-{REPO_NAME}",
+            "source": source_identificador,
             "githubRepoContext": {
                 "startingBranch": branch
             }
