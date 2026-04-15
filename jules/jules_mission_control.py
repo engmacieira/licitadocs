@@ -156,16 +156,28 @@ def main():
         print("✅ Nenhuma ação necessária. Sistema em conformidade total.")
         return
 
-    # 3. Monta o Prompt Supremo
+    # 3. Monta o Prompt Supremo (Mescla: Autoridade Antiga + Blindagem Atual)
     prompt_supremo = f"""
-    Aja como um Engenheiro Sênior Fullstack. Execute TODAS as tarefas abaixo em um único ciclo.
+    VOCÊ É UM AGENTE DE EXECUÇÃO ATÔMICA (ENGENHEIRO SÊNIOR FULLSTACK). 
+    Sua missão é completar TODAS as tarefas abaixo em um único ciclo de trabalho. 
+    Não encerre a sessão ou finalize o PR sem concluir os 3 checkpoints.
+
+    === 🛡️ REGRAS CRÍTICAS DE INFRAESTRUTURA ===
+    - PROIBIÇÃO DE ALTERAÇÃO DE STACK: O LicitaDocs usa estritamente PostgreSQL.
+    - É TERMINANTEMENTE PROIBIDO trocar PostgreSQL por SQLite no arquivo .env.test ou em qualquer parte do código.
+    - Se um teste falhar por falta de banco de dados, reporte o erro no log, mas MANTENHA o driver Postgres intacto. Não tome atalhos técnicos.
+
+    === 📍 PROTOCOLO DE CHECKPOINTS (MISSÕES ESPECÍFICAS) ===
+    {missao_cobertura}
+    {missao_auditoria}
+    {missao_release}
+
+    === 📦 REQUISITOS DE SAÍDA E COMMIT ===
+    - Você DEVE entregar o resultado de todos os checkpoints acima em um único commit atômico.
+    - MENSAGEM DE COMMIT OBRIGATÓRIA: "🤖 AI (Jules): Otimização Global v{nova_versao}"
     
-    ATENÇÃO: Você deve obrigatoriamente realizar o commit das suas alterações usando o 
-    formato de mensagem: "🤖 AI (Jules): Otimização Global v{nova_versao}"
-    
-    MISSÕES ESPECÍFICAS:
+    ATENÇÃO: Este prefixo "🤖 AI (Jules):" é o único gatilho que autoriza o deploy em produção. Se você falhar na mensagem, o sistema ficará fora do ar.
     """
-    prompt_supremo += "".join(missoes_ativas)
 
     # 4. Despacha a missão para a API
     print("\n📡 Enviando Missão Unificada para a API Oficial...")

@@ -16,6 +16,11 @@ Ao refatorar ou editar um arquivo funcional:
 * **NÃO** altere nomes de variáveis ou funções que são importadas de outros arquivos, a menos que você também esteja editando o arquivo de origem na mesma resposta.
 * **NÃO** assuma que uma função existe só porque "seria lógico" ela existir. (Ex: Não chame `repository.get_by_email()` se você não leu o arquivo do repositório para confirmar que esse método existe).
 
+### 🛑 RESTRIÇÕES DE INFRAESTRUTURA (IMUTÁVEL)
+1. **DATABASE STACK**: O LicitaDocs é um projeto 100% PostgreSQL.
+2. **PROIBIÇÃO DE SQLITE**: É terminantemente proibido alterar o driver de banco de dados para SQLite, mesmo em ambiente de teste (`.env.test`). 
+3. **FALHAS DE CONEXÃO**: Se um teste falhar por falta de banco, reporte o erro, mas NÃO altere a stack tecnológica.
+
 ## 3. Comportamento Anti-Alucinação
 Se você se deparar com um código que usa `from .utils import calculate_tax`, mas você não tem o arquivo `utils.py`:
 * **CORRETO:** Manter a chamada exatamente como está (`calculate_tax()`), assumindo que ela funciona.
