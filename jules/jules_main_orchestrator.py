@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURAÇÕES DE CAMINHO ---
 ROOT_DIR = Path(__file__).parent.parent
 REGRAS_OURO = ROOT_DIR / "docs" / "00REGRAS_CODIGO.md"
-INSTRUCOES_JULES = ROOT_DIR / "instrucoes_jules.md"
+INSTRUCOES_JULES = ROOT_DIR / "jules" / "instrucoes_jules.md"
 MAIN_API_FILE = ROOT_DIR / "app" / "main.py"
 RELEASE_NOTES_DIR = ROOT_DIR / "docs" / "release-notes"
 

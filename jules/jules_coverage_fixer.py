@@ -5,7 +5,7 @@ from pathlib import Path
 
 # --- CONFIGURAÇÕES DE CAMINHO ---
 # Garantindo que os caminhos batem com os artefatos do CI
-INSTRUCTIONS_FILE = "instrucoes_jules.md"
+INSTRUCTIONS_FILE = "jules/instrucoes_jules.md"
 BACKEND_COV_JSON = "coverage.json" 
 FRONTEND_COV_JSON = "frontend/coverage/coverage-summary.json"
 

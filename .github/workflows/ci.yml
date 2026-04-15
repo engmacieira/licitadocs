@@ -136,6 +136,34 @@ jobs:
     needs: [backend-tests-coverage, frontend-tests-coverage]
     if: "!contains(github.event.head_commit.message, '🤖 AI (Jules)') && !contains(github.event.head_commit.message, '[skip jules]')"
     runs-on: ubuntu-latest
+
+    # 🟢 Variáveis para o Pytest funcionar
+    env:
+      ENV: "test"
+      FRONTEND_URL: "http://localhost:5173"
+      CORS_ORIGINS: "http://localhost:5173"
+      SECRET_KEY: "chave_falsa_do_github_actions"
+      ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      RESET_TOKEN_EXPIRE_MINUTES: 15
+      EMAILS_FROM_NAME: "LicitaDocs CI"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
+
+    # 🟢 Banco de Dados de Teste
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: licitadocs_test
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     
     steps:
       # ⚠️ MUITO IMPORTANTE: Usar um Personal Access Token (PAT)
@@ -161,12 +189,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov
+      - run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov alembic
       
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - run: cd frontend && npm ci
+
+      # Rodar as tabelas do banco antes do Jules testar
+      - name: Run Migrations
+        run: alembic upgrade head
 
       - name: 📲 Notificar Telegram (Jules Iniciado)
         uses: appleboy/telegram-action@master
