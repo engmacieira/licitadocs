@@ -4,94 +4,82 @@ import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
-import google.generativeai as genai
 
-# Importando o Cérebro do Jules
-from jules_core import build_jules_system_prompt
+# Importamos a ponte de comunicação oficial
+from jules_core import iniciar_sessao_jules
 
+# --- CONFIGURAÇÕES DE CAMINHO ---
 ROOT_DIR = Path(__file__).parent.parent
-MAIN_API_FILE = ROOT_DIR / "app" / "main.py"
-RELEASE_NOTES_DIR = ROOT_DIR / "docs" / "release-notes"
+MAIN_API_FILE = "app/main.py"
 
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
-
-def gerar_release_notes_com_ia(commits_crus, versao):
-    """Pede ao Jules para formatar o log do Git em um Changelog legível."""
-    if not GEMINI_KEY:
-        return commits_crus # Fallback para o texto cru se não houver API
-        
-    print("   🧠 Jules: Redigindo as Notas de Release...")
-    system_prompt = build_jules_system_prompt()
-    
-    user_prompt = f"""
-    Aja como Tech Lead e escreva o Release Notes para a versão v{versao}.
-    
-    Aqui estão as mensagens de commit brutas desta release:
-    {commits_crus}
-    
-    FORMATAÇÃO EXIGIDA:
-    Escreva um Markdown limpo. Agrupe os itens logicamente (ex: 🚀 Novas Funcionalidades, 🐛 Correções de Bugs, 🔧 Melhorias Técnicas).
-    Seja breve, profissional e direto. NÃO use blocos de código (```markdown), retorne apenas o texto final.
-    """
-    
-    try:
-        model = genai.GenerativeModel("gemini-1.5-flash", system_instruction=system_prompt)
-        response = model.generate_content(user_prompt)
-        return response.text.strip()
-    except Exception as e:
-        print(f"   ⚠️ Erro ao gerar notas com IA: {e}")
-        return commits_crus # Fallback
+def obter_versao_atual():
+    """Lê a versão atual diretamente do código fonte para cálculo local."""
+    path = ROOT_DIR / MAIN_API_FILE
+    if not path.exists():
+        return "0.1.0"
+    content = path.read_text(encoding="utf-8")
+    match = re.search(r'API_VERSION\s*=\s*["\']([^"\']+)["\']', content)
+    return match.group(1) if match else "0.1.0"
 
 def main():
-    print("\n🚀 [Jules 03] Iniciando Gestão de Release e Versão...")
-    RELEASE_NOTES_DIR.mkdir(parents=True, exist_ok=True)
+    print("\n🚀 [Jules 03] Gestão de Release e Versionamento Autónomo")
     
-    if not MAIN_API_FILE.exists():
-        print(f"❌ Erro: Arquivo {MAIN_API_FILE} não encontrado.")
-        sys.exit(1)
-
-    content = MAIN_API_FILE.read_text(encoding="utf-8")
-    version_match = re.search(r'API_VERSION\s*=\s*["\']([^"\']+)["\']', content)
-    current_version = version_match.group(1) if version_match else "0.1.0"
+    current_version = obter_versao_atual()
     
     try:
-        # Pega os commits desde o último merge
-        commits = subprocess.check_output(["git", "log", "HEAD~1..HEAD", "--oneline"]).decode()
+        # Extrai as mensagens de commit desde a última tag/release
+        commits = subprocess.check_output(
+            ["git", "log", "HEAD~1..HEAD", "--oneline"], 
+            text=True
+        ).strip()
     except subprocess.CalledProcessError:
-        commits = "feat: atualizações automáticas de infraestrutura"
+        commits = "Melhorias gerais de sistema."
     
     print(f"   📍 Versão Atual: {current_version}")
 
-    # Lógica de decisão de incremento
+    # Lógica de decisão de incremento (Semântica)
     increment = "patch" 
     if "feat:" in commits.lower(): increment = "minor"
     if "BREAKING CHANGE" in commits: increment = "major"
 
+    # Cálculo da nova versão
     v_parts = list(map(int, current_version.split('.')))
-    if increment == "major": v_parts[0] += 1; v_parts[1] = 0; v_parts[2] = 0
-    elif increment == "minor": v_parts[1] += 1; v_parts[2] = 0
-    else: v_parts[2] += 1
+    if increment == "major": 
+        v_parts[0] += 1; v_parts[1] = 0; v_parts[2] = 0
+    elif increment == "minor": 
+        v_parts[1] += 1; v_parts[2] = 0
+    else: 
+        v_parts[2] += 1
     
     new_version = ".".join(map(str, v_parts))
-    print(f"   🆙 Nova Versão Definida: {new_version}")
+    print(f"   🆙 Alvo de Versão: {new_version} ({increment})")
 
-    # 1. Atualiza a versão no main.py
-    new_content = re.sub(r'API_VERSION\s*=\s*["\'][^"\']+["\']', f'API_VERSION = "{new_version}"', content)
-    MAIN_API_FILE.write_text(new_content, encoding="utf-8")
+    # Briefing da Missão para o Agente Autónomo
+    missao = f"""
+    Foco de Ação: Gestão de Release e Documentação de Versão
 
-    # 2. Gera e salva as Notas de Release (Agora com IA!)
-    texto_formatado = gerar_release_notes_com_ia(commits, new_version)
+    Missão:
+    1. Atualiza a constante `API_VERSION` no ficheiro `{MAIN_API_FILE}` para a nova versão: `{new_version}`.
+    2. Cria um novo ficheiro de Release Notes em `docs/release-notes/v{new_version}.md`.
     
-    release_file = RELEASE_NOTES_DIR / f"v{new_version}.md"
-    cabecalho = f"# 📦 Release Notes - v{new_version}\n**Data:** {datetime.now().strftime('%d/%m/%Y')}\n\n"
-    release_file.write_text(cabecalho + texto_formatado, encoding="utf-8")
-    print(f"   📝 Notas de release salvas em: docs/release-notes/v{new_version}.md")
-    
-    # 3. BUG CORRIGIDO: Exportando a nova versão para o GitHub Actions
-    with open(os.environ.get('GITHUB_ENV', 'env.txt'), 'a') as env_file:
-        env_file.write(f"NEW_VERSION={new_version}\n")
+    Instruções Técnicas para o Ficheiro de Release Notes:
+    - Data: {datetime.now().strftime('%d/%m/%Y')}
+    - Utiliza o log de commits abaixo para redigir um resumo executivo profissional:
+      --- COMMITS DA VERSÃO ---
+      {commits}
+      ---
+    - Organiza o texto por categorias: 🚀 Novas Funcionalidades, 🐛 Correções, 🔧 Melhorias Técnicas.
+    - O tom deve ser de um Tech Lead a comunicar com stakeholders.
+    """
+
+    # Aciona o Jules para aplicar as mudanças de ficheiro e gerar o markdown
+    resultado = iniciar_sessao_jules(missao_especifica=missao)
+
+    if resultado:
+        # Exporta para o GITHUB_ENV para que o passo de commit do YAML possa usar a variável
+        with open(os.environ.get('GITHUB_ENV', 'env.txt'), 'a') as env_file:
+            env_file.write(f"NEW_VERSION={new_version}\n")
+        print(f"✅ Ordem de Release despachada para v{new_version}.")
 
 if __name__ == "__main__":
     main()

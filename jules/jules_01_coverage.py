@@ -2,19 +2,14 @@ import json
 import os
 import re
 from pathlib import Path
-import google.generativeai as genai
 
-# Importando o Cérebro do Jules
-from jules_core import build_jules_system_prompt
+# Importamos a nossa ponte de comunicação para a API do Jules
+from jules_core import iniciar_sessao_jules
 
 # --- CONFIGURAÇÕES DE CAMINHO ---
 INSTRUCTIONS_FILE = "jules/instrucoes_jules.md"
 BACKEND_COV_JSON = "coverage.json" 
 FRONTEND_COV_JSON = "frontend/coverage/coverage-summary.json"
-
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
 
 def get_jules_thresholds():
     """Lê as metas de cobertura via metadados nas instruções."""
@@ -25,117 +20,92 @@ def get_jules_thresholds():
             return int(metrics_match.group(1)), int(metrics_match.group(2))
         return 90, 80
     except Exception as e:
-        print(f"⚠️ Erro ao ler metas: {e}. Usando 90/80.")
+        print(f"⚠️ Erro ao ler metas: {e}. A usar 90/80.")
         return 90, 80
 
 def analyze_backend():
     """Analisa o coverage.json gerado pelo Pytest."""
-    if not os.path.exists(BACKEND_COV_JSON):
-        print(f"❌ Artefato Backend {BACKEND_COV_JSON} não encontrado.")
-        return []
+    if not os.path.exists(BACKEND_COV_JSON): return []
     
-    with open(BACKEND_COV_JSON) as f:
+    with open(BACKEND_COV_JSON) as f: 
         data = json.load(f)
-    
+        
     _, file_min = get_jules_thresholds()
-    critical_files = []
+    critical = []
     
-    for file_path, info in data.get("files", {}).items():
+    for f_path, info in data.get("files", {}).items():
         percent = info.get("summary", {}).get("percent_covered", 0)
         if percent < file_min:
-            missing = info.get("missing_lines", [])
-            critical_files.append({"path": file_path, "percent": percent, "missing": missing})
+            critical.append({"path": f_path, "percent": percent, "missing": info.get("missing_lines", [])})
             
-    return critical_files
+    return critical
 
 def analyze_frontend():
     """Analisa o summary do Vitest."""
-    if not os.path.exists(FRONTEND_COV_JSON):
-        print(f"❌ Artefato Frontend {FRONTEND_COV_JSON} não encontrado.")
-        return []
+    if not os.path.exists(FRONTEND_COV_JSON): return []
     
-    with open(FRONTEND_COV_JSON) as f:
+    with open(FRONTEND_COV_JSON) as f: 
         data = json.load(f)
-    
+        
     _, file_min = get_jules_thresholds()
-    critical_files = []
+    critical = []
     
-    for file_path, metrics in data.items():
-        if file_path == "total": continue
+    for f_path, metrics in data.items():
+        if f_path == "total": continue
         percent = metrics.get("lines", {}).get("pct", 0)
         
         if isinstance(percent, (int, float)) and percent < file_min:
-            critical_files.append({"path": file_path, "percent": percent})
+            critical.append({"path": f_path, "percent": percent})
             
-    return critical_files
+    return critical
 
-def generate_ai_tests(file_info, tech_stack):
-    """Chama a API do Gemini para gerar os testes e os salva no disco."""
-    if not GEMINI_KEY:
-        print("❌ Erro: GEMINI_API_KEY não configurada no ambiente.")
+def despachar_missao(issues, stack_name, tools_info):
+    """Monta o briefing da missão e aciona o Agente."""
+    if not issues:
         return
 
-    print(f"\n🧠 Jules ({tech_stack}): Otimizando {file_info['path']} ({file_info['percent']}%)")
+    print(f"\n⚠️ {stack_name}: Identificados {len(issues)} ficheiro(s) abaixo da meta. A preparar a missão...")
     
-    system_prompt = build_jules_system_prompt()
-    linhas_faltantes = file_info.get("missing", "Não detalhado")
+    # Formata a lista de problemas num formato legível
+    detalhes = []
+    for i in issues:
+        linhas = f" | Linhas em falta: {i.get('missing')}" if 'missing' in i else ""
+        detalhes.append(f"- {i['path']} ({i['percent']}%){linhas}")
+        
+    lista_arquivos = "\n".join(detalhes)
     
-    try:
-        codigo_original = Path(file_info['path']).read_text(encoding="utf-8")
-        
-        # Inicializa o modelo com as instruções de sistema (Constituição)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system_prompt
-        )
+    missao = f"""
+    Foco de Ação: Aumentar a Cobertura de Testes ({stack_name})
 
-        prompt_usuario = f"""
-        Analise o código de {file_info['path']}. Cobertura atual: {file_info['percent']}%.
-        Linhas sem cobertura: {linhas_faltantes}.
-        
-        Gere um arquivo de teste completo usando {tech_stack}.
-        RESPOSTA OBRIGATÓRIA: Retorne APENAS o código puro, sem explicações ou markdown blocks (```).
-        
-        === CÓDIGO ORIGINAL ===
-        {codigo_original}
-        """
+    Os seguintes ficheiros falharam em atingir a nossa meta de cobertura e precisam da tua intervenção:
+    {lista_arquivos}
 
-        response = model.generate_content(prompt_usuario)
-        codigo_gerado = response.text.strip()
-
-        # Define o caminho do teste (Ex: app/models/user.py -> app/tests/test_user_jules.py)
-        path_obj = Path(file_info['path'])
-        test_dir = path_obj.parent.parent / "tests" if "app" in str(path_obj) else path_obj.parent / "__tests__"
-        test_dir.mkdir(parents=True, exist_ok=True)
-        
-        test_file_name = f"test_{path_obj.stem}_jules.py" if "Python" in tech_stack else f"{path_obj.stem}.jules.test.ts"
-        test_path = test_dir / test_file_name
-
-        test_path.write_text(codigo_gerado, encoding="utf-8")
-        print(f"   ✅ Teste gerado e salvo em: {test_path}")
-
-    except Exception as e:
-        print(f"   ⚠️ Falha crítica na geração de testes: {e}")
+    Instruções Técnicas:
+    1. Utiliza {tools_info} para criares ou atualizares os testes unitários.
+    2. Navega até a estes ficheiros no repositório, analisa o código fonte e escreve os testes focando estritamente nas linhas em falta.
+    3. Guarda os ficheiros na pasta correta (ex: /tests ou /__tests__).
+    4. Confirma que a lógica não quebra os padrões do projeto antes de finalizares.
+    """
+    
+    # Entrega a missão ao motor central
+    iniciar_sessao_jules(missao_especifica=missao)
 
 def main():
-    print("\n📊 [Jules 01] Iniciando Auditoria de Cobertura...")
-    g_target, f_target = get_jules_thresholds()
+    print("\n📊 [Jules 01] Auditoria de Cobertura e Acionamento do Agente Autónomo")
     
     b_issues = analyze_backend()
     f_issues = analyze_frontend()
 
     if not b_issues and not f_issues:
-        print(f"✅ Cobertura impecável! (Meta: {f_target}%)")
-    else:
-        if b_issues:
-            print(f"\n⚠️ Backend: {len(b_issues)} arquivos abaixo da meta.")
-            for issue in b_issues:
-                generate_ai_tests(issue, "Python/Pytest")
-                
-        if f_issues:
-            print(f"\n⚠️ Frontend: {len(f_issues)} arquivos abaixo da meta.")
-            for issue in f_issues:
-                generate_ai_tests(issue, "React/Vitest")
+        print("✅ Cobertura impecável! Nenhuma ação necessária.")
+        return
+
+    # Despachamos missões separadas para não confundir o Agente com contextos de Backend e Frontend ao mesmo tempo
+    if b_issues:
+        despachar_missao(b_issues, "Backend", "Python e Pytest")
+        
+    if f_issues:
+        despachar_missao(f_issues, "Frontend", "React, TypeScript e Vitest")
 
 if __name__ == "__main__":
     main()

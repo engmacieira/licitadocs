@@ -1,55 +1,84 @@
+import os
 import sys
+import requests
 from pathlib import Path
 
+# --- CONFIGURAÇÕES DE CAMINHO ---
 ROOT_DIR = Path(__file__).parent.parent
 REGRAS_FILE = ROOT_DIR / "docs" / "00REGRAS_CODIGO.md"
-INSTRUCOES_FILE = ROOT_DIR / "jules" / "instrucoes_jules.md"
+INSTRUCOES_FILE = ROOT_DIR / "jules" / "instrucoes_jules.md" 
 
-def _ler_arquivo_seguro(caminho: Path, nome_amigavel: str) -> str:
-    """Lê um arquivo garantindo que falhas sejam avisadas visualmente no log do CI."""
+# --- CREDENCIAIS E API OFICIAL ---
+JULES_API_KEY = os.environ.get("JULES_API_KEY")
+BASE_URL = "https://jules.googleapis.com/v1alpha"
+
+REPO_OWNER = "engmacieira"
+REPO_NAME = "licitadocs"
+
+def _ler_arquivo_contexto(caminho: Path, nome_amigavel: str) -> str:
+    """Lê arquivos de diretrizes para garantir a 'personalidade' do Jules."""
     if not caminho.exists():
-        print(f"🚨 AVISO CRÍTICO (Core): Arquivo {nome_amigavel} não encontrado no caminho:\n-> {caminho}")
-        # Retorna um texto que força a IA a avisar que está sem instruções
-        return f"[ERRO GRAVE: {nome_amigavel} INACESSÍVEL. SOLICITE INTERVENÇÃO HUMANA IMEDIATA.]"
-    
+        print(f"🚨 AVISO (Core): {nome_amigavel} não encontrado em {caminho}")
+        return ""
     try:
         return caminho.read_text(encoding="utf-8")
     except Exception as e:
-        print(f"🚨 ERRO (Core) ao ler {nome_amigavel}: {e}")
-        return f"[ERRO AO LER {nome_amigavel}]"
+        print(f"🚨 ERRO ao ler {nome_amigavel}: {e}")
+        return ""
 
-def build_jules_system_prompt(contexto_tarefa: str = "") -> str:
+def iniciar_sessao_jules(missao_especifica: str, branch: str = "main"):
     """
-    Constrói a base de conhecimento (Constituição) do Jules.
-    Aceita um 'contexto_tarefa' opcional para refinar o comportamento.
+    Cria uma sessão autônoma fundindo as Regras, Instruções e a Missão.
     """
-    regras = _ler_arquivo_seguro(REGRAS_FILE, "00REGRAS_CODIGO.md")
-    instrucoes = _ler_arquivo_seguro(INSTRUCOES_FILE, "instrucoes_jules.md")
+    if not JULES_API_KEY:
+        print("❌ ERRO: JULES_API_KEY não encontrada nos Secrets do GitHub.")
+        return None
+
+    headers = {
+        "x-goog-api-key": JULES_API_KEY,
+        "Content-Type": "application/json"
+    }
+
+    # Coletamos todo o cérebro do projeto
+    regras = _ler_arquivo_contexto(REGRAS_FILE, "00REGRAS_CODIGO.md")
+    instrucoes = _ler_arquivo_contexto(INSTRUCOES_FILE, "instrucoes_jules.md")
     
-    stack_tecnologico = """
-    === TECH STACK OFICIAL DO PROJETO ===
-    - Backend: Python 3.11+, FastAPI, SQLAlchemy, Pytest.
-    - Frontend: React, TypeScript, Vite, Vitest, TailwindCSS.
-    - Infra: Docker, GitHub Actions, AWS EC2.
-    """
-
-    system_prompt = f"""
-    Você é Jules, o Agente de QA Automatizado do projeto LicitaDocs.
-    Sua missão é otimizar código, aplicar boas práticas e garantir resiliência.
-
-    {stack_tecnologico}
-
-    Antes de gerar qualquer análise ou código, você DEVE processar e obedecer rigorosamente as diretrizes abaixo:
-
-    === A DIRETRIZ SUPREMA ===
+    # O prompt final é a fusão de toda a inteligência local
+    prompt_final = f"""
+    VOCÊ É UM ENGENHEIRO SÊNIOR DO PROJETO LICITADOCS.
+    
+    === DIRETRIZES DE CÓDIGO (00REGRAS_CODIGO.md) ===
     {regras}
-
-    === METAS DA ESTEIRA (CI/CD) ===
-    {instrucoes}
-    """
     
-    # Se o script que chamou quiser injetar regras específicas daquela fase
-    if contexto_tarefa:
-        system_prompt += f"\n\n=== CONTEXTO ESPECÍFICO DESTA TAREFA ===\n{contexto_tarefa}\n"
+    === INSTRUÇÕES DE PROCESSO (instrucoes_jules.md) ===
+    {instrucoes}
+    
+    === SUA TAREFA IMEDIATA ===
+    {missao_especifica}
+    """
 
-    return system_prompt
+    payload = {
+        "prompt": prompt_final,
+        "sourceContext": {
+            "source": f"sources/github-{REPO_OWNER}-{REPO_NAME}",
+            "githubRepoContext": {
+                "startingBranch": branch
+            }
+        }
+    }
+
+    try:
+        print(f"🔌 Acionando Agente Jules no repositório {REPO_NAME}...")
+        response = requests.post(f"{BASE_URL}/sessions", headers=headers, json=payload, timeout=30)
+        
+        if response.status_code == 200:
+            dados = response.json()
+            print(f"✅ Sessão criada: {dados.get('name')}")
+            return dados
+        else:
+            print(f"🚨 Erro na API Jules ({response.status_code}): {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️ Falha de comunicação: {e}")
+        return None
