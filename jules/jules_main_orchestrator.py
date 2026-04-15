@@ -98,7 +98,7 @@ class JulesOrchestrator:
         try:
             print("   👉 Testando Backend...")
             # Mudamos capture_output para False para o erro do Pytest aparecer no log do CI
-            subprocess.run(["pytest"], check=True) 
+            subprocess.run(["python -m pytest"], check=True) 
             print("   ✅ Backend OK!")
         except subprocess.CalledProcessError:
             print(f"\n🚨 ERRO CRÍTICO: O código atual falhou nos testes de regressão!")
