@@ -48,7 +48,7 @@ docs_config = {
     "redoc_url": "/redoc" if ENV != "production" else None,
 }
 
-API_VERSION = "2.0.1"
+API_VERSION = "2.0.2"
 
 app = FastAPI(
     title="LicitaDoc API",
