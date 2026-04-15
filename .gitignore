@@ -20,4 +20,4 @@ scripts/
 google_credentials.json
 client_secrets.json
 token.json
-.github/workflows/ci_copy.yml
+.github/workflows/ci_copy.yml\n.coverage\ncoverage.json\n
