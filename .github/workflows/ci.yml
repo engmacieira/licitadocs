@@ -140,6 +140,8 @@ jobs:
     # 🟢 Variáveis para o Pytest funcionar
     env:
       ENV: "test"
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.JULES_AI_API_KEY }}
       FRONTEND_URL: "http://localhost:5173"
       CORS_ORIGINS: "http://localhost:5173"
       SECRET_KEY: "chave_falsa_do_github_actions"
@@ -172,6 +174,12 @@ jobs:
         with:
           token: ${{ secrets.JULES_PAT }}
           fetch-depth: 0 # Necessário para o Jules ler o histórico de commits
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: .
+          merge-multiple: true
 
       - name: Download Backend Coverage
         uses: actions/download-artifact@v4
@@ -211,8 +219,6 @@ jobs:
             O coverage foi gerado com sucesso. O Jules está analisando o código para criar testes, refatorar e preparar o Release! 🚀
 
       - name: Executar Jules Orchestrator
-        env:
-          GEMINI_API_KEY: ${{ secrets.JULES_AI_API_KEY }}
         run: |
           python jules/jules_main_orchestrator.py
 

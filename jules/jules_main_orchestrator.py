@@ -97,10 +97,11 @@ class JulesOrchestrator:
         print("\n🧪 [PASSO 5] Fail-Fast: Validando código gerado...")
         try:
             print("   👉 Testando Backend...")
-            subprocess.run(["pytest"], check=True, capture_output=True)
+            # Mudamos capture_output para False para o erro do Pytest aparecer no log do CI
+            subprocess.run(["pytest"], check=True) 
             print("   ✅ Backend OK!")
-        except subprocess.CalledProcessError as e:
-            print(f"\n🚨 ERRO: O Jules quebrou os testes de backend!\n{e.stderr.decode('utf-8', errors='ignore')}")
+        except subprocess.CalledProcessError:
+            print(f"\n🚨 ERRO CRÍTICO: O código atual falhou nos testes de regressão!")
             sys.exit(1)
 
         print("\n📦 [PASSO 6] Commit e Push para Deploy...")
