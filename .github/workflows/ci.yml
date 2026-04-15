@@ -205,6 +205,16 @@ jobs:
       - name: Run Migrations
         run: alembic upgrade head
 
+      - name: 📲 Notificar Telegram (Jules Iniciado)
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
+          format: markdown
+          message: |
+            🤖 *Jules AI Ativado*
+            O Jules está analisando o código para criar testes, refatorar e preparar o Release! 🚀
+
       - name: 🤖 Jules [01] - Análise de Cobertura
         run: python jules/jules_01_coverage.py
 

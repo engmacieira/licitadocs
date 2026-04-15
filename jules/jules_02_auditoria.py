@@ -1,9 +1,15 @@
 import subprocess
 import sys
+import os
 from pathlib import Path
+import google.generativeai as genai
 
 # Importando o Cérebro do Jules
 from jules_core import build_jules_system_prompt
+
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
 
 def obter_arquivos_modificados():
     """Lê o Git Diff para descobrir o que mudou no último commit."""
@@ -18,13 +24,15 @@ def obter_arquivos_modificados():
         return []
 
 def auditar_arquivo_com_ia(arquivo_path, codigo_original):
-    """Monta o contexto e chama a API do Gemini para auditar o código."""
+    """Monta o contexto e chama a API do Gemini para auditar e corrigir o código."""
+    if not GEMINI_KEY:
+        print("❌ Erro: GEMINI_API_KEY não configurada no ambiente.")
+        return False
+
     print(f"   🧠 Jules: Auditando {arquivo_path}...")
     
-    # 1. Carrega a Constituição do projeto
     system_prompt = build_jules_system_prompt()
     
-    # 2. Monta a requisição focada em Segurança e Docs
     user_prompt = f"""
     Analise o código abaixo ({arquivo_path}).
     
@@ -32,27 +40,38 @@ def auditar_arquivo_com_ia(arquivo_path, codigo_original):
     1. 🛡️ Segurança: Identifique condições de corrida (race conditions), falhas de sanitização, vazamento de dados ou vulnerabilidades graves.
     2. 📝 Clean Code: Verifique a ausência ou inconsistência de Docstrings (Python) ou JSDoc (TypeScript).
     
-    Se houver problemas críticos, forneça o código corrigido.
-    Se o código estiver seguro e bem documentado, retorne apenas: "STATUS: APROVADO".
+    Se o código estiver TOTALMENTE seguro e perfeitamente documentado, retorne EXATAMENTE E APENAS a string: "STATUS: APROVADO".
+    
+    Se houver qualquer problema crítico de segurança ou falta de documentação, CORRIJA o código e retorne APENAS o código corrigido na íntegra.
+    NÃO inclua blocos de markdown (```), explicações, ou o texto 'Aqui está o código'. Retorne apenas o código puro para que não quebre o arquivo na hora de salvar.
     
     === CÓDIGO FONTE ===
     {codigo_original}
     """
     
-    # TODO: Implementar Google GenAI SDK
-    # print("   ⏳ Chamando a API do Gemini...")
-    # response = gemini_client.models.generate_content(
-    #     model='gemini-2.5-flash',
-    #     contents=user_prompt,
-    #     config=types.GenerateContentConfig(system_instruction=system_prompt)
-    # )
-    
-    # Para o esqueleto, vamos simular que a IA aprovou o código
-    resposta_simulada = "STATUS: APROVADO" 
-    print(f"   ✅ [Simulação] Análise concluída: {resposta_simulada}")
-    
-    # Retorna True se encontrou erro (não aprovado), False se passou
-    return "STATUS: APROVADO" not in resposta_simulada
+    try:
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction=system_prompt
+        )
+        
+        response = model.generate_content(user_prompt)
+        resposta = response.text.strip()
+        
+        # O modelo decidiu que está tudo OK
+        if "STATUS: APROVADO" in resposta:
+            print(f"   ✅ {arquivo_path}: Seguro e documentado!")
+            return False 
+        
+        # O modelo encontrou erros e retornou o código corrigido
+        else:
+            print(f"   🔧 {arquivo_path}: Otimizações aplicadas pelo Jules! Sobrescrevendo...")
+            Path(arquivo_path).write_text(resposta, encoding="utf-8")
+            return True 
+            
+    except Exception as e:
+        print(f"   ⚠️ Erro ao consultar IA para {arquivo_path}: {e}")
+        return False
 
 def auditar_seguranca_e_docs(arquivos):
     """Filtra os arquivos relevantes e passa pela auditoria da IA."""
@@ -68,12 +87,10 @@ def auditar_seguranca_e_docs(arquivos):
     for arquivo in arquivos_codigo:
         path = Path(arquivo)
         if not path.exists():
-            continue # Arquivo foi deletado ou renomeado, ignoramos
+            continue 
             
         try:
             codigo_original = path.read_text(encoding="utf-8")
-            
-            # Chama a função que fala com a IA
             encontrou_problema = auditar_arquivo_com_ia(arquivo, codigo_original)
             
             if encontrou_problema:
@@ -83,10 +100,9 @@ def auditar_seguranca_e_docs(arquivos):
              print(f"   ⚠️ Erro ao ler {arquivo}: {e}")
         
     if arquivos_com_alerta:
-        print(f"\n🚨 O Jules encontrou pendências de documentação ou segurança em {len(arquivos_com_alerta)} arquivo(s).")
-        # Futuramente, podemos dar sys.exit(1) aqui para quebrar o CI se a vulnerabilidade for grave
+        print(f"\n🚨 O Jules otimizou/corrigiu {len(arquivos_com_alerta)} arquivo(s) modificado(s).")
     else:
-        print("\n✅ Auditoria concluída: Nenhuma vulnerabilidade crítica ou falha de documentação encontrada!")
+        print("\n✅ Auditoria concluída: Nenhuma vulnerabilidade ou falha de documentação encontrada!")
 
 def main():
     print("\n🛡️ [Jules 02] Iniciando Auditoria de Segurança e Clean Code...")

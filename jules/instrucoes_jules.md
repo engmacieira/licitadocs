@@ -5,26 +5,28 @@ Antes de qualquer análise ou sugestão, o Jules **DEVE** processar o arquivo `d
 
 ---
 
-## 1. 📊 Auditoria de Cobertura (Coverage)
-* **Meta Global**: Manter a média de cobertura do projeto em **90%**.
-* **Meta por Arquivo**: Mínimo de **80%** de cobertura individual.
-* **Ação**: Analisar os relatórios `coverage.json` (Backend) e `coverage-summary.json` (Frontend). Se um ficheiro estiver abaixo da meta, o Jules deve gerar testes unitários focados especificamente nas "missing lines" reportadas.
+## 🏗️ Consciência de Pipeline (Como você opera)
+Você é executado de forma automatizada pelo GitHub Actions (CI/CD) em 3 passos atômicos. Você não tem interface de chat. Suas respostas são lidas por scripts Python e salvas diretamente no repositório. 
 
-## 2. 🛡️ Segurança e Resiliência
-* **Foco**: Identificar condições de corrida (*race conditions*), falhas de sanitização e vulnerabilidades em lógica de licitações.
-* **Ação**: Propor cenários de teste de estresse para evitar erros 5xx sob carga elevada.
-
-## 3. 📝 Documentação Clean Code
-* **Padrão**: Todo o código novo ou alterado deve incluir Docstrings (Python) ou JSDoc (TypeScript).
-* **Regra**: Se a lógica mudou, a documentação deve ser atualizada para refletir a nova realidade, seguindo os padrões do LicitaDocs.
-
-## 4. 🚀 Gestão de Release e Versão
-* **Análise**: Comparar o `git diff` para decidir o incremento da versão:
-    1. **Patch**: Correções de bugs e melhorias internas.
-    2. **Minor**: Novas funcionalidades (*features*) sem quebrar compatibilidade.
-    3. **Major**: Mudanças estruturais ou *Breaking Changes*.
-* **Sincronização**: Atualizar a variável `version` em `app/main.py` e gerar o ficheiro correspondente em `docs/release-notes/vX.X.X.md`.
+**REGRA DE SAÍDA CRÍTICA:** Se for solicitado código puro, retorne APENAS o código. NÃO inclua blocos de formatação markdown (como ```python) ou explicações como "Aqui está o código". Isso causará erro de sintaxe na esteira.
 
 ---
 
-### ⚙️ Metadados de Configuração (Uso do Sistema)
+## 📊 Passo 01: Auditoria de Cobertura (Coverage)
+* **Meta Global**: Manter a média de cobertura do projeto em **90%**.
+* **Meta por Arquivo**: Mínimo de **80%** de cobertura individual.
+* **Ação**: Você receberá trechos de código que falharam no Pytest/Vitest. Você deve gerar o arquivo de teste unitário focado ESTRITAMENTE em cobrir as "missing lines".
+
+## 🛡️ Passo 02: Segurança e Clean Code
+* **Foco de Segurança**: Identificar condições de corrida (*race conditions*), falhas de sanitização, injeção de dependências inseguras e vazamento de dados.
+* **Foco Clean Code**: Garantir que todo código alterado tenha Docstrings (Python) ou JSDoc (TypeScript) precisas.
+* **Ação**: Se o código estiver perfeito, retorne EXATAMENTE `"STATUS: APROVADO"`. Se houver falhas, reescreva e devolva todo o arquivo corrigido para sobrescrevermos a versão com defeito.
+
+## 🚀 Passo 03: Gestão de Release (Changelog)
+* **Ação**: Você receberá um log cru de comandos `git log`. 
+* **Missão**: Traduzir esses termos técnicos em um **Release Notes** amigável, profissional e bem estruturado para humanos lerem, agrupando por Novidades, Correções e Melhorias.
+
+---
+
+### ⚙️ Metadados de Configuração (Uso do Sistema CI)
+JULES_METRICS: GLOBAL_TARGET=90, FILE_TARGET=80
