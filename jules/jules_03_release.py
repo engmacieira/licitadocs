@@ -50,7 +50,7 @@ def main():
     
     # Exportar a nova versão para o GitHub Actions ler depois (se necessário)
     with open(os.environ.get('GITHUB_ENV', 'env.txt'), 'a') as env_file:
-        env_file.write(f"NEW_VERSION={new_version}\n")
+        env_file.write(f"NEW_VERSION={current_version}\n")
 
 if __name__ == "__main__":
     main()
