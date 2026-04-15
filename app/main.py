@@ -48,9 +48,11 @@ docs_config = {
     "redoc_url": "/redoc" if ENV != "production" else None,
 }
 
+API_VERSION = "2.0.0"
+
 app = FastAPI(
     title="LicitaDoc API",
-    version="1.1.0", # Versão atualizada pós-refatoração
+    version=API_VERSION, # Versão atualizada pós-refatoração
     description="""
     **API Backend do sistema LicitaDoc.**
     
@@ -155,7 +157,7 @@ def health_check():
     """Endpoint básico para verificar se a API está online."""
     return {
         "status": "ok", 
-        "version": "1.1.0", 
+        "version": API_VERSION, 
         "system": "LicitaDoc API", 
         "environment": ENV
     }
