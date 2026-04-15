@@ -137,73 +137,26 @@ jobs:
     if: "!contains(github.event.head_commit.message, '🤖 AI (Jules)') && !contains(github.event.head_commit.message, '[skip jules]')"
     runs-on: ubuntu-latest
 
-    # 🟢 Variáveis para o Pytest funcionar
-    env:
-      ENV: "test"
-      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-      JULES_API_KEY: ${{ secrets.JULES_AI_API_KEY }}
-      FRONTEND_URL: "http://localhost:5173"
-      CORS_ORIGINS: "http://localhost:5173"
-      SECRET_KEY: "chave_falsa_do_github_actions"
-      ALGORITHM: "HS256"
-      ACCESS_TOKEN_EXPIRE_MINUTES: 30
-      RESET_TOKEN_EXPIRE_MINUTES: 15
-      EMAILS_FROM_NAME: "LicitaDocs CI"
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
-
-    # 🟢 Banco de Dados de Teste
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: licitadocs_test
-        ports:
-          - 5435:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
-      # ⚠️ MUITO IMPORTANTE: Usar um Personal Access Token (PAT)
-      # Se usar o GITHUB_TOKEN padrão, o push do Jules NÃO vai disparar o `ci.yml` do Deploy
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.JULES_PAT }}
-          fetch-depth: 0 # Necessário para o Jules ler o histórico de commits
-      
-      - name: Download Coverage Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: .
 
-      - name: Download Backend Coverage
-        uses: actions/download-artifact@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
         with:
-          name: backend-coverage
-          path: . # Baixa para a raiz (coverage.json)
+          fetch-depth: 0
 
-      - name: Download Frontend Coverage
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-coverage
-          path: frontend/coverage # Baixa para a pasta correta
-
-      - name: Set up Python & Node (Para o Jules validar o código gerado)
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov alembic
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: cd frontend && npm ci
 
-      - name: Run Migrations
-        run: alembic upgrade head
+      - name: 📦 Instalar Dependências Mínimas
+        run: pip install requests
+      
+      - name: 📥 Baixar Todos os Relatórios de Cobertura
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*coverage*'
+          merge-multiple: true
 
       - name: 📲 Notificar Telegram (Jules Iniciado)
         uses: appleboy/telegram-action@master
@@ -215,25 +168,10 @@ jobs:
             🤖 *Jules AI Ativado*
             O Jules está analisando o código para criar testes, refatorar e preparar o Release! 🚀
 
-      - name: 🤖 Jules [01] - Análise de Cobertura
-        run: python jules/jules_01_coverage.py
-
-      - name: 🛡️ Jules [02] - Auditoria de Segurança e Docs
-        run: python jules/jules_02_auditoria.py
-      
-      - name: 🚀 Jules [03] - Versionamento e Release Notes
-        run: python jules/jules_03_release.py
-
-      - name: 📦 Commit Automático das Otimizações
-        run: |
-          git config user.name "Jules AI QA"
-          git config user.email "jules@licitadocs.ai"
-          git add .
-          
-          git commit --allow-empty -m "🤖 AI (Jules): Validação de ciclo concluída (v${{ env.NEW_VERSION }})"
-          
-          git push
-          echo "🚀 Sinal enviado! A fase de Testes e Deploy será iniciada em breve."
+      - name: 🤖 Acionar Jules Mission Control
+        env:
+          JULES_API_KEY: ${{ secrets.JULES_AI_API_KEY }}
+        run: python jules/jules_mission_control.py
 
       - name: 📲 Notificar Telegram (Erro no Jules)
         if: failure()

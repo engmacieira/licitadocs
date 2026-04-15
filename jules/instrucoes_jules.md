@@ -26,6 +26,11 @@ Você é executado de forma automatizada pelo GitHub Actions (CI/CD) em 3 passos
 * **Ação**: Você receberá um log cru de comandos `git log`. 
 * **Missão**: Traduzir esses termos técnicos em um **Release Notes** amigável, profissional e bem estruturado para humanos lerem, agrupando por Novidades, Correções e Melhorias.
 
+## 📦 Protocolo de Entrega e Commit
+* **Mensagem de Commit Obrigatória**: Toda e qualquer alteração realizada por você DEVE começar estritamente com o prefixo `🤖 AI (Jules):`.
+* **Exemplo**: `🤖 AI (Jules): Otimização Global v1.0.5 - Cobertura de testes e ajuste de Docstrings`.
+* **Importância**: Este prefixo é o gatilho que aciona a nossa esteira de testes reais e deploy em produção. Se você esquecer o prefixo, o sistema não entrará no ar.
+
 ---
 
 ### ⚙️ Metadados de Configuração (Uso do Sistema CI)
