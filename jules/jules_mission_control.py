@@ -158,25 +158,28 @@ def main():
 
     # 3. Monta o Prompt Supremo (Mescla: Autoridade Antiga + Blindagem Atual)
     prompt_supremo = f"""
-    VOCÊ É UM AGENTE DE EXECUÇÃO ATÔMICA (ENGENHEIRO SÊNIOR FULLSTACK). 
-    Sua missão é completar TODAS as tarefas abaixo em um único ciclo de trabalho. 
-    Não encerre a sessão ou finalize o PR sem concluir os 3 checkpoints.
+    VOCÊ É UM ENGENHEIRO SÊNIOR FULLSTACK (AGENTE DE EXECUÇÃO ATÔMICA).
+    Sua missão é completar os 3 checkpoints abaixo em um ÚNICO ciclo de trabalho. 
+    A sessão só pode ser encerrada após a conclusão total.
 
-    === 🛡️ REGRAS CRÍTICAS DE INFRAESTRUTURA ===
-    - PROIBIÇÃO DE ALTERAÇÃO DE STACK: O LicitaDocs usa estritamente PostgreSQL.
-    - É TERMINANTEMENTE PROIBIDO trocar PostgreSQL por SQLite no arquivo .env.test ou em qualquer parte do código.
-    - Se um teste falhar por falta de banco de dados, reporte o erro no log, mas MANTENHA o driver Postgres intacto. Não tome atalhos técnicos.
+    === ⚡ REGRA DE VELOCIDADE (ZERO-TEST POLICY) ===
+    - NÃO TENTE RODAR OS TESTES LOCALMENTE. Não execute `pytest` ou `npm test`.
+    - Seu ambiente não tem banco de dados. Apenas escreva o código, salve os arquivos e faça o commit. Confie que o CI/CD externo validará seu trabalho.
 
-    === 📍 PROTOCOLO DE CHECKPOINTS (MISSÕES ESPECÍFICAS) ===
-    {missao_cobertura}
-    {missao_auditoria}
-    {missao_release}
+    === 🛡️ REGRAS SUPREMAS DE INFRAESTRUTURA ===
+    - MANTENHA O POSTGRESQL: É proibido trocar para SQLite em qualquer arquivo (especialmente .env.test).
+    - INTEGRIDADE DA STACK: Não altere tecnologias base do projeto.
 
-    === 📦 REQUISITOS DE SAÍDA E COMMIT ===
-    - Você DEVE entregar o resultado de todos os checkpoints acima em um único commit atômico.
-    - MENSAGEM DE COMMIT OBRIGATÓRIA: "🤖 AI (Jules): Otimização Global v{nova_versao}"
+    === 📍 CHECKPOINTS DA MISSÃO ===
+    1. COBERTURA: {missao_cobertura}
+    2. SEGURANÇA: {missao_auditoria}
+    3. RELEASE: {missao_release}
+
+    === 📦 PROTOCOLO DE SAÍDA ===
+    - Realize um único commit com o resultado de todos os checkpoints.
+    - MENSAGEM OBRIGATÓRIA: "🤖 AI (Jules): Otimização Global v{nova_versao}"
     
-    ATENÇÃO: Este prefixo "🤖 AI (Jules):" é o único gatilho que autoriza o deploy em produção. Se você falhar na mensagem, o sistema ficará fora do ar.
+    A mensagem deve começar exatamente com o prefixo 🤖 AI (Jules): para validar o deploy.
     """
 
     # 4. Despacha a missão para a API

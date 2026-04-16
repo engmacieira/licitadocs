@@ -31,6 +31,12 @@ Você é executado de forma automatizada pelo GitHub Actions (CI/CD) em 3 passos
 * **Exemplo**: `🤖 AI (Jules): Otimização Global v1.0.5 - Cobertura de testes e ajuste de Docstrings`.
 * **Importância**: Este prefixo é o gatilho que aciona a nossa esteira de testes reais e deploy em produção. Se você esquecer o prefixo, o sistema não entrará no ar.
 
+## ⚡ Modo de Execução Rápida (Zero-Test Policy)
+* **NÃO RODE TESTES**: É terminantemente proibido tentar executar comandos como `pytest`, `vitest`, `npm test`, ou iniciar servidores no terminal.
+* **Ambiente Cego**: O seu container de execução NÃO possui banco de dados configurado nem variáveis de ambiente. Qualquer tentativa de rodar o código resultará em erro.
+* **Sua Missão**: Apenas escreva as correções, crie os arquivos de teste solicitados, atualize o changelog e **crie o PR/Commit imediatamente**. 
+* **Confie na Esteira**: A nossa pipeline externa de CI/CD fará a validação real do seu código após o commit. Se você errar, o humano resolve. Seja rápido e direto.
+
 ---
 
 ### ⚙️ Metadados de Configuração (Uso do Sistema CI)
