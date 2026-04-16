@@ -2,6 +2,7 @@ import os
 import sys
 import requests
 from pathlib import Path
+from datetime import datetime
 
 # --- CONFIGURAÇÕES DE CAMINHO ---
 ROOT_DIR = Path(__file__).parent.parent
@@ -53,34 +54,44 @@ def iniciar_sessao_jules(missao_especifica: str, branch: str = "main"):
     === INSTRUÇÕES DE PROCESSO (instrucoes_jules.md) ===
     {instrucoes}
     
-    === SUA TAREFA IMEDIATA ===
+    === SUA MISSÃO ATÔMICA ===
     {missao_especifica}
     """
-    # O formato que você validou com sucesso:
+
     source_identificador = f"sources/github/{REPO_OWNER}/{REPO_NAME}"
 
     payload = {
+        "title": f"Otimização Global CI - {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         "prompt": prompt_final,
         "sourceContext": {
             "source": source_identificador,
             "githubRepoContext": {
                 "startingBranch": branch
             }
-        }
+        },
+        "automationMode": "AUTO_CREATE_PR",
+        "requirePlanApproval": False
     }
 
     try:
-        print(f"🔌 Acionando Agente Jules no repositório {REPO_NAME}...")
-        response = requests.post(f"{BASE_URL}/sessions", headers=headers, json=payload, timeout=30)
+        print(f"🔌 Acionando Agente Autónomo Jules no repositório {REPO_NAME}...")
+        response = requests.post(
+            f"{BASE_URL}/sessions", 
+            headers=headers, 
+            json=payload, 
+            timeout=30
+        )
         
         if response.status_code == 200:
             dados = response.json()
-            print(f"✅ Sessão criada: {dados.get('name')}")
+            session_name = dados.get('name')
+            print(f"✅ SESSÃO INICIADA: {session_name}")
+            print(f"🤖 O Jules está a trabalhar. O PR será criado automaticamente no GitHub.")
             return dados
         else:
             print(f"🚨 Erro na API Jules ({response.status_code}): {response.text}")
             return None
-            
+
     except Exception as e:
-        print(f"⚠️ Falha de comunicação: {e}")
+        print(f"💥 Falha catastrófica ao contactar Jules: {e}")
         return None
