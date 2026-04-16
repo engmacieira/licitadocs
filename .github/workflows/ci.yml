@@ -10,7 +10,8 @@ jobs:
     # REGRA: Se for você (engmacieira) E não for um commit da IA
     if: |
       github.actor == 'engmacieira' && 
-      !startsWith(github.event.head_commit.message, '🤖 AI (Jules):')
+      !startsWith(github.event.head_commit.message, '🤖 AI (Jules):') &&
+      !contains(github.event.head_commit.message, '[skip jules]')
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
@@ -34,7 +35,9 @@ jobs:
   # ---------------------------------------------------------
   real-tests-and-deploy:
     # REGRA: Só entra aqui se o commit começar com o prefixo do Jules
-    if: startsWith(github.event.head_commit.message, '🤖 AI (Jules):')
+    if: |
+      startsWith(github.event.head_commit.message, '🤖 AI (Jules):') ||
+      contains(github.event.head_commit.message, '[skip jules]')
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout
