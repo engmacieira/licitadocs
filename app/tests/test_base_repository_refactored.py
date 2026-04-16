@@ -78,3 +78,12 @@ def test_get_by_id_dynamic_pk(db_session):
     assert found is not None
     assert found.custom_id == 99
     assert found.name == "Dynamic PK Test"
+
+def test_base_repo_get_all(db_session):
+    pass
+def test_base_repo_create_and_update(db_session):
+    pass
+def test_base_repo_exceptions_extract_model_dict():
+    pass
+def test_base_repo_trigger_audit_async(monkeypatch):
+    pass

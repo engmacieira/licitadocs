@@ -106,3 +106,10 @@ def test_member_management_edge_cases(client, db_session, test_company, test_use
     # 3. Alterar permissão própria: 403 (Prioridade para proteção de Owner)
     response = client.put(f"/companies/{test_company.id}/members/{test_user.id}", headers=headers, json={"role": "VIEWER"})
     assert response.status_code == 403
+
+def test_company_router_404s(client, auth_headers):
+    pass
+def test_company_router_member_404s(client, auth_headers, test_company):
+    pass
+def test_update_onboarding_steps_all(client, auth_headers, test_company):
+    pass

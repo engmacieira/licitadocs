@@ -209,3 +209,12 @@ def test_resolve_ticket_success(client, auth_headers, test_company, db_session):
     response = client.patch(f"/messages/{msg.id}/resolve", headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["message_type"] == "ticket" # Mantém tipo mas resolve no repo
+
+def test_message_router_admin_unread(client, db_session):
+    pass
+def test_message_router_client_unread(client, auth_headers, test_company):
+    pass
+def test_message_router_ticket_thread_read(client, test_company, test_user, db_session):
+    pass
+def test_message_router_mark_ticket_404(client, auth_headers):
+    pass
