@@ -91,3 +91,12 @@ def test_message_repository_database_errors(db_session: Session, monkeypatch):
 
     with pytest.raises(DatabaseError):
         MessageRepository.get_all_tickets_admin(db_session)
+
+def test_create_bulk(db_session, test_company, test_user):
+    pass
+def test_get_admin_unread_count(db_session, test_company, test_user):
+    pass
+def test_get_client_unread_count(db_session, test_company):
+    pass
+def test_mark_ticket_thread_as_read(db_session, test_company, test_user):
+    pass
