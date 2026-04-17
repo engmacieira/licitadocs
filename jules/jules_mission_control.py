@@ -14,6 +14,7 @@ BACKEND_COV_JSON = "coverage.json"
 FRONTEND_COV_JSON = "frontend/coverage/coverage-summary.json"
 ROOT_DIR = Path(__file__).parent.parent
 MAIN_API_FILE = "app/main.py"
+FRONTEND_CONFIG_FILE = "frontend/src/config/app.config.ts"  
 
 # ==========================================
 # 📊 FASE 01: COBERTURA DE TESTES
@@ -131,7 +132,8 @@ def gerar_briefing_release():
     briefing = f"""
 **Gestão de Release e Documentação (v{new_version}):**
 1. Atualize `API_VERSION` no arquivo `{MAIN_API_FILE}` para `{new_version}`.
-2. Crie/Atualize o `docs/release-notes/v{new_version}.md` usando estes commits recentes:
+2. Atualize a versão no arquivo `{FRONTEND_CONFIG_FILE}` para a versão `{new_version}` (respeite o formato atual, ex: com ou sem 'v' na frente).
+3. Crie/Atualize o `docs/release-notes/v{new_version}.md` usando estes commits recentes:
    ---
    {commits}
    ---
