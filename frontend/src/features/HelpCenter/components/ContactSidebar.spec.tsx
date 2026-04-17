@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { ContactSidebar } from './ContactSidebar';
+import { CONTACT_CONFIG, APP_CONFIG } from '../../../config/app.config';
 
 describe('ContactSidebar', () => {
     it('should render contact information correctly', () => {
         render(<ContactSidebar />);
 
         expect(screen.getByText('Fale Conosco')).toBeInTheDocument();
-        expect(screen.getByText('suporte@licitadocs.com.br')).toBeInTheDocument();
-        expect(screen.getByText('(00) 00000-0000')).toBeInTheDocument();
-        expect(screen.getByText('Braúnas / MG')).toBeInTheDocument();
+        expect(screen.getByText(CONTACT_CONFIG.supportEmail)).toBeInTheDocument();
+        expect(screen.getByText(CONTACT_CONFIG.whatsapp.display)).toBeInTheDocument();
+        expect(screen.getByText(APP_CONFIG.address)).toBeInTheDocument();
     });
 
     it('should render opening hours correctly', () => {

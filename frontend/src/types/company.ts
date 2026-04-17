@@ -1,4 +1,4 @@
-/** Representa a entidade completa de uma Empresa no LicitaDocs. */
+/** Representa a entidade completa de uma Empresa no sistema. */
 export interface Company {
     id: string;
     cnpj: string;

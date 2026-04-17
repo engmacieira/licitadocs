@@ -1,9 +1,10 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
     AlertTriangle, RefreshCw, AlertOctagon, ScrollText,
     Building2, CreditCard, FileSignature, ShieldCheck, ArrowRight, MailCheck
 } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { APP_CONFIG, LEGAL_CONFIG } from '../../../config/app.config';
 
 /**
  * Propriedades do componente OnboardingWizard.
@@ -40,7 +41,7 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                     Finalize a configuração da <span className="text-blue-600">{currentCompany.razao_social}</span>
                 </h1>
                 <p className="text-slate-600 mt-3 max-w-xl mx-auto leading-relaxed">
-                    Para liberar o acesso completo ao LicitaDocs, siga as etapas de regularização abaixo.
+                    Para liberar o acesso completo ao {APP_CONFIG.name}, siga as etapas de regularização abaixo.
                 </p>
                 <Button variant="ghost" size="sm" onClick={loadData} className="mt-4 text-slate-400 hover:text-blue-600">
                     <RefreshCw className="mr-2 h-3 w-3" /> Atualizar Status
@@ -74,7 +75,9 @@ export function OnboardingWizard({ currentCompany, companyStatus, loadData }: On
                                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold">Pendente</span>
                                 }
                             </h3>
-                            <p className="text-slate-600 text-sm mt-1">Concordância com os Termos de Uso e Política de Privacidade da plataforma.</p>
+                            <p className="text-slate-600 text-sm mt-1">
+                                Concordância com os <Link to={LEGAL_CONFIG.termsOfUseUrl} className="text-blue-600 hover:underline">Termos de Uso</Link> e <Link to={LEGAL_CONFIG.privacyPolicyUrl} className="text-blue-600 hover:underline">Política de Privacidade</Link> da plataforma.
+                            </p>
                         </div>
                         {!companyStatus.terms && (
                             <Button onClick={() => navigate('/contract-sign')} className="w-full sm:w-auto">

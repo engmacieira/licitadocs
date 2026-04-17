@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "../../config/app.config";
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -104,11 +105,11 @@ export function EmissionOrchestrator() {
             `Permanecemos à disposição para eventuais esclarecimentos.\n\n` +
             `Atenciosamente,\n\n` +
             `Equipe de Legalização e Regularidade\n` +
-            `Plataforma LicitaDocs`
+            `Plataforma ${APP_CONFIG.name}`
         );
 
         setWhatsappBody(
-            `Olá, bom dia! Aqui é da equipe de legalização da plataforma LicitaDocs, falando na qualidade de procuradores da empresa ${companyName} (CNPJ: ${companyCnpj}).\n\n` +
+            `Olá, bom dia! Aqui é da equipe de legalização da plataforma ${APP_CONFIG.name}, falando na qualidade de procuradores da empresa ${companyName} (CNPJ: ${companyCnpj}).\n\n` +
             `Enviamos hoje um requerimento para o e-mail do setor solicitando a emissão da CND Municipal da empresa, com o Contrato Social e a nossa Procuração em anexo.\n\n` +
             `Vocês poderiam, por gentileza, confirmar o recebimento do e-mail e nos informar se há um número de protocolo ou uma previsão para a emissão da certidão? Muito obrigado pelo apoio!`
         );

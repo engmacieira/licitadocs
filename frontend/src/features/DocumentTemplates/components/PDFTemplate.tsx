@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
 import { type CompanyDocData } from '../utils/docxGenerator';
+import { APP_CONFIG } from '../../../config/app.config';
 
 // Registrar Fonte Arial para garantir o padrão oficial de documentos (ABNT)
 Font.register({
@@ -114,7 +115,7 @@ export const PDFTemplate = ({
     isAttestation = false,
     customSignatureName
 }: PDFTemplateProps) => (
-    <Document title={title} author="LicitaDocs">
+    <Document title={title} author={APP_CONFIG.name}>
         <Page size="A4" style={styles.page}>
 
             {/* Cabeçalho de Identidade */}
@@ -125,7 +126,7 @@ export const PDFTemplate = ({
                         CNPJ: {companyData.cnpj} | {companyData.endereco}
                     </Text>
                 </View>
-                <Text style={styles.headerPlatformTag}>LICITADOCS</Text>
+                <Text style={styles.headerPlatformTag}>{APP_CONFIG.name.toUpperCase()}</Text>
             </View>
 
             {/* Título Oficial */}
@@ -161,7 +162,7 @@ export const PDFTemplate = ({
                 style={styles.footer}
                 fixed
                 render={({ pageNumber, totalPages }) => (
-                    `Documento gerado eletronicamente via LicitaDocs em ${companyData.dataAtual} • Página ${pageNumber} de ${totalPages}`
+                    `Documento gerado eletronicamente via ${APP_CONFIG.name} em ${companyData.dataAtual} • Página ${pageNumber} de ${totalPages}`
                 )}
             />
         </Page>

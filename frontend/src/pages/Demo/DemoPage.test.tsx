@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DemoPage } from './index';
+import { APP_CONFIG, PRICING_CONFIG } from '../../config/app.config';
 
 // Mock do react-router-dom
 
@@ -28,7 +29,7 @@ describe('DemoPage Integration Test', () => {
 
         // Verifica o título principal
         expect(screen.getByText(/Veja como mantemos o seu/i)).toBeInTheDocument();
-        expect(screen.getAllByText('LicitaDocs').length).toBeGreaterThan(0);
+        expect(screen.getAllByText(APP_CONFIG.name).length).toBeGreaterThan(0);
 
         // Verifica as seções de pilares (Features)
         expect(screen.getByText('Monitoramento e Renovação Ativa')).toBeInTheDocument();
@@ -36,7 +37,7 @@ describe('DemoPage Integration Test', () => {
         expect(screen.getByText('Ferramentas e Apoio Especializado')).toBeInTheDocument();
 
         // Verifica o bloco de preço
-        expect(screen.getByText('178')).toBeInTheDocument();
+        expect(screen.getByText(Math.floor(PRICING_CONFIG.plans.PRO.annualPrice).toString())).toBeInTheDocument();
         expect(screen.getByText(/O equivalente a apenas/i)).toBeInTheDocument();
     });
 

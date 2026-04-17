@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LandingPage } from './index';
+import { APP_CONFIG } from '../../config/app.config';
 
 // Mock do react-router-dom
 
@@ -27,7 +28,7 @@ describe('LandingPage Integration Test', () => {
         render(<LandingPage />);
 
         // Verifica o logo/nome da plataforma
-        expect(screen.getByText('LicitaDocs')).toBeInTheDocument();
+        expect(screen.getByText(APP_CONFIG.name)).toBeInTheDocument();
 
         // Verifica o título principal (Hero)
         expect(screen.getByText(/Suas certidões sempre em dia/i)).toBeInTheDocument();

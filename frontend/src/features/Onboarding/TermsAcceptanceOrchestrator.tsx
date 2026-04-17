@@ -3,6 +3,7 @@ import type { UIEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ScrollText, FileText, ArrowRight, CheckCircle2, Lock, Unlock, X, ExternalLink } from 'lucide-react';
+import { APP_CONFIG } from '../../config/app.config';
 
 // Integrações
 import { useAuth } from '../../contexts/AuthContext';
@@ -280,14 +281,14 @@ export function TermsAcceptanceOrchestrator() {
                                 {activeModal === 'contract' && (
                                     <>
                                         <h2 className="text-center font-bold text-lg mb-8 uppercase underline decoration-2 underline-offset-4">
-                                            Contrato Prestação de Serviços de Tecnologia – LicitaDocs
+                                            Contrato Prestação de Serviços de Tecnologia – {APP_CONFIG.name}
                                         </h2>
                                         <div className="space-y-4 text-justify">
                                             <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg mb-6 text-amber-800 text-xs text-center font-sans">
                                                 <strong>Modo de Leitura:</strong> Esta é uma versão prévia. Os dados sensíveis da CONTRATADA estão protegidos. O documento completo será gerado após a validação do pagamento.
                                             </div>
 
-                                            <p><strong>CONTRATADA:</strong> LICITADOCS TECNOLOGIA (Dados protegidos nesta prévia).</p>
+                                            <p><strong>CONTRATADA:</strong> {APP_CONFIG.name.toUpperCase()} TECNOLOGIA (Dados protegidos nesta prévia).</p>
                                             <p><strong>CONTRATANTE:</strong> {documentProps.razaoSocial}, inscrita no CNPJ sob o nº {documentProps.cnpj}, com sede em {documentProps.endereco}.</p>
 
                                             <div className="border-t border-slate-300 my-6"></div>
@@ -307,7 +308,7 @@ export function TermsAcceptanceOrchestrator() {
                                             </div>
 
                                             <p><strong>OUTORGANTE (CONTRATANTE):</strong> {documentProps.razaoSocial}, CNPJ nº {documentProps.cnpj}.</p>
-                                            <p><strong>OUTORGADA (PLATAFORMA LICITADOCS):</strong> Dados protegidos nesta prévia.</p>
+                                            <p><strong>OUTORGADA (PLATAFORMA {APP_CONFIG.name.toUpperCase()}):</strong> Dados protegidos nesta prévia.</p>
 
                                             <div className="border-t border-slate-300 my-6"></div>
                                             <ProxyContent />

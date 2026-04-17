@@ -44,7 +44,7 @@ export function CompanyAutocomplete({ companies, value, onChange, isLoading }: C
                 noOptionsMessage={() => "Nenhuma empresa encontrada"}
                 isSearchable
                 classNamePrefix="company-select"
-                // Customização do estilo para bater com o Tailwind do LicitaDocs
+                // Customização do estilo para bater com o Tailwind do sistema
                 styles={{
                     control: (base) => ({
                         ...base,

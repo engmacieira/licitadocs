@@ -1,3 +1,4 @@
+import { APP_CONFIG, PRICING_CONFIG } from "../../../config/app.config";
 import { useState, useEffect } from 'react';
 import { Zap, CheckCircle2, ShieldCheck, Award, Anchor } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export function ValuePropositionPanel() {
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-white/10">
                         <Zap className="h-6 w-6 text-blue-400" />
                         <div>
-                            <h3 className="font-semibold text-white">LicitaDocs Anual</h3>
+                            <h3 className="font-semibold text-white">{APP_CONFIG.name} Anual</h3>
                             <p className="text-xs text-blue-300">Licença atrelada a 1 CNPJ</p>
                         </div>
                     </div>
@@ -113,8 +114,8 @@ export function ValuePropositionPanel() {
                     <div className="bg-slate-950/50 rounded-xl p-4 border border-white/5 flex items-center justify-between">
                         <span className="text-sm font-medium text-slate-400">Investimento</span>
                         <div className="text-right">
-                            <div className="text-white font-bold text-xl">R$ 178,80<span className="text-sm text-slate-400 font-normal">/ano</span></div>
-                            <div className="text-xs text-blue-400">Equivale a apenas R$ 14,90/mês</div>
+                            <div className="text-white font-bold text-xl">R$ {PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-sm text-slate-400 font-normal">/ano</span></div>
+                            <div className="text-xs text-blue-400">Equivale a apenas R$ {PRICING_CONFIG.plans.PRO.monthlyEquivalent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês</div>
                         </div>
                     </div>
                 </div>

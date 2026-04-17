@@ -4,6 +4,8 @@
  * Atua como Fonte Única de Verdade (Single Source of Truth) para o escopo de poderes
  * que o cliente outorga à plataforma.
  */
+import { APP_CONFIG } from '../../config/app.config';
+
 export function ProxyContent() {
     return (
         <>
@@ -23,7 +25,7 @@ export function ProxyContent() {
                 <li>Regularidade Econômico-Financeira (Certidão de Falência e Concordata).</li>
             </ul>
             <p className="mt-2">
-                Todos os documentos extraídos destinam-se a compor o acervo probatório do cofre digital da OUTORGANTE na plataforma LicitaDocs, visando à habilitação em procedimentos licitatórios (Lei 14.133/2021).
+                Todos os documentos extraídos destinam-se a compor o acervo probatório do cofre digital da OUTORGANTE na plataforma {APP_CONFIG.name}, visando à habilitação em procedimentos licitatórios (Lei 14.133/2021).
             </p>
 
             <h3 className="font-bold mt-6 mb-2 text-red-700">3. DA VEDAÇÃO ABSOLUTA (CLÁUSULA RESTRITIVA)</h3>
