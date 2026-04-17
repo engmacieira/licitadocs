@@ -312,7 +312,7 @@ jobs:
   # ==========================================
   build-frontend:
     needs: [frontend-tests, backend-tests] 
-    if: "!contains(github.event.head_commit.message, '[run jules]')"
+    if: contains(github.event.head_commit.message, '[run deploy]')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -360,7 +360,7 @@ jobs:
     name: Deploy para AWS EC2
     runs-on: ubuntu-latest
     if: |
-      !contains(github.event.head_commit.message, '[run jules]') ||
+      contains(github.event.head_commit.message, '[run deploy]') ||
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       # --- PASSO 1: AGENDA O REBOOT ---
