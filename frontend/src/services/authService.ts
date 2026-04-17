@@ -1,26 +1,5 @@
 import api from './api';
-
-/**
- * Interface que representa as credenciais necessárias para autenticação de utilizadores.
- * @interface SignInCredentials
- */
-export interface SignInCredentials {
-    /** E-mail do utilizador (mapeado para 'username' no fluxo OAuth2). */
-    email: string;
-    /** Palavra-passe do utilizador. */
-    password: string;
-}
-
-/**
- * Interface que representa a resposta de sucesso emitida pelo servidor de autenticação.
- * @interface AuthResponse
- */
-export interface AuthResponse {
-    /** Token de acesso JWT (JSON Web Token). */
-    access_token: string;
-    /** Tipo do token (ex: 'bearer'). */
-    token_type: string;
-}
+import type { SignInCredentials, AuthResponse } from '../types';
 
 /**
  * Serviço responsável por gerir o ciclo de vida da autenticação e registo.

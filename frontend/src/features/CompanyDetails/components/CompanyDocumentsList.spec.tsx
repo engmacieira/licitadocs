@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { CompanyDocumentsList } from './CompanyDocumentsList';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '../../../types';
 
 const mockDocuments: DocumentDTO[] = [
     {

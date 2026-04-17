@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SettingsOrchestrator } from './SettingsOrchestrator';
 import { documentService } from '../../services/documentService';
-import type { DocumentScope } from '../../services/documentService';
+import type { DocumentScope } from '../../types';
 import { toast } from 'sonner';
 
 // Mock do serviço e do toast

@@ -5,7 +5,7 @@ import { Building2, CheckCircle, AlertTriangle, ShieldCheck, FileText, FileSigna
 
 // Serviços e Contexto
 import { documentService } from '../../services/documentService';
-import type { DocumentDTO } from '../../services/documentService';
+import type { DocumentDTO } from '../../types';
 import { companyService } from '../../services/companyService';
 import { userService } from '../../services/userService'
 import { useAuth } from '../../contexts/AuthContext';

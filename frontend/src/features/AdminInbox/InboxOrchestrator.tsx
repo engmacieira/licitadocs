@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import api from '../../services/api';
 import { useUnreadCount } from '../../hooks/useUnreadCount';
 
-import { companyService, type Company } from '../../services/companyService';
+import { companyService } from '../../services/companyService';
+import type { Company } from '../../types';
 
 // Subcomponentes da Feature
 import { InboxSidebar } from './components/InboxSidebar';

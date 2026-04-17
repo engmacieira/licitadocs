@@ -2,7 +2,7 @@ import { FileText, Download, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '../../../components/ui/Button';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '../../../types';
 
 /**
  * Propriedades do componente CompanyDocumentsList.

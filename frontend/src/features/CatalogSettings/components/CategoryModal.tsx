@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { documentService } from '../../../services/documentService';
-import type { DocumentCategoryDTO, DocumentCategoryCreateDTO, DocumentCategoryUpdateDTO } from '../../../services/documentService';
+import type { DocumentCategoryDTO, DocumentCategoryCreateDTO, DocumentCategoryUpdateDTO } from '../../../types';
 
 /**
  * Propriedades do Modal de Categoria.

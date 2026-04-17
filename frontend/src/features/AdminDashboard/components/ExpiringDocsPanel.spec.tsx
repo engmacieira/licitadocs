@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, it, describe, vi, beforeEach, afterEach } from 'vitest';
 import { ExpiringDocsPanel } from './ExpiringDocsPanel';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '../../../types';
 
 describe('ExpiringDocsPanel', () => {
     const mockOnNavigate = vi.fn();

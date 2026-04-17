@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import type { EmissionRuleDTO } from '../../../services/emissionRuleService';
+import type { EmissionRuleDTO } from '../../../types';
 
 /**
  * Propriedades do componente CompanySelector.

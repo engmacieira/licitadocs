@@ -5,8 +5,8 @@ import { MapPin, Plus } from 'lucide-react';
 // Serviços
 import { emissionRuleService } from '../../services/emissionRuleService';
 import { documentService } from '../../services/documentService';
-import type { EmissionRuleDTO } from '../../services/emissionRuleService';
-import type { DocumentTypeDTO } from '../../services/documentService';
+import type { EmissionRuleDTO } from '../../types';
+import type { DocumentTypeDTO } from '../../types';
 
 // Componentes UI
 import { Button } from '../../components/ui/Button';

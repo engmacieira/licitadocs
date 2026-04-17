@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, RefreshCw, CheckCircle2, Download, User, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { DocumentDTO } from '../../../services/documentService';
+import type { DocumentDTO } from '../../../types';
 
 /**
  * Propriedades do componente RecentUpdatesPanel.

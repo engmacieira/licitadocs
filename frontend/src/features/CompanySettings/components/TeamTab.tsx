@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 import { Button } from '../../../components/ui/Button';
 import { companyService } from '../../../services/companyService';
-import type { MemberResponse } from '../../../services/companyService';
+import type { MemberResponse } from '../../../types';
 
 /**
  * Propriedades do componente TeamTab.

@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Folder, FileText, Plus, Edit2, Trash2, Settings as SettingsIcon } from 'lucide-react';
 
 import { documentService } from '../../services/documentService';
-import type { DocumentCategoryDTO, DocumentTypeDTO } from '../../services/documentService';
+import type { DocumentCategoryDTO, DocumentTypeDTO } from '../../types';
 
 // Subcomponentes da Feature
 import { CategoryModal } from './components/CategoryModal';

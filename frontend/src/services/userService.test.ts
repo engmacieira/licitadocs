@@ -27,7 +27,7 @@ describe('userService', () => {
     });
 
     it('updateMe should call patch endpoint with payload', async () => {
-        const payload = { nome: 'New Name' };
+        const payload = { nome_completo: 'New Name' };
         vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 'u1', ...payload } });
         await userService.updateMe(payload);
         expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
