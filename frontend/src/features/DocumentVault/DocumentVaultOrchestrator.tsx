@@ -1,21 +1,19 @@
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { useState } from 'react';
 import {
     Search, UploadCloud,
     FolderOpen, AlertCircle, Download,
     FileText, Save, ShieldCheck
 } from 'lucide-react';
 
-// Serviços (Clean Architecture)
-import { companyService } from '../../services/companyService';
-import { documentService } from '../../services/documentService';
+// Hooks
+import { useDocumentVault } from './hooks/useDocumentVault';
 import type { DocumentDTO } from '../../types';
 
 // Componentes Genéricos UI
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 
-// Subcomponentes da Feature (Estarão na mesma pasta)
+// Subcomponentes da Feature
 import { CompanyAutocomplete } from './components/CompanyAutocomplete';
 import { CompanyVault } from './components/CompanyVault';
 import { UploadModal } from './components/UploadModal';
@@ -23,139 +21,32 @@ import { EditDocumentModal } from './components/EditDocumentModal';
 
 /**
  * Orquestrador central da Gestão de Documentos (Cofre Digital).
- * Gere a seleção de empresas, carregamento de documentos, controlo
- * dos modais de Upload/Edição e a submissão de notas de pendência.
+ * Gere a seleção de empresas, carregamento de documentos e modais.
  */
 export function DocumentVaultOrchestrator() {
-    // --- ESTADOS DE DADOS ---
-    const [companies, setCompanies] = useState<any[]>([]);
-    const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-    const [loadingCompanies, setLoadingCompanies] = useState(false);
-    const [documents, setDocuments] = useState<DocumentDTO[]>([]);
-    const [loadingDocs, setLoadingDocs] = useState(false);
+    const {
+        companies,
+        selectedCompanyId,
+        setSelectedCompanyId,
+        loadingCompanies,
+        loadingDocs,
+        pendingNotes,
+        setPendingNotes,
+        isSavingNotes,
+        handleDeleteDocument,
+        handleArchiveDocument,
+        handleSavePendingNotes,
+        handleDownloadClientDoc,
+        clientUploads,
+        officialVault,
+        selectedCompany,
+        loadDocuments
+    } = useDocumentVault();
 
-    // --- ESTADOS DE MODAIS ---
+    // --- ESTADOS DE MODAIS (Interface local) ---
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [documentToEdit, setDocumentToEdit] = useState<DocumentDTO | null>(null);
-
-    // --- ESTADOS DE PENDÊNCIAS ---
-    const [pendingNotes, setPendingNotes] = useState("");
-    const [isSavingNotes, setIsSavingNotes] = useState(false);
-
-    /** Carrega a lista de empresas ao inicializar o componente. */
-    useEffect(() => {
-        async function loadCompanies() {
-            try {
-                const data = await companyService.getAll();
-                setCompanies(data);
-            } catch (error) {
-                console.error(error);
-                toast.error("Erro ao carregar lista de empresas.");
-            }
-        }
-        loadCompanies();
-    }, []);
-
-    /** Monitoriza a troca de empresa para carregar documentos e notas. */
-    useEffect(() => {
-        if (!selectedCompanyId) {
-            setDocuments([]);
-            setPendingNotes("");
-            return;
-        }
-        loadDocuments(selectedCompanyId);
-
-        const company = companies.find(c => c.id === selectedCompanyId);
-        if (company) {
-            setPendingNotes(company.pending_docs_notes || "");
-        }
-    }, [selectedCompanyId, companies]);
-
-    useEffect(() => {
-        async function fetchCompanies() {
-            setLoadingCompanies(true);
-            try {
-                const data = await companyService.getAll();
-                setCompanies(data);
-            } finally {
-                setLoadingCompanies(false);
-            }
-        }
-        fetchCompanies();
-    }, []);
-
-    /**
-     * Busca os documentos da empresa selecionada na API.
-     * @param {string} companyId - ID da empresa.
-     */
-    async function loadDocuments(companyId: string) {
-        setLoadingDocs(true);
-        try {
-            const docs = await documentService.getAll(companyId);
-            setDocuments(docs);
-        } catch (error) {
-            console.error(error);
-            toast.error("Erro ao carregar documentos.");
-        } finally {
-            setLoadingDocs(false);
-        }
-    }
-
-    /** Exclui um documento definitivamente após confirmação. */
-    const handleDeleteDocument = async (doc: DocumentDTO) => {
-        if (window.confirm(`Tem certeza que deseja EXCLUIR DEFINITIVAMENTE o documento "${doc.title || doc.filename}"? Esta ação não pode ser desfeita.`)) {
-            try {
-                await documentService.deleteDocument(doc.id);
-                toast.success("Documento excluído com sucesso!");
-                loadDocuments(selectedCompanyId);
-            } catch (error) {
-                toast.error("Erro ao excluir o documento.");
-            }
-        }
-    };
-
-    /** Move o documento para o status de 'archived'. */
-    const handleArchiveDocument = async (doc: DocumentDTO) => {
-        if (window.confirm(`Deseja mover "${doc.title || doc.filename}" para a área de armazenamento?`)) {
-            try {
-                await documentService.updateDocument(doc.id, { status: 'archived' });
-                toast.success("Documento armazenado com sucesso!");
-                loadDocuments(selectedCompanyId);
-            } catch (error) {
-                toast.error("Erro ao arquivar o documento.");
-            }
-        }
-    };
-
-    /** Guarda as anotações de pendência visíveis para o cliente. */
-    const handleSavePendingNotes = async () => {
-        if (!selectedCompanyId) return;
-        setIsSavingNotes(true);
-        try {
-            await companyService.update(selectedCompanyId, { pending_docs_notes: pendingNotes });
-            toast.success("Pendências salvas! O cliente poderá ver estes avisos.");
-            setCompanies(prev => prev.map(c => c.id === selectedCompanyId ? { ...c, pending_docs_notes: pendingNotes } : c));
-        } catch (error) {
-            toast.error("Erro ao salvar pendências.");
-        } finally {
-            setIsSavingNotes(false);
-        }
-    };
-
-    /** Faz o download do ficheiro original anexado. */
-    const handleDownloadClientDoc = async (docId: string, filename: string) => {
-        try {
-            await documentService.downloadDocument(docId, filename);
-        } catch (error) {
-            toast.error("Erro ao baixar documento.");
-        }
-    };
-
-    // --- DERIVAÇÕES E FILTROS ---
-    const clientUploads = documents.filter(doc => doc.is_client_upload);
-    const officialVault = documents.filter(doc => !doc.is_client_upload);
-    const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -174,7 +65,6 @@ export function DocumentVaultOrchestrator() {
 
             {/* Área de Seleção */}
             <div className="flex items-center gap-3 w-full md:w-auto">
-                {/* NOVO SELETOR AVANÇADO (Substituindo o <select> nativo) [US-2902] */}
                 <CompanyAutocomplete
                     companies={companies}
                     value={selectedCompanyId}
@@ -199,10 +89,10 @@ export function DocumentVaultOrchestrator() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-linear-to-r from-blue-50 to-slate-50 border border-blue-100 rounded-xl shadow-sm">
                         <div className="flex items-center gap-4">
                             <div className="h-14 w-14 bg-white rounded-xl flex items-center justify-center text-blue-700 font-bold border border-blue-100 shadow-sm text-xl">
-                                {(selectedCompany?.razao_social || selectedCompany?.name || "?")[0]}
+                                {(selectedCompany?.razao_social || selectedCompany?.nome_fantasia || "?")[0]}
                             </div>
                             <div>
-                                <h2 className="font-bold text-slate-900 text-lg">{selectedCompany?.razao_social || selectedCompany?.name}</h2>
+                                <h2 className="font-bold text-slate-900 text-lg">{selectedCompany?.razao_social || selectedCompany?.nome_fantasia}</h2>
                                 <p className="text-sm text-slate-500 font-mono mt-0.5">{selectedCompany?.cnpj}</p>
                             </div>
                         </div>

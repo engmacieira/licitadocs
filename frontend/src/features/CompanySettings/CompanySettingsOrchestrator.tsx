@@ -1,13 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 import { Building2, Users, FileText, UserCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
-// Contexto e Serviços
+// Contexto e Hooks
 import { useAuth } from '../../contexts/AuthContext';
-import { companyService } from '../../services/companyService';
-import api from '../../services/api';
-import type { CompanyUpdatePayload, MemberResponse } from '../../types';
+import { useCompanySettingsData } from './hooks/useCompanySettingsData';
+import { useIBGE } from '../../hooks/useIBGE';
+import { useCompanyDocuments } from './hooks/useCompanyDocuments';
+import { useCompanyTeam } from './hooks/useCompanyTeam';
 
 // Subcomponentes da Feature
 import { DetailsTab } from './components/DetailsTab';
@@ -16,260 +15,52 @@ import { TeamTab } from './components/TeamTab';
 import { ProfileTab } from './components/ProfileTab';
 import { Skeleton } from '../../components/ui/Skeleton';
 
-// Interfaces de Formulário
-export interface CompanyFormSchema {
-    razao_social: string; cnpj: string; nome_fantasia: string;
-    email_corporativo: string; telefone: string; responsavel_nome: string;
-    cep: string; logradouro: string; numero: string; bairro: string;
-    cidade: string; estado: string;
-}
-export interface PasswordFormSchema {
-    currentPassword: string;
-    password: string;
-    confirmPassword: string;
-}
-export interface ProfileFormSchema {
-    nome: string; cpf: string; rg: string; celular: string;
-    genero: string; nacionalidade: string; estado_civil: string; profissao: string;
-}
-
 export type SettingsTab = 'details' | 'team' | 'documents' | 'profile';
 
 /**
  * Orquestrador das Configurações da Empresa (Visão do Cliente).
- * Gere todos os estados, requisições à API, integração com IBGE e a lógica
- * de submissão dos 4 separadores (Tabs) do painel de definições.
+ * Atua como um Container leve que gerencia o estado da aba ativa
+ * e delega a lógica pesada para hooks customizados.
  */
 export function CompanySettingsOrchestrator() {
     const { currentCompany, user } = useAuth();
-
-    // --- ESTADOS DE NAVEGAÇÃO E UI ---
     const [activeTab, setActiveTab] = useState<SettingsTab>('details');
-    const [statusFlags, setStatusFlags] = useState({ data: false, contract: false, payment: false, approval: false, data_email_verified: false });
 
-    // --- ESTADOS DE DADOS (EQUIPA E DOCUMENTOS) ---
-    const [team, setTeam] = useState<MemberResponse[]>([]);
-    const [clientDocs, setClientDocs] = useState<any[]>([]);
-    const [isLoadingDocs, setIsLoadingDocs] = useState(false);
-
-    // --- ESTADOS IBGE ---
-    const [ufs, setUfs] = useState<{ sigla: string; nome: string }[]>([]);
-    const [cities, setCities] = useState<{ nome: string }[]>([]);
-
-    // --- FORMULÁRIOS ---
-    const companyForm = useForm<CompanyFormSchema>();
-    const passwordForm = useForm<PasswordFormSchema>();
-    const profileForm = useForm<ProfileFormSchema>();
+    // --- HOOKS DE LÓGICA ---
+    const {
+        statusFlags,
+        companyForm,
+        profileForm,
+        passwordForm,
+        onSaveDetails,
+        onSaveProfile,
+        onChangePassword,
+        handleResendVerification
+    } = useCompanySettingsData(currentCompany, user);
 
     const selectedUf = companyForm.watch('estado');
+    const { ufs, cities } = useIBGE(selectedUf);
 
-    // --- EFEITOS INICIAIS ---
+    const {
+        clientDocs,
+        isLoadingDocs,
+        loadClientDocuments,
+        handleUploadDoc,
+        handleDownloadDoc,
+        handleDeleteDoc
+    } = useCompanyDocuments(currentCompany?.id);
+
+    const {
+        team,
+        loadTeamData
+    } = useCompanyTeam(currentCompany?.id);
+
+    // Efeitos para carregar dados específicos da aba (Compatibilidade com comportamento original)
     useEffect(() => {
-        fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
-            .then(res => res.json())
-            .then(data => setUfs(data))
-            .catch(err => console.error("Erro ao buscar UFs:", err));
-    }, []);
-
-    useEffect(() => {
-        if (!selectedUf) { setCities([]); return; }
-        fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios?orderBy=nome`)
-            .then(res => res.json())
-            .then(data => setCities(data))
-            .catch(err => console.error("Erro ao buscar Cidades:", err));
-    }, [selectedUf]);
-
-    useEffect(() => {
-        async function loadAllData() {
-            if (!currentCompany?.id) return;
-            try {
-                // A. Empresa
-                const freshCompany = await companyService.getById(currentCompany.id) as any;
-                setStatusFlags({
-                    data: freshCompany.is_data_completed || false,
-                    contract: freshCompany.is_contract_signed || false,
-                    payment: freshCompany.is_payment_active || false,
-                    approval: freshCompany.is_admin_verified || false,
-                    data_email_verified: freshCompany.is_email_verified || (user as any)?.is_email_verified || false
-                });
-
-                companyForm.reset({
-                    razao_social: freshCompany.razao_social || freshCompany.name || currentCompany.razao_social,
-                    cnpj: freshCompany.cnpj || currentCompany.cnpj,
-                    nome_fantasia: freshCompany.nome_fantasia || '',
-                    email_corporativo: freshCompany.email_corporativo || (user as any)?.email || user?.sub || '',
-                    telefone: freshCompany.telefone || '',
-                    responsavel_nome: freshCompany.responsavel_nome || '',
-                    cep: freshCompany.cep || '',
-                    logradouro: freshCompany.logradouro || '',
-                    numero: freshCompany.numero || '',
-                    bairro: freshCompany.bairro || '',
-                    cidade: freshCompany.cidade || '',
-                    estado: freshCompany.estado || ''
-                });
-
-                // B. Perfil
-                const { data: userData } = await api.get('/users/me');
-                profileForm.reset({
-                    nome: userData.nome || userData.name || userData.full_name || '',
-                    cpf: userData.cpf || userData.documento || '',
-                    rg: userData.rg || '',
-                    celular: userData.celular || '',
-                    genero: userData.genero || '',
-                    nacionalidade: userData.nacionalidade || '',
-                    estado_civil: userData.estado_civil || '',
-                    profissao: userData.profissao || ''
-                });
-            } catch (error) {
-                console.error("Erro ao carregar dados:", error);
-            }
-        }
-
-        if (currentCompany) {
-            loadAllData();
-            if (activeTab === 'team') loadTeamData();
-            if (activeTab === 'documents') loadClientDocuments();
-        }
-    }, [currentCompany, activeTab, companyForm, profileForm, user]);
-
-    async function loadTeamData() {
         if (!currentCompany?.id) return;
-        try {
-            const members = await companyService.getTeam(currentCompany.id);
-            setTeam(members);
-        } catch (error) { console.error(error); }
-    }
-
-    async function loadClientDocuments() {
-        if (!currentCompany?.id) return;
-        setIsLoadingDocs(true);
-        try {
-            const { data } = await api.get(`/documents/?company_id=${currentCompany.id}&is_client_upload=true`);
-            setClientDocs(data);
-        } catch (error) {
-            console.error("Erro ao buscar documentos", error);
-        } finally {
-            setIsLoadingDocs(false);
-        }
-    }
-
-    // --- FUNÇÕES DE SALVAR ---
-    const onSaveDetails = async (data: CompanyFormSchema) => {
-        if (!currentCompany?.id) return;
-        try {
-            const payload: CompanyUpdatePayload = { ...data };
-            await companyService.update(currentCompany.id, payload);
-            await api.patch(`/companies/${currentCompany.id}/onboarding-step?step=data`);
-            setStatusFlags(prev => ({ ...prev, data: true }));
-            toast.success("Dados da empresa atualizados com sucesso!");
-        } catch (error) {
-            toast.error("Erro ao salvar alterações.");
-        }
-    };
-
-    const onSaveProfile = async (data: ProfileFormSchema) => {
-        try {
-            await api.patch('/users/me', data);
-            toast.success("Perfil atualizado com sucesso!");
-        } catch (error) {
-            toast.error("Erro ao atualizar o perfil.");
-        }
-    };
-
-    const onChangePassword = async (data: PasswordFormSchema) => {
-        if (data.password !== data.confirmPassword) {
-            toast.error("As senhas novas não coincidem.");
-            return;
-        }
-        try {
-            // Agora enviamos a senha atual junto com a nova senha para o backend validar
-            await api.patch('/users/me', {
-                current_password: data.currentPassword,
-                password: data.password
-            });
-            toast.success("Senha alterada com sucesso!");
-            passwordForm.reset();
-        } catch (error: any) {
-            // Tratamento de erro específico para senha atual incorreta
-            if (error.response?.status === 401 || error.response?.status === 403) {
-                toast.error("Senha atual incorreta.");
-            } else {
-                toast.error("Erro ao alterar senha. Tente novamente.");
-            }
-        }
-    };
-
-    // --- FUNÇÕES DE DOCUMENTAÇÃO ---
-    const handleUploadDoc = async (file: File, docTitle: string) => {
-        if (!currentCompany?.id) return;
-        const toastId = toast.loading("Enviando arquivo...");
-        try {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("title", docTitle);
-            formData.append("company_id", currentCompany.id);
-            formData.append("is_client_upload", "true");
-
-            await api.post("/documents/upload", formData, {
-                headers: { "Content-Type": "multipart/form-data" }
-            });
-
-            toast.success(`${docTitle} enviado com sucesso!`, { id: toastId });
-            loadClientDocuments();
-        } catch (error) {
-            toast.error("Erro no envio.", { id: toastId });
-        }
-    };
-
-    const handleDownloadDoc = async (docId: string, filename: string) => {
-        try {
-            const response = await api.get(`/documents/${docId}/download`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (error) {
-            toast.error("Erro ao baixar documento.");
-        }
-    };
-
-    const handleDeleteDoc = async (docId: string) => {
-        if (!window.confirm("Tem certeza que deseja excluir permanentemente este documento?")) return;
-        try {
-            const toastId = toast.loading("A excluir...");
-            await api.delete(`/documents/${docId}`);
-            toast.success("Documento excluído.", { id: toastId });
-            loadClientDocuments();
-        } catch (error) {
-            toast.error("Erro ao excluir documento.");
-        }
-    };
-
-    const handleResendVerification = async () => {
-        const email = companyForm.getValues('email_corporativo');
-
-        if (!email) {
-            toast.error("Por favor, preencha o e-mail corporativo primeiro.");
-            return;
-        }
-
-        const toastId = toast.loading("Enviando link de verificação...");
-
-        try {
-            // Atenção: Ajuste a rota '/auth/resend-verification' para bater certinho com seu Backend (FastAPI/Node)
-            await api.post('/auth/resend-verification', { email });
-
-            toast.success("Link enviado com sucesso!", {
-                id: toastId,
-                description: "Verifique sua caixa de entrada e pasta de spam."
-            });
-        } catch (error: any) {
-            toast.error(error.response?.data?.detail || "Erro ao reenviar e-mail. Tente novamente.", { id: toastId });
-        }
-    };
+        if (activeTab === 'team') loadTeamData();
+        if (activeTab === 'documents') loadClientDocuments();
+    }, [activeTab, currentCompany?.id, loadTeamData, loadClientDocuments]);
 
     const isRegular = statusFlags.data && statusFlags.contract && statusFlags.payment && statusFlags.approval;
 
