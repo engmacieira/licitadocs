@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "../../../config/app.config";
 import {
     Document,
     Packer,
@@ -107,7 +108,7 @@ export const generateDocx = (
                             alignment: AlignmentType.CENTER,
                             children: [
                                 new TextRun({
-                                    text: `Documento gerado via LicitaDocs em ${data.dataAtual} - Página `,
+                                    text: `Documento gerado via ${APP_CONFIG.name} em ${data.dataAtual} - Página `,
                                     font: styleConfig.font,
                                     size: 14,
                                 }),

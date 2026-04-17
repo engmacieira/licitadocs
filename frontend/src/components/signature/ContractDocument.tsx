@@ -1,5 +1,6 @@
 import React from 'react';
 import { ContractContent } from './ContractContent';
+import { APP_CONFIG } from '../../config/app.config';
 
 /**
  * Propriedades injetadas no documento do contrato para preenchimento dinâmico.
@@ -57,7 +58,7 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
                     <h1 className="text-xl font-bold uppercase underline decoration-2 underline-offset-4 mb-2">
                         Contrato de Prestação de Serviços de Tecnologia
                     </h1>
-                    <h2 className="text-lg font-bold uppercase">Plataforma LicitaDocs</h2>
+                    <h2 className="text-lg font-bold uppercase">Plataforma {APP_CONFIG.name}</h2>
                 </div>
 
                 {/* Qualificação das Partes */}
@@ -66,7 +67,7 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
                         Pelo presente instrumento particular, de um lado:
                     </p>
                     <p>
-                        <strong>CONTRATADA:</strong> <strong>LICITADOCS TECNOLOGIA S.A.</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº 12.345.678/0001-90, com sede na Avenida da Inovação, nº 1000, Edifício Tech, São Paulo/SP, neste ato representada na forma do seu Contrato Social;
+                        <strong>CONTRATADA:</strong> <strong>{APP_CONFIG.name.toUpperCase()} TECNOLOGIA S.A.</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob o nº 12.345.678/0001-90, com sede na Avenida da Inovação, nº 1000, Edifício Tech, São Paulo/SP, neste ato representada na forma do seu Contrato Social;
                     </p>
                     <p>
                         E, de outro lado:
@@ -105,7 +106,7 @@ export const ContractDocument = React.forwardRef<HTMLDivElement, CompanyDocument
                         </div>
 
                         <div className="border-t border-slate-900 pt-3">
-                            <p className="font-bold">LICITADOCS TECNOLOGIA S.A.</p>
+                            <p className="font-bold">{APP_CONFIG.name.toUpperCase()} TECNOLOGIA S.A.</p>
                             <p className="text-xs">CNPJ: 39.672.264/0001-27</p>
                             <p className="text-xs">Representada por: MATHEUS HENRIQUE MACIEIRA</p>
                             <p className="text-xs italic text-slate-600 mt-2">(Assinatura Digital / Eletrônica com validade jurídica)</p>

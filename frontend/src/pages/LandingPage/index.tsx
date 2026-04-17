@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { APP_CONFIG, PRICING_CONFIG } from '../../config/app.config';
 import { Button } from '../../components/ui/Button';
 // Importamos os novos ícones alinhados com a nova copy (Compass e Award)
 import { FileCheck, Compass, Award, ArrowRight, ChevronRight } from 'lucide-react';
@@ -26,7 +27,7 @@ export function LandingPage() {
                         <div className="bg-blue-600 p-1.5 rounded-lg">
                             <FileCheck className="h-6 w-6 text-white" />
                         </div>
-                        <span className="text-xl font-bold text-slate-900">LicitaDocs</span>
+                        <span className="text-xl font-bold text-slate-900">{APP_CONFIG.name}</span>
                     </div>
 
                     <nav className="flex gap-4">
@@ -49,7 +50,7 @@ export function LandingPage() {
 
                     {/* Copy P: Expectativa alinhada. Foco na ferramenta documental construída por especialistas. */}
                     <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-10">
-                        A plataforma de gestão documental criada por quem tem mais de 10 anos de experiência em licitações. Mantemos suas certidões organizadas e atualizadas durante todo o contrato, evitando faturas retidas. Tudo isso por menos de R$ 15 ao mês.
+                        A plataforma de gestão documental criada por quem tem mais de 10 anos de experiência em licitações. Mantemos suas certidões organizadas e atualizadas durante todo o contrato, evitando faturas retidas. Tudo isso por menos de R$ {Math.floor(PRICING_CONFIG.plans.PRO.monthlyEquivalent + 1)} ao mês.
                     </p>
 
                     {/* CTAs (Call to Actions): Nomenclaturas focadas em valor */}
@@ -98,7 +99,7 @@ export function LandingPage() {
             {/* --- FOOTER SIMPLES --- */}
             <footer className="bg-white border-t border-slate-100 py-8">
                 <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
-                    © 2026 LicitaDocs. Todos os direitos reservados. <br className="sm:hidden" />
+                    © {APP_CONFIG.copyrightYear} {APP_CONFIG.name}. Todos os direitos reservados. <br className="sm:hidden" />
                     <span className="hidden sm:inline"> • </span>
                     Tecnologia e Experiência em Licitações Públicas.
                 </div>

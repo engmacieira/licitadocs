@@ -2,6 +2,7 @@
 import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect } from 'vitest';
 import { PDFTemplate } from './PDFTemplate';
+import { APP_CONFIG } from '../../../config/app.config';
 
 // Mock do @react-pdf/renderer - Essencial para não tentar renderizar PDFs reais no Node
 vi.mock('@react-pdf/renderer', () => ({
@@ -32,7 +33,7 @@ describe('PDFTemplate - Motor de Geração (US-3004)', () => {
         cpfRepresentante: '000.000.000-00'
     };
 
-    it('deve renderizar o cabeçalho de autoridade com a tag LICITADOCS', () => {
+    it('deve renderizar o cabeçalho de autoridade com a tag do sistema', () => {
         render(
             <PDFTemplate
                 title="Título Teste"
@@ -47,7 +48,7 @@ describe('PDFTemplate - Motor de Geração (US-3004)', () => {
         expect(nameElements[0]).toBeInTheDocument();
 
         expect(screen.getByText(/12.345.678\/0001-90/i)).toBeInTheDocument();
-        expect(screen.getByText('LICITADOCS')).toBeInTheDocument();
+        expect(screen.getByText(APP_CONFIG.name.toUpperCase())).toBeInTheDocument();
     });
 
     it('Cenário Atestado: deve exibir o papel correto para assinatura do emissor', () => {
@@ -89,7 +90,7 @@ describe('PDFTemplate - Motor de Geração (US-3004)', () => {
         );
 
         // O mock simula Página 1 de 5
-        const expectedFooter = /Documento gerado eletronicamente via LicitaDocs em 14 de Abril de 2026 • Página 1 de 5/i;
+        const expectedFooter = new RegExp(`Documento gerado eletronicamente via ${APP_CONFIG.name} em 14 de Abril de 2026 • Página 1 de 5`, 'i');
         expect(screen.getByTestId('pdf-text-render')).toHaveTextContent(expectedFooter);
     });
 });

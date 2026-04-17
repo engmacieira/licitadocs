@@ -1,3 +1,4 @@
+import { CONTACT_CONFIG, APP_CONFIG } from "../../../config/app.config";
 import { Phone, Mail, MapPin, Clock, CheckCircle2, Calendar } from 'lucide-react';
 
 /**
@@ -12,9 +13,9 @@ export function ContactSidebar() {
                     <Phone className="h-5 w-5 text-blue-600" /> Fale Conosco
                 </h3>
                 <div className="space-y-4">
-                    <ContactItem icon={Mail} label="E-mail de Suporte" value="suporte@licitadocs.com.br" />
-                    <ContactItem icon={Phone} label="WhatsApp" value="(00) 00000-0000" />
-                    <ContactItem icon={MapPin} label="Sede" value="Braúnas / MG" />
+                    <ContactItem icon={Mail} label="E-mail de Suporte" value={CONTACT_CONFIG.supportEmail} />
+                    <ContactItem icon={Phone} label="WhatsApp" value={CONTACT_CONFIG.whatsapp.display} />
+                    <ContactItem icon={MapPin} label="Sede" value={APP_CONFIG.address} />
                 </div>
             </div>
 

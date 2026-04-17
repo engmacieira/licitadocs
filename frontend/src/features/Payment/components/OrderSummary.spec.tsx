@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { OrderSummary } from './OrderSummary';
+import { APP_CONFIG, PRICING_CONFIG } from '../../../config/app.config';
 
 describe('OrderSummary Component', () => {
     it('should render the order summary title and icon', () => {
@@ -12,16 +13,18 @@ describe('OrderSummary Component', () => {
     it('should render the plan details and base price', () => {
         render(<OrderSummary />);
         
-        expect(screen.getByText('LicitaDoc Business')).toBeInTheDocument();
+        const priceStr = `R$ ${PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+        expect(screen.getByText(`${APP_CONFIG.name} Business`)).toBeInTheDocument();
         expect(screen.getByText('Assinatura Anual')).toBeInTheDocument();
-        expect(screen.getAllByText('R$ 178,80')).toHaveLength(2);
+        expect(screen.getAllByText(priceStr)).toHaveLength(2);
     });
 
     it('should render the discount information', () => {
         render(<OrderSummary />);
         
+        const priceStr = `R$ ${PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
         expect(screen.getByText('Desconto (Lançamento)')).toBeInTheDocument();
-        expect(screen.getByText('- R$ 178,80')).toBeInTheDocument();
+        expect(screen.getByText(`- ${priceStr}`)).toBeInTheDocument();
     });
 
     it('should render the final total as R$ 0,00', () => {

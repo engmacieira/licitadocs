@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { APP_CONFIG, PRICING_CONFIG } from '../../config/app.config';
 import {
     Zap,
     ShieldCheck,
@@ -49,7 +50,7 @@ export function DemoPage() {
                         <div className="bg-blue-600 p-1.5 rounded-lg">
                             <FileCheck className="h-5 w-5 text-white" />
                         </div>
-                        <span className="text-xl font-bold text-slate-900 tracking-tight">LicitaDocs</span>
+                        <span className="text-xl font-bold text-slate-900 tracking-tight">{APP_CONFIG.name}</span>
                     </div>
 
                     {/* Navegação Secundária (Adicionado Link "Sobre Nós") */}
@@ -210,11 +211,11 @@ export function DemoPage() {
                             <span className="block text-blue-200 font-medium mb-2 uppercase tracking-wide text-sm">Plano Anual Completo</span>
                             <div className="flex items-baseline justify-center gap-1">
                                 <span className="text-2xl font-bold">R$</span>
-                                <span className="text-6xl font-extrabold tracking-tighter">178</span>
-                                <span className="text-2xl font-bold">,80</span>
+                                <span className="text-6xl font-extrabold tracking-tighter">{Math.floor(PRICING_CONFIG.plans.PRO.annualPrice)}</span>
+                                <span className="text-2xl font-bold">,{ (PRICING_CONFIG.plans.PRO.annualPrice % 1).toFixed(2).split('.')[1] }</span>
                             </div>
                             <span className="block text-blue-200 mt-2 text-sm">
-                                O equivalente a apenas <strong className="text-white">R$ 14,90/mês</strong>
+                                O equivalente a apenas <strong className="text-white">R$ {PRICING_CONFIG.plans.PRO.monthlyEquivalent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}/mês</strong>
                             </span>
                         </div>
                     </div>
@@ -240,7 +241,7 @@ export function DemoPage() {
             </main>
 
             <footer className="py-12 bg-white text-center border-t border-slate-100">
-                <p className="text-slate-400 text-sm">© 2026 LicitaDocs Gestão Documental. Braúnas, MG - Brasil.</p>
+                <p className="text-slate-400 text-sm">© {APP_CONFIG.copyrightYear} {APP_CONFIG.name} Gestão Documental. {APP_CONFIG.address}.</p>
             </footer>
         </div>
     );

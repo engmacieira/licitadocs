@@ -3,11 +3,13 @@
  * Atua como Fonte Única de Verdade (Single Source of Truth) para as minutas.
  * É consumido tanto na visualização prévia (Onboarding) quanto na geração do documento final.
  */
+import { APP_CONFIG } from '../../config/app.config';
+
 export function ContractContent() {
     return (
         <>
             <h3 className="font-bold mt-6 mb-2 bg-slate-100 p-1">CLÁUSULA 1ª – DO OBJETO E ESCOPO DO SERVIÇO</h3>
-            <p><strong>1.1. Da Licença de Uso (SaaS):</strong> O presente instrumento tem por objeto a concessão, pela CONTRATADA à CONTRATANTE, de uma licença de uso temporária, revogável, não exclusiva e intransferível do software web denominado <strong>LicitaDocs</strong>, disponibilizado na modalidade <em>Software as a Service</em> (SaaS).</p>
+            <p><strong>1.1. Da Licença de Uso (SaaS):</strong> O presente instrumento tem por objeto a concessão, pela CONTRATADA à CONTRATANTE, de uma licença de uso temporária, revogável, não exclusiva e intransferível do software web denominado <strong>{APP_CONFIG.name}</strong>, disponibilizado na modalidade <em>Software as a Service</em> (SaaS).</p>
             <p><strong>1.1.1.</strong> A licença ora concedida não confere à CONTRATANTE qualquer direito de propriedade intelectual sobre o código-fonte, banco de dados, marcas, identidade visual ou arquitetura do sistema.</p>
             <p><strong>1.2. Da Funcionalidade da Plataforma:</strong> O escopo principal da plataforma compreende a automação da rotina de captação, organização, monitoramento e disponibilização em cofre digital de certidões de regularidade (fiscal, trabalhista, previdenciária e econômico-financeira) e demais documentos de habilitação, visando atender primordialmente aos requisitos estipulados pela Nova Lei de Licitações e Contratos Administrativos (Lei nº 14.133/2021).</p>
             <p><strong>1.3. Da Limitação por CNPJ:</strong> A licença de uso e a respectiva automação de buscas contratadas estão estritamente vinculadas ao monitoramento de <strong>1 (um) único CNPJ</strong> (matriz ou filial), previamente cadastrado no momento da assinatura.</p>
@@ -29,7 +31,7 @@ export function ContractContent() {
             <p><strong>5.2.</strong> As manutenções preventivas serão comunicadas com antecedência e realizadas, preferencialmente, em horários de menor tráfego.</p>
 
             <h3 className="font-bold mt-8 mb-2 bg-slate-100 p-1">CLÁUSULA 6ª – DA POLÍTICA DE USO JUSTO E LIMITES DE PROCESSAMENTO (FAIR USE)</h3>
-            <p><strong>6.1. Limite Diário de Tokens:</strong> Com o objetivo de garantir a estabilidade da plataforma, a integridade da infraestrutura e o controle de custos operacionais, o uso das ferramentas de Inteligência Artificial e processamento avançado integradas ao LicitaDocs está sujeito a um limite técnico diário de <strong>30.000 (trinta mil) tokens</strong> por assinatura/CNPJ.</p>
+            <p><strong>6.1. Limite Diário de Tokens:</strong> Com o objetivo de garantir a estabilidade da plataforma, a integridade da infraestrutura e o controle de custos operacionais, o uso das ferramentas de Inteligência Artificial e processamento avançado integradas ao {APP_CONFIG.name} está sujeito a um limite técnico diário de <strong>30.000 (trinta mil) tokens</strong> por assinatura/CNPJ.</p>
             <p><strong>6.2. Esgotamento da Franquia:</strong> Caso a CONTRATANTE atinja o limite máximo estipulado no item 9.1 dentro de um mesmo ciclo de 24 horas, o acesso às funcionalidades específicas que consomem tokens será automaticamente suspenso ou restringido pelo sistema até a renovação da franquia (às 00h00 do dia seguinte).</p>
             <p><strong>6.3. Ciência e Exclusão de Responsabilidade:</strong> A CONTRATANTE declara ter plena ciência desta limitação técnica no ato da contratação. O bloqueio temporário de recursos por esgotamento do limite diário de tokens não configura falha na prestação do serviço, indisponibilidade do sistema (queda de SLA) ou quebra de contrato, não conferindo à CONTRATANTE qualquer direito a reembolso, desconto ou indenização.</p>
 

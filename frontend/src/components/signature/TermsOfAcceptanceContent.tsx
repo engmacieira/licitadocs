@@ -3,15 +3,17 @@
  * Atua como Fonte Única de Verdade para as regras iniciais de utilização do sistema.
  * Mantido separado do orquestrador para facilitar atualizações jurídicas e manter o código limpo.
  */
+import { APP_CONFIG } from '../../config/app.config';
+
 export function TermsOfAcceptanceContent() {
     return (
         <div className="space-y-5 max-w-2xl mx-auto text-justify">
             <h2 className="text-center font-bold text-slate-900 text-lg mb-8 uppercase">
-                Termo de Aceite e Condições Prévias de Uso - LicitaDocs
+                Termo de Aceite e Condições Prévias de Uso - {APP_CONFIG.name}
             </h2>
 
             <p>
-                Pelo presente <strong>Termo de Aceite</strong>, a empresa contratante ("CONTRATANTE"), ao clicar no botão correspondente a "Li e Aceito" e prosseguir com a assinatura da plataforma, declara estar ciente e de pleno acordo com as condições prévias para a utilização do sistema <strong>LicitaDocs</strong>, plataforma web especializada na gestão, busca e disponibilização de certidões de regularidade e documentos atinentes à Lei nº 14.133/2021 ("CONTRATADA").
+                Pelo presente <strong>Termo de Aceite</strong>, a empresa contratante ("CONTRATANTE"), ao clicar no botão correspondente a "Li e Aceito" e prosseguir com a assinatura da plataforma, declara estar ciente e de pleno acordo com as condições prévias para a utilização do sistema <strong>{APP_CONFIG.name}</strong>, plataforma web especializada na gestão, busca e disponibilização de certidões de regularidade e documentos atinentes à Lei nº 14.133/2021 ("CONTRATADA").
             </p>
 
             <h3 className="font-bold text-slate-900 pt-4 border-t border-slate-100">1. NATUREZA DO SERVIÇO E OBRIGAÇÃO DE MEIO</h3>

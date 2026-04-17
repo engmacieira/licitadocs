@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { APP_CONFIG } from '../../config/app.config';
 import {
     ChevronLeft,
     FileCheck,
@@ -50,7 +51,7 @@ export function AboutPage() {
                             <FileCheck className="h-5 w-5 text-white" />
                         </div>
                         <span className="text-xl font-bold text-slate-900 tracking-tight">
-                            Licita<span className="text-blue-600">Docs</span>
+                            {APP_CONFIG.name}
                         </span>
                     </div>
 
@@ -73,7 +74,7 @@ export function AboutPage() {
                             <span className="text-blue-600">Agora, trabalhando a seu favor.</span>
                         </h1>
                         <p className="text-lg text-slate-600 leading-relaxed max-w-2xl mx-auto mb-8">
-                            O LicitaDocs não é um software genérico criado por aventureiros. Ele nasceu do incômodo diário de quem passou mais de uma década do outro lado do balcão, no coração do setor de compras públicas.
+                            O {APP_CONFIG.name} não é um software genérico criado por aventureiros. Ele nasceu do incômodo diário de quem passou mais de uma década do outro lado do balcão, no coração do setor de compras públicas.
                         </p>
                         <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 max-w-3xl mx-auto text-left relative">
                             <div className="absolute top-0 left-0 w-1 h-full bg-blue-600 rounded-l-2xl"></div>
@@ -115,7 +116,7 @@ export function AboutPage() {
                                 <Award className="h-12 w-12 text-blue-600 mb-6" />
                                 <h3 className="text-xl font-bold text-slate-900 mb-4">O Fim da Inabilitação Banal</h3>
                                 <p className="text-slate-600 leading-relaxed mb-6">
-                                    Nossa bagagem prática foi transformada em tecnologia. O LicitaDocs faz a varredura e a guarda dos seus documentos com a mesma precisão exigida pelos fiscais de contrato mais rigorosos do Brasil.
+                                    Nossa bagagem prática foi transformada em tecnologia. O {APP_CONFIG.name} faz a varredura e a guarda dos seus documentos com a mesma precisão exigida pelos fiscais de contrato mais rigorosos do Brasil.
                                 </p>
                             </div>
                         </div>
@@ -218,9 +219,9 @@ export function AboutPage() {
             <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
                 <div className="flex items-center justify-center gap-2 mb-4">
                     <FileCheck className="h-6 w-6 text-blue-600" />
-                    <span className="font-bold text-slate-900">LicitaDocs</span>
+                    <span className="font-bold text-slate-900">{APP_CONFIG.name}</span>
                 </div>
-                <p className="text-slate-400 text-sm">© 2026 LicitaDocs Gestão Documental. Braúnas, MG - Brasil.</p>
+                <p className="text-slate-400 text-sm">© {APP_CONFIG.copyrightYear} {APP_CONFIG.name} Gestão Documental. {APP_CONFIG.address}.</p>
             </footer>
         </div>
     );

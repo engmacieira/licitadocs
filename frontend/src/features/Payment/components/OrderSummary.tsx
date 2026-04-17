@@ -1,3 +1,4 @@
+import { PRICING_CONFIG, APP_CONFIG } from "../../../config/app.config";
 import { Wallet } from 'lucide-react';
 
 /**
@@ -19,19 +20,19 @@ export function OrderSummary() {
                 <div className="space-y-4">
                     <div className="flex justify-between items-start pb-4 border-b border-slate-700">
                         <div>
-                            <h4 className="font-bold text-lg">LicitaDoc Business</h4>
+                            <h4 className="font-bold text-lg">{APP_CONFIG.name} Business</h4>
                             <p className="text-sm text-slate-400">Assinatura Anual</p>
                         </div>
-                        <span className="font-medium">R$ 178,80</span>
+                        <span className="font-medium">R$ {PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
 
                     <div className="flex justify-between text-sm text-slate-400">
                         <span>Subtotal</span>
-                        <span>R$ 178,80</span>
+                        <span>R$ {PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-sm text-green-400 font-medium">
                         <span>Desconto (Lançamento)</span>
-                        <span>- R$ 178,80</span>
+                        <span>- R$ {PRICING_CONFIG.plans.PRO.annualPrice.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                     </div>
                 </div>
             </div>
