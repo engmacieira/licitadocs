@@ -3,7 +3,7 @@ import type { UseFormReturn } from 'react-hook-form';
 
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import type { ProfileFormSchema, PasswordFormSchema } from '../CompanySettingsOrchestrator';
+import type { ProfileFormSchema, PasswordFormSchema } from '../hooks/useCompanySettingsData';
 
 /**
  * Propriedades do componente ProfileTab.

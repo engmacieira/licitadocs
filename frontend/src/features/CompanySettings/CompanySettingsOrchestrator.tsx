@@ -26,6 +26,10 @@ export function CompanySettingsOrchestrator() {
     const { currentCompany, user } = useAuth();
     const [activeTab, setActiveTab] = useState<SettingsTab>('details');
 
+    const safeCompanyData = currentCompany
+        ? { ...currentCompany, is_active: true } as any
+        : null;
+
     // --- HOOKS DE LÓGICA ---
     const {
         statusFlags,
@@ -36,7 +40,7 @@ export function CompanySettingsOrchestrator() {
         onSaveProfile,
         onChangePassword,
         handleResendVerification
-    } = useCompanySettingsData(currentCompany, user);
+    } = useCompanySettingsData(safeCompanyData, user);
 
     const selectedUf = companyForm.watch('estado');
     const { ufs, cities } = useIBGE(selectedUf);
@@ -93,7 +97,7 @@ export function CompanySettingsOrchestrator() {
             {/* Renderização Condicional dos Separadores Isolados */}
             {activeTab === 'details' && (
                 <DetailsTab
-                    currentCompany={currentCompany}
+                    currentCompany={safeCompanyData}
                     companyForm={companyForm}
                     onSaveDetails={onSaveDetails}
                     onResendVerification={handleResendVerification}

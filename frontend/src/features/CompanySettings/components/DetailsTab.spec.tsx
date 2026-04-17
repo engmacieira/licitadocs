@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { DetailsTab } from './DetailsTab';
 import { useForm } from 'react-hook-form';
-import type { CompanyFormSchema } from '../CompanySettingsOrchestrator';
+import type { CompanyFormSchema } from '../hooks/useCompanySettingsData';
 
 const mockUfs = [
     { sigla: 'SP', nome: 'São Paulo' },

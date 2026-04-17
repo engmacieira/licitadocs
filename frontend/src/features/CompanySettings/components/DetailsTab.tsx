@@ -3,7 +3,7 @@ import type { UseFormReturn } from 'react-hook-form';
 
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import type { CompanyFormSchema } from '../CompanySettingsOrchestrator';
+import type { CompanyFormSchema } from '../hooks/useCompanySettingsData';
 
 /**
  * Propriedades do componente DetailsTab.

@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { ProfileTab } from './ProfileTab';
 import { useForm } from 'react-hook-form';
-import type { ProfileFormSchema, PasswordFormSchema } from '../CompanySettingsOrchestrator';
+import type { ProfileFormSchema, PasswordFormSchema } from '../hooks/useCompanySettingsData';
 
 // Wrapper component to provide react-hook-form context and props
 const TestWrapper = ({ onSaveProfile, onChangePassword }: any) => {
@@ -96,7 +96,7 @@ describe('ProfileTab', () => {
         const currentInput = screen.getByText('Senha Atual').parentElement?.querySelector('input');
         const passwordInput = screen.getByText('Nova Senha').parentElement?.querySelector('input');
         const confirmInput = screen.getByText('Confirmar Nova Senha').parentElement?.querySelector('input');
-        
+
         if (currentInput) fireEvent.change(currentInput, { target: { value: 'oldpassword123' } });
         if (passwordInput) fireEvent.change(passwordInput, { target: { value: 'newpassword123' } });
         if (confirmInput) fireEvent.change(confirmInput, { target: { value: 'newpassword123' } });
