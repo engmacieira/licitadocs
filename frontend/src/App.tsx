@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { LEGAL_CONFIG } from './config/app.config';
 
 // Contextos e Guards
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,6 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Layouts
 import { MainLayout } from './components/layout/MainLayout';
+import { PublicLayout } from './components/layout/PublicLayout';
 
 // --- PÁGINAS ---
 
@@ -15,6 +17,8 @@ import { MainLayout } from './components/layout/MainLayout';
 import { LandingPage } from './pages/LandingPage';
 import { AboutPage } from './pages/About';
 import { DemoPage } from './pages/Demo';
+import { TermsOfUse } from './pages/Legal/TermsOfUse';
+import { PrivacyPolicy } from './pages/Legal/PrivacyPolicy';
 
 // Autenticação & Onboarding
 import { LoginPage } from './pages/Login';
@@ -61,7 +65,12 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/demonstracao" element={<DemoPage />} />
-            <Route path="/sobre" element={<AboutPage />} />
+
+            <Route element={<PublicLayout />}>
+              <Route path="/sobre" element={<AboutPage />} />
+              <Route path={LEGAL_CONFIG.termsOfUseUrl} element={<TermsOfUse />} />
+              <Route path={LEGAL_CONFIG.privacyPolicyUrl} element={<PrivacyPolicy />} />
+            </Route>
 
             {/* Fluxo de Onboarding (Geralmente acessível via Token ou logo após registro) */}
             <Route path="/contract-sign" element={<ContractSignPage />} />

@@ -1,6 +1,7 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { LEGAL_CONFIG } from '../../../config/app.config';
 
 /**
  * Componente de rodapé da Sidebar.
@@ -27,6 +28,21 @@ export function UserFooter() {
                     <span className="text-sm font-medium truncate" title={user?.sub}>{user?.sub}</span>
                     <span className="text-xs text-slate-500 capitalize">{isAdmin ? 'Administrador' : 'Cliente'}</span>
                 </div>
+            </div>
+
+            <div className="px-4 mb-4 flex flex-col gap-2">
+                <Link
+                    to={LEGAL_CONFIG.termsOfUseUrl}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                    Termos de Uso
+                </Link>
+                <Link
+                    to={LEGAL_CONFIG.privacyPolicyUrl}
+                    className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+                >
+                    Privacidade
+                </Link>
             </div>
 
             <button
