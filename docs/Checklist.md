@@ -62,7 +62,9 @@ A pasta frontend foi criada. Para iniciar o projeto React nela:
     - Gerar requirements.txt atualizado: pip freeze > requirements.txt
     - Gerar os logs do teste > txt/log_pytest.txt 2>&1  
     - $env:Path += ";E:\projetos\node"
+    - $env:NODE_OPTIONS="--max-old-space-size=512"; npx tsc -b; npx vite build
     - [skip ci] para o push não acionar o actions
+    - [run jules] para o push acionar o agente jules
     - git commit --allow-empty -m "sua mensagem aqui", para commitar sem ter alteração em arquivos
     
 2. ERROS COMUNS

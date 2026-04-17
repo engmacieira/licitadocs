@@ -15,10 +15,7 @@ jobs:
   # 📊 FASE DOS TESTES
   # ==========================================
   backend-tests-coverage:
-    if: |
-      github.actor == 'engmacieira' && 
-      !startsWith(github.event.head_commit.message, '🤖 AI (Jules):') &&
-      !contains(github.event.head_commit.message, '[skip jules]')
+    if: contains(github.event.head_commit.message, '[run jules]')
     runs-on: ubuntu-latest
 
     env:
@@ -90,10 +87,7 @@ jobs:
             Seu commit falhou nos testes iniciais. O Jules não pôde iniciar a otimização. Corrija o código e tente novamente.
 
   frontend-tests-coverage:
-    if: |
-      github.actor == 'engmacieira' && 
-      !startsWith(github.event.head_commit.message, '🤖 AI (Jules):') &&
-      !contains(github.event.head_commit.message, '[skip jules]')
+    if: contains(github.event.head_commit.message, '[run jules]')
     runs-on: ubuntu-latest
 
     steps:
@@ -140,10 +134,7 @@ jobs:
   # ==========================================
   jules-optimization:
     needs: [backend-tests-coverage, frontend-tests-coverage]
-    if: |
-      github.actor == 'engmacieira' && 
-      !startsWith(github.event.head_commit.message, '🤖 AI (Jules):') &&
-      !contains(github.event.head_commit.message, '[skip jules]')
+    if: contains(github.event.head_commit.message, '[run jules]')
     runs-on: ubuntu-latest
 
     steps:
@@ -200,9 +191,7 @@ jobs:
   # 📊 FASE DOS TESTES
   # ==========================================
   backend-tests:
-    if: |
-      startsWith(github.event.head_commit.message, '🤖 AI (Jules):') ||
-      contains(github.event.head_commit.message, '[skip jules]')
+    if: "!contains(github.event.head_commit.message, '[run jules]')"
     runs-on: ubuntu-latest
 
     env:
@@ -276,9 +265,7 @@ jobs:
             🔗 Link: [Ver log do erro](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   frontend-tests:
-    if: |
-      startsWith(github.event.head_commit.message, '🤖 AI (Jules):') ||
-      contains(github.event.head_commit.message, '[skip jules]')
+    if: "!contains(github.event.head_commit.message, '[run jules]')"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -325,9 +312,7 @@ jobs:
   # ==========================================
   build-frontend:
     needs: [frontend-tests, backend-tests] 
-    if: |
-      startsWith(github.event.head_commit.message, '🤖 AI (Jules):') ||
-      contains(github.event.head_commit.message, '[skip jules]')
+    if: "!contains(github.event.head_commit.message, '[run jules]')"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -375,8 +360,7 @@ jobs:
     name: Deploy para AWS EC2
     runs-on: ubuntu-latest
     if: |
-      startsWith(github.event.head_commit.message, '🤖 AI (Jules):') ||
-      contains(github.event.head_commit.message, '[skip jules]') ||
+      !contains(github.event.head_commit.message, '[run jules]') ||
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       # --- PASSO 1: AGENDA O REBOOT ---
