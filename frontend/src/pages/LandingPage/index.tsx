@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { APP_CONFIG, PRICING_CONFIG } from '../../config/app.config';
+import { useNavigate, Link } from 'react-router-dom';
+import { APP_CONFIG, PRICING_CONFIG, LEGAL_CONFIG } from '../../config/app.config';
 import { Button } from '../../components/ui/Button';
 // Importamos os novos ícones alinhados com a nova copy (Compass e Award)
 import { FileCheck, Compass, Award, ArrowRight, ChevronRight } from 'lucide-react';
@@ -99,6 +99,11 @@ export function LandingPage() {
             {/* --- FOOTER SIMPLES --- */}
             <footer className="bg-white border-t border-slate-100 py-8">
                 <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-sm">
+                    <div className="mb-4 space-x-4">
+                        <Link to={LEGAL_CONFIG.termsOfUseUrl} className="hover:text-blue-600 transition-colors">Termos de Uso</Link>
+                        <span>•</span>
+                        <Link to={LEGAL_CONFIG.privacyPolicyUrl} className="hover:text-blue-600 transition-colors">Política de Privacidade</Link>
+                    </div>
                     © {APP_CONFIG.copyrightYear} {APP_CONFIG.name}. Todos os direitos reservados. <br className="sm:hidden" />
                     <span className="hidden sm:inline"> • </span>
                     Tecnologia e Experiência em Licitações Públicas.
