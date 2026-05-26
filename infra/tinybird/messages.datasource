@@ -1,0 +1,17 @@
+SCHEMA >
+    id String,
+    company_id String,
+    sender_id Nullable(String),
+    parent_id Nullable(String),
+    subject Nullable(String),
+    related_document_id Nullable(String),
+    attachment_path Nullable(String),
+    content String,
+    message_type String,
+    is_read UInt8,
+    read_at Nullable(DateTime),
+    is_resolved UInt8,
+    created_at DateTime
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "company_id, created_at"
