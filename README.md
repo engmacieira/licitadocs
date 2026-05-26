@@ -1,40 +1,46 @@
-# LicitaDoc: Cofre Digital Inteligente 🚀
+# 🤖 LicitaDocs: Cofre Digital Inteligente
 
-> Sistema de alta performance para gestão de documentos de licitação, unificando inteligência artificial, segurança relacional e uma experiência de usuário fluida.
-
----
-
-## 📍 Estado Atual: Sprint 19 (Fortaleza Digital)
-O sistema encontra-se em fase de **Hardening (Endurecimento)**. Após a conclusão da Sprint 18, alcançamos autonomia total na gestão do catálogo administrativo e integração com armazenamento em nuvem.
-
-## 🌟 Funcionalidades Principais
-
-### 🛡️ Cofre Inteligente (Digital Vault)
-- **Unificação de Dados:** Interface única para arquivos legados e certidões estruturadas via *Unified DTO*.
-- **Storage Escalável:** Integração direta com **AWS S3** para armazenamento e recuperação segura de documentos.
-
-### ⚙️ Gestão de Catálogo (Admin Settings)
-- **Controle Total:** CRUD completo de Categorias e Tipos de Documentos sem necessidade de acesso manual ao banco de dados.
-- **Integridade Relacional:** Travas de segurança avançadas que impedem a exclusão de categorias com tipos vinculados ou tipos com certidões ativas.
-
-### 🤖 Inteligência Artificial & Segurança
-- **IA Consultant:** Módulo integrado para auxílio na análise e extração de dados documentais.
-- **ACL (Access Control List):** Proteção de rotas e interface baseada em perfis de acesso (Admin/Client) via JWT.
+> Sistema de alta performance para gestão de documentos de licitação, unificando inteligência artificial, segurança relacional e uma experiência de usuário fluida. Este é um repositório privado focado na excelência operacional para o mercado público brasileiro.
 
 ---
+
+## 📍 Visão Geral
+O LicitaDocs é um ecossistema SaaS projetado para automatizar a gestão de documentos e certidões necessárias para processos licitatórios. O sistema atua como um **Cofre Digital (Vault)**, capturando, organizando e monitorando a validade de documentos fiscais e técnicos, permitindo que empresas mantenham sua conformidade de forma autônoma e inteligente.
 
 ## 🛠️ Stack Tecnológica
 
 ### Backend (A Fundação)
-- **Core:** Python 3.8+ com **FastAPI**.
-- **Banco de Dados:** SQLAlchemy ORM com suporte a PostgreSQL/SQLite.
-- **Migrações:** Gestão de esquema e versionamento via **Alembic**.
+- **Linguagem:** Python 3.10+
+- **Framework:** FastAPI (Alta performance e tipagem forte)
+- **Banco de Dados:** PostgreSQL (Single Source of Truth)
+- **ORM:** SQLAlchemy com migrações via Alembic.
+- **Segurança:** Autenticação JWT e RBAC (Admin/Client).
 
 ### Frontend (A Experiência)
-- **Interface:** React (Vite) + TypeScript.
-- **Estilização:** TailwindCSS para um design responsivo, limpo e moderno.
-- **Formulários:** React Hook Form + Zod para validações rigorosas e performáticas no client-side.
-- **Feedback:** Notificações em tempo real com **Sonner**.
+- **Tecnologias:** React (Vite) + TypeScript.
+- **Estilização:** TailwindCSS para design moderno e responsivo.
+- **Gerenciamento de Estado:** Hooks customizados e extração de lógica de negócio de componentes (Pattern: Orchestrator/Feature).
+
+---
+
+## 🚀 Fluxo de Desenvolvimento (MCP & Linear)
+
+Este projeto utiliza um fluxo de desenvolvimento moderno orquestrado via **MCP (Model Context Protocol)** e **Linear**.
+
+### 1. Gestão de Tarefas (Linear)
+Todo o trabalho é rastreado no workspace do Linear. As issues são organizadas por Sprints (Milestones) e Epics.
+- **Sprint Atual:** Consulte o Milestone ativo no Linear.
+- **ID da Issue:** Sempre utilize o ID da issue (ex: `LIC-123`) para referenciar seu trabalho.
+
+### 2. Regras de Código (AGENTS.md)
+O desenvolvimento é estritamente guiado pelas diretrizes contidas no arquivo `AGENTS.md`. É **obrigatório** seguir o protocolo de tolerância zero para adivinhação e as regras arquiteturais descritas.
+
+### 3. Convenção de Commits
+Todo commit realizado deve obrigatoriamente conter a tag da issue correspondente e o prefixo do agente AI, seguindo o padrão:
+`🤖 AI (Jules): type(scope): [LIC-X] descrição curta`
+
+Exemplo:
+`🤖 AI (Jules): feat(auth): [LIC-42] implementa recuperação de senha via SES`
 
 ---
 
@@ -42,23 +48,14 @@ O sistema encontra-se em fase de **Hardening (Endurecimento)**. Após a conclus�
 
 ```text
 ├── app/                # Backend (FastAPI)
-│   ├── core/           # Configurações, Segurança (JWT) e S3
-│   ├── models/         # Definições de Tabelas (SQLAlchemy)
-│   ├── repositories/   # Lógica de persistência e Integridade
-│   ├── routers/        # Endpoints da API (Auth, Doc, Admin, AI)
-│   └── schemas/        # DTOs e Validação Pydantic
+│   ├── core/           # Configurações, Segurança e Database Setup
+│   ├── models/         # Entidades SQLAlchemy
+│   ├── repositories/   # Lógica de persistência (Data Access)
+│   ├── services/       # Regras de Negócio e Integrações (E-mail, PNCP)
+│   └── routers/        # Endpoints da API (Auth, Vault, Admin, AI)
 ├── frontend/           # Frontend (React)
-│   ├── src/services/   # Integração com API (Axios)
-│   └── src/pages/      # Interfaces (Dashboard, Settings, Vault)
-└── docs/               # Documentação técnica e histórico de Sprints
+└── docs/               # Histórico de Sprints e Planejamento Estratégico
 ```
 
 ---
-
-## 📈 Próximos Passos (Roadmap)
-- [ ] **Dashboard de Métricas:** Visualização gráfica de documentos a vencer.
-- [ ] **Sistema de Notificações:** Alertas preventivos para usuários sobre vencimentos.
-- [ ] **QA Senior:** Expansão da cobertura de testes com Vitest (Frontend) e testes de estresse para validação de segurança (Backend).
-
----
-**Desenvolvido por:** Matheus & Equipe LicitaDoc (Sprint 18/19)
+**Desenvolvido com ❤️ pela Equipe LicitaDocs.**
