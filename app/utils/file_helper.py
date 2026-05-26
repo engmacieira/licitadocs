@@ -1,104 +1,93 @@
 """
-Utilitários para Manipulação de Arquivos.
-Fornece funções auxiliares para salvamento físico, cálculo de metadados 
-e gestão de subpastas no storage do LicitaDoc.
+Utilitários para Manipulação de Arquivos via Supabase Storage.
+Fornece funções para salvamento, recuperação e exclusão de arquivos na nuvem.
 """
 
 import os
 import uuid
 import logging
-import aiofiles
+import asyncio
 from pathlib import Path
 from fastapi import UploadFile
+from supabase import create_client, Client
+from app.core.config import settings
 
 # Configuração de Logs
 logger = logging.getLogger("app.utils.file_helper")
 
-# Definição do diretório base de uploads
-# Cloud Ready: Busca o caminho do .env ou usa o padrão local
-# TODO: No futuro, acoplar integração com AWS S3 (boto3) aqui
-UPLOAD_DIR = Path(os.getenv("STORAGE_PATH", "storage/uploads"))
+# Instância do cliente Supabase para Storage
+# Nota: Em produção, usar chaves de serviço se necessário para bypass de RLS de admin
+supabase: Client = create_client(settings.SUPABASE_URL or "", settings.SUPABASE_KEY or "")
 
 async def save_upload_file(upload_file: UploadFile, subfolder: str) -> tuple[str, int]:
     """
-    Salva um arquivo de upload no disco e extrai seus metadados básicos de forma assíncrona.
-    
+    Faz o upload de um arquivo para o Supabase Storage.
+
     Args:
         upload_file (UploadFile): Objeto do arquivo vindo do FastAPI.
-        subfolder (str): Nome da subpasta de destino (ex: 'certidoes', 'procuracoes').
-        
+        subfolder (str): Nome do bucket de destino (ex: 'cofre-digital', 'editais').
+
     Returns:
         tuple[str, int]: Uma tupla contendo o (caminho_relativo, tamanho_em_bytes).
-        
-    Raises:
-        ValueError: Se for detectada uma tentativa de Path Traversal.
-        Exception: Caso ocorra erro na escrita ou permissão de diretório.
     """
-    file_path = None
     try:
-        # 1. Preparação do Diretório e Proteção contra Path Traversal
-        # Resolvemos os caminhos para garantir que subfolder não aponte para fora de UPLOAD_DIR
-        base_dir = UPLOAD_DIR.resolve()
-        target_dir = (base_dir / subfolder).resolve()
-
-        if not target_dir.is_relative_to(base_dir):
-            logger.warning(f"🚨 [FILE_HELPER] Path Traversal detectado! Tentativa em: {subfolder}")
-            raise ValueError("Path Traversal detectado")
-
-        target_dir.mkdir(parents=True, exist_ok=True)
-
-        # 2. Geração de Nome Único mantendo a extensão original
+        # 1. Preparação
         file_ext = Path(upload_file.filename).suffix if upload_file.filename else ".bin"
         unique_name = f"{uuid.uuid4()}{file_ext}"
-        file_path = target_dir / unique_name
 
-        # 3. Escrita Assíncrona dos Bytes no Disco
-        # Usamos aiofiles para não bloquear a thread principal do FastAPI
-        async with aiofiles.open(file_path, "wb") as buffer:
-            # Lemos o conteúdo do UploadFile e escrevemos no buffer
-            content = await upload_file.read()
-            await buffer.write(content)
+        # Lemos o conteúdo do UploadFile
+        content = await upload_file.read()
+        file_size = len(content)
 
-        # 4. Cálculo de Metadados Pós-Escrita
-        file_size = os.path.getsize(file_path)
-        
-        logger.info(f"✅ [FILE_HELPER] Arquivo salvo: {unique_name} em {subfolder} ({file_size} bytes)")
-        
-        # Retorna o caminho como string (para o banco) e o tamanho
-        return str(file_path), file_size
+        # 2. Upload para o Supabase Storage
+        # subfolder aqui atua como o nome do BUCKET
+        res = supabase.storage.from_(subfolder).upload(
+            path=unique_name,
+            file=content,
+            file_options={"content-type": upload_file.content_type}
+        )
+
+        # O retorno esperado no banco é o caminho relativo dentro do bucket ou uma URL
+        # Para consistência com o sistema atual, retornamos o nome do arquivo único
+        # ou o caminho 'bucket/filename'
+        storage_path = f"{subfolder}/{unique_name}"
+
+        logger.info(f"✅ [FILE_HELPER] Arquivo enviado ao Supabase: {unique_name} no bucket {subfolder} ({file_size} bytes)")
+
+        return storage_path, file_size
 
     except Exception as e:
-        logger.error(f"❌ [FILE_HELPER] Falha ao salvar upload: {str(e)}")
-        
-        # Cleanup: Se o arquivo foi criado mas houve erro depois, removemos
-        if file_path and file_path.exists():
-            file_path.unlink()
-            
+        logger.error(f"❌ [FILE_HELPER] Falha ao enviar upload para Supabase: {str(e)}")
         raise e
-        
+
     finally:
-        # Protocolo de Segurança: Sempre fecha o ponteiro do arquivo
         await upload_file.close()
 
-def delete_file(relative_path: str):
+def delete_file(path_string: str):
     """
-    Remove um arquivo do disco de forma síncrona. 
-    Usado para limpezas ou reversão de transações.
-    
+    Remove um arquivo do Supabase Storage.
+
     Args:
-        relative_path (str): Caminho relativo ou absoluto do arquivo.
+        path_string (str): Caminho no formato 'bucket/filename'.
     """
     try:
-        path = Path(relative_path)
-        # Se for relativo, resolvemos a partir da base
-        if not path.is_absolute():
-            # Tenta resolver a partir de UPLOAD_DIR ou BASE_DIR se necessário
-            # mas geralmente o path já vem completo (str(file_path)) do save_upload_file
-            pass
-            
-        if path.exists() and path.is_file():
-            path.unlink()
-            logger.info(f"🗑️ [FILE_HELPER] Arquivo removido: {relative_path}")
+        if "/" not in path_string:
+            return
+
+        bucket, filename = path_string.split("/", 1)
+        supabase.storage.from_(bucket).remove([filename])
+        logger.info(f"🗑️ [FILE_HELPER] Arquivo removido do Supabase: {path_string}")
     except Exception as e:
-        logger.error(f"❌ [FILE_HELPER] Erro ao deletar arquivo {relative_path}: {e}")
-
+        logger.error(f"❌ [FILE_HELPER] Erro ao deletar arquivo no Supabase {path_string}: {e}")
+
+async def get_file_url(path_string: str, expires_in: int = 3600) -> str:
+    """
+    Gera uma URL assinada (temporária) para visualização do arquivo.
+    """
+    try:
+        bucket, filename = path_string.split("/", 1)
+        res = supabase.storage.from_(bucket).create_signed_url(filename, expires_in)
+        return res['signedURL']
+    except Exception as e:
+        logger.error(f"❌ [FILE_HELPER] Erro ao gerar URL assinada: {e}")
+        return ""

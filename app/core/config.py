@@ -16,9 +16,12 @@ class Settings(BaseSettings):
     STORAGE_PATH: Optional[str] = None
     
     # ==========================================
-    # 🗄️ BANCO DE DADOS
+    # 🗄️ BANCO DE DADOS E SUPABASE
     # ==========================================
     DATABASE_URL: str
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_JWT_SECRET: Optional[str] = None
     BANCO_AWS: Optional[str] = None
     SENHA_AWS: Optional[str] = None
     

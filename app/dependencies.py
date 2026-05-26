@@ -22,7 +22,7 @@ from app.core.context import user_id_var
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """
-    Decodifica o Token JWT e recupera o usuário do banco de dados.
+    Decodifica o Token JWT do Supabase e recupera o usuário do banco de dados.
     Garante que o portador do token é um usuário válido e armazena o id em contextvars.
     """
     credentials_exception = HTTPException(
@@ -32,17 +32,32 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     
     try:
-        # Decodificação e validação do payload JWT
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        # 🛡️ Validação com o Segredo do JWT do Supabase
+        # O payload do Supabase contém 'sub' que é o UUID do usuário.
+        # Se SUPABASE_JWT_SECRET estiver definido, usamos ele; caso contrário, fallback para SECRET_KEY antigo (para transição).
+        jwt_key = settings.SUPABASE_JWT_SECRET or settings.SECRET_KEY
+
+        payload = jwt.decode(token, jwt_key, algorithms=[settings.ALGORITHM], audience="authenticated")
+        user_id: str = payload.get("sub")
+        if user_id is None:
             raise credentials_exception
     except JWTError:
-        raise credentials_exception
+        # Se falhar, tentamos validar sem audience (fallback para tokens antigos ou customizados)
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            email: str = payload.get("sub") # No antigo usávamos email como sub
+            user = UserRepository.get_by_email(db, email=email)
+            if user:
+                user_id = str(user.id)
+            else:
+                raise credentials_exception
+        except JWTError:
+            raise credentials_exception
         
-    # Busca o usuário utilizando o repositório (que deve respeitar o Soft Delete)
-    user = UserRepository.get_by_email(db, email=email)
+    # Busca o usuário utilizando o UUID do Supabase
+    user = UserRepository.get_by_id(db, user_id=user_id)
     if user is None:
+        # Caso o usuário exista no Auth mas não no nosso public.users, podemos estar em transição
         raise credentials_exception
         
     # Armazena o ID do usuário no contextvar para a auditoria de negócios (Audit Trail)
@@ -66,12 +81,9 @@ def require_role(allowed_roles: List[any]):
     Fábrica de dependência para restrição de acesso por cargo (ADMIN/CLIENT).
     Uso: current_user = Depends(require_role([UserRole.ADMIN.value]))
     """
-    # 🛡️ BLINDAGEM 1: Converte todos os papéis permitidos para string
     allowed_roles_str = [str(role) for role in allowed_roles]
     
     def role_checker(current_user: User = Depends(get_current_active_user)) -> User:
-        # 🛡️ BLINDAGEM 2: Normaliza o papel do usuário atual para string
-        # Assim evitamos bugs se a base de dados retornar um objeto Enum ou um int
         user_role = str(current_user.role.value) if hasattr(current_user.role, 'value') else str(current_user.role)
         
         if user_role not in allowed_roles_str:
@@ -87,7 +99,6 @@ def require_role(allowed_roles: List[any]):
         
     return role_checker
 
-# Atalho para rotas exclusivas da equipe interna (Staff)
 def get_current_active_admin(
     current_user: User = Depends(require_role([UserRole.ADMIN.value]))
 ) -> User:
@@ -107,11 +118,9 @@ def verify_company_access(
     Garante o respeito ao Soft Delete e status do vínculo.
     """
     
-    # 🗝️ ADMINISTRADORES: Passe livre para suporte e auditoria
     if user.role == UserRole.ADMIN.value:
         return None  
     
-    # CLIENTES: Verificação rigorosa no Banco de Dados (Blindagem contra Soft Delete)
     link = db.query(UserCompanyLink).filter(
         UserCompanyLink.user_id == user.id,
         UserCompanyLink.company_id == company_id,
@@ -125,7 +134,6 @@ def verify_company_access(
             detail="Acesso negado: Você não possui vínculo ativo com esta empresa."
         )
 
-    # Verificação opcional de permissão interna (MASTER/VIEWER)
     if required_role and link.role != required_role:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
