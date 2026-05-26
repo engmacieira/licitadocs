@@ -11,14 +11,14 @@ from stream_zip import async_stream_zip, ZIP_64
 from datetime import date, datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status as http_status, Query, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.core.rate_limit import limiter
 from app.core.database import get_db
 from app.dependencies import get_current_active_user, require_role
-from app.utils.file_helper import save_upload_file # Mudança para o nosso utilitário padronizado
+from app.utils.file_helper import save_upload_file, get_file_url, delete_file
 from app.models.user_model import User, UserRole
 from app.models.document_model import Document
 from app.models.certificate_model import Certificate
@@ -193,7 +193,7 @@ async def upload_document(
             # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
             if file_path and os.path.exists(file_path):
                 try:
-                    os.remove(file_path)
+                    delete_file(file_path)
                 except OSError:
                     pass
             raise HTTPException(status_code=500, detail=str(e))
@@ -268,7 +268,7 @@ async def upload_document(
             # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
             if file_path and os.path.exists(file_path):
                 try:
-                    os.remove(file_path)
+                    delete_file(file_path)
                 except OSError:
                     pass
             raise HTTPException(status_code=500, detail=str(e))
@@ -279,7 +279,7 @@ async def upload_document(
     description="Protegido com Rate Limiting: Máximo de 60 downloads por minuto por IP."
 )
 @limiter.limit("60/minute")
-def download_document(
+async def download_document(
     request: Request,
     item_id: str,
     db: Session = Depends(get_db),
@@ -307,11 +307,12 @@ def download_document(
     if not file_path or file_path == "SEM_ANEXO":
         raise HTTPException(status_code=400, detail="Este registo não possui um anexo físico para download.")
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Ficheiro físico não encontrado no servidor.")
 
-    filename = os.path.basename(file_path)
-    return FileResponse(path=file_path, filename=filename, media_type='application/pdf')
+
+    signed_url = await get_file_url(file_path)
+    if not signed_url:
+        raise HTTPException(status_code=500, detail="Erro ao gerar link de download")
+    return RedirectResponse(url=signed_url)
 
 @router.get(
     "/export/zip",

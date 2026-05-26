@@ -15,12 +15,14 @@ from app.models.company_model import Company
 from app.models.certificate_model import Certificate
 from app.services.crawlers.crawler_factory import CrawlerFactory
 from app.repositories.document_repository import DocumentRepository
+from supabase import create_client, Client
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 # Configuração de Storage
-UPLOAD_DIR = Path("storage/uploads/automacoes")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
 
 class OrchestratorService:
     
@@ -86,12 +88,12 @@ class OrchestratorService:
                             meta = result["file_metadata"]
                             file_content = result.get("file_content")
                             
-                            # Persistência Física
+                            # Persistência no Supabase Storage
                             unique_name = f"{uuid.uuid4()}_{meta['filename']}"
-                            file_path = UPLOAD_DIR / unique_name
-                            
-                            with open(file_path, "wb") as f:
-                                f.write(file_content)
+                            supabase: Client = create_client(settings.SUPABASE_URL or "", settings.SUPABASE_KEY or "")
+                            bucket = "cofre-digital"
+                            supabase.storage.from_(bucket).upload(path=unique_name, file=file_content)
+                            file_path = f"{bucket}/{unique_name}"
                                 
                             # Persistência no Cofre via Repository
                             DocumentRepository.create_certificate(

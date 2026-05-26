@@ -25,7 +25,7 @@ from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
 from app.models.company_model import Company
 from app.models.document_model import Document, DocumentStatus 
-from app.utils.file_helper import save_upload_file
+from app.utils.file_helper import save_upload_file, delete_file
 from app.repositories.user_repository import UserRepository
 from app.services.email_service import EmailService
 from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest
@@ -219,7 +219,7 @@ async def register(
     except (HTTPException, Exception) as e:
         for path in set(saved_files):
             with contextlib.suppress(OSError):
-                os.remove(path)
+                delete_file(path)
         db.rollback()
         if isinstance(e, HTTPException):
             raise e

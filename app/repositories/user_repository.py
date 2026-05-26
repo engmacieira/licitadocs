@@ -20,13 +20,11 @@ class UserRepository(BaseRepository[User]):
     def create_user(cls, db: Session, user_in: UserCreate) -> User:
         """
         Cria um novo usuário (apenas a entidade User).
-        O vínculo com empresa deve ser feito posteriormente via UserCompanyLink.
         """
-        # Hash da senha feito de forma segura
         hashed_password = get_password_hash(user_in.password)
         
-        # Usamos cls.model para instanciar a entidade
         db_user = cls.model(
+            id=user_in.id, # IMPORTANTE: Usar o ID que veio do Supabase Auth
             email=user_in.email,
             password_hash=hashed_password,
             is_active=user_in.is_active,
@@ -52,19 +50,12 @@ class UserRepository(BaseRepository[User]):
 
     @classmethod
     def get_by_email(cls, db: Session, email: str) -> Optional[User]:
-        """
-        Busca usuário por e-mail (usado no Login/JWT).
-        Blindado com get_active_query para barrar acessos de usuários deletados.
-        """
         return cls.get_active_query(db).filter(cls.model.email == email).first()
         
     @classmethod
     def get_by_cpf(cls, db: Session, cpf: str) -> Optional[User]:
-        """Busca usuário por CPF (Único)."""
         return cls.get_active_query(db).filter(cls.model.cpf == cpf).first()
 
     @classmethod
     def get_by_id(cls, db: Session, user_id: str) -> Optional[User]:
-        """Busca usuário por ID (mantido explícito para clareza)."""
-        # Chama a inteligência do BaseRepository que já filtra os deletados
         return super().get_by_id(db, user_id)
