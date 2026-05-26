@@ -1,0 +1,12 @@
+SCHEMA >
+    id String,
+    emission_rule_id String,
+    company_id String,
+    requested_by_id String,
+    status String,
+    estimated_date Nullable(Date),
+    created_at DateTime,
+    updated_at DateTime
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "company_id, status, created_at"

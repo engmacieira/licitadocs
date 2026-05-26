@@ -1,0 +1,9 @@
+SCHEMA >
+    id Int32,
+    company_id String,
+    usage_date Date,
+    tokens_consumed Int32,
+    created_at DateTime DEFAULT now()
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "company_id, usage_date"

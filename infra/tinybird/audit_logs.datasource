@@ -1,0 +1,13 @@
+SCHEMA >
+    id String,
+    entity_name String,
+    entity_id String,
+    action String,
+    user_id Nullable(String),
+    old_payload String,
+    new_payload String,
+    created_at DateTime,
+    request_id Nullable(String)
+
+ENGINE "MergeTree"
+ENGINE_SORTING_KEY "entity_name, created_at"
