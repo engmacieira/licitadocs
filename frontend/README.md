@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# 🎨 LicitaDocs Frontend: Interface de Alta Performance
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> Ecossistema de interface desenvolvido em React com TypeScript, focado em fornecer uma experiência fluida para a gestão de documentos licitatórios.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠️ Stack de Interface
+- **Framework:** [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
+- **Linguagem:** TypeScript (Strict Mode)
+- **Estilização:** Tailwind CSS
+- **Validação de Formulários:** React Hook Form + Zod
+- **Notificações:** Sonner
+- **Testes:** Vitest + React Testing Library
 
-## React Compiler
+## 🏗️ Arquitetura (Orchestrator/Feature)
+O frontend segue um padrão de **Decentralização de Lógica**:
+1. **Pages:** Atuam como roteadores e containers de layout.
+2. **Orchestrators:** Localizados em `src/features/`, coordenam o estado e os hooks de cada funcionalidade.
+3. **Services:** Abstrações de chamadas de API (`src/services/`) utilizando Axios.
+4. **Hooks:** Extração de lógica reutilizável e complexa para Custom Hooks.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🚀 Guia de Desenvolvimento
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Pré-requisitos
+- Node.js (v18+)
+- npm ou bun
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Instalação de Dependências
+Navegue até a pasta do frontend e instale os pacotes:
+```bash
+cd frontend
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Execução em Desenvolvimento
+Inicie o servidor de desenvolvimento do Vite:
+```bash
+npm run dev
 ```
+A aplicação estará disponível por padrão em: `http://localhost:5173`
+
+### 4. Testes e Verificação
+Para rodar a suíte de testes unitários:
+```bash
+npm run test
+```
+
+Para realizar a checagem de tipos (TypeScript):
+```bash
+npm run typecheck
+```
+
+---
+
+## 📏 Regras de Design e Refatoração
+- **Single Source of Truth:** Todos os tipos devem residir em `src/types/index.ts`.
+- **Branding:** O nome da aplicação deve ser renderizado como string vinda de `APP_CONFIG.name`.
+- **Icons:** Utilize a biblioteca Lucide React para ícones padrão.
+- **Testes:** Novos componentes devem vir acompanhados de arquivos `.spec.tsx`.
+
+---
+**Desenvolvido por Jules (AI Engineer) & Matheus Macieira.**
