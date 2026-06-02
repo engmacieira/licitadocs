@@ -204,6 +204,8 @@ jobs:
       RESET_TOKEN_EXPIRE_MINUTES: 15
       EMAILS_FROM_NAME: "LicitaDocs CI"
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
     
     strategy:
       fail-fast: false 
