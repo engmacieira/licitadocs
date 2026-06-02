@@ -199,7 +199,7 @@ async def upload_company_document(
     "/companies/{company_id}/documents/{doc_id}/download",
     summary="Download de Documento (Admin)"
 )
-def download_company_document(
+async def download_company_document(
     company_id: str,
     doc_id: str,
     db: Session = Depends(get_db),
@@ -208,11 +208,15 @@ def download_company_document(
     # Delega a busca segura do path para o Repositório, blindando contra IDOR
     file_path = DocumentRepository.get_file_path(db, item_id=doc_id, company_id=company_id)
     
-    if not file_path or not os.path.exists(file_path):
+    if not file_path or file_path == "SEM_ANEXO":
         raise HTTPException(status_code=404, detail="Arquivo não encontrado ou acesso negado.")
         
-    filename = os.path.basename(file_path)
-    return FileResponse(path=file_path, filename=filename, media_type='application/octet-stream')
+    from app.utils.file_helper import get_file_url
+    from fastapi.responses import RedirectResponse
+    signed_url = await get_file_url(file_path)
+    if not signed_url:
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no armazenamento.")
+    return RedirectResponse(url=signed_url)
 
 # ==========================================
 # 📊 AUDITORIA (Audit Trail)

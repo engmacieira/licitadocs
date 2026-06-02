@@ -42,15 +42,17 @@ def test_run_daily_scan_happy_path(mock_create_cert, mock_get_crawler, mock_sess
     }
     mock_get_crawler.return_value = mock_crawler
     
-    # 4. Mock file write
-    m_open = mock_open()
-    with patch("app.services.orchestrator_service.open", m_open):
+    # 4. Mock Supabase client
+    with patch("app.services.orchestrator_service.create_client") as mock_supabase_client:
+        mock_client_instance = MagicMock()
+        mock_supabase_client.return_value = mock_client_instance
         OrchestratorService.run_daily_scan()
     
     # Verifications
     mock_get_crawler.assert_called_once()
     mock_create_cert.assert_called_once()
-    assert m_open.called
+    assert mock_supabase_client.called
+    assert mock_client_instance.storage.from_.called
 
 @patch("app.services.orchestrator_service.SessionLocal")
 def test_run_daily_scan_no_configs(mock_session_local, mock_db):

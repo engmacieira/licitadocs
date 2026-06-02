@@ -191,7 +191,7 @@ async def upload_document(
             )
         except Exception as e:
             # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
-            if file_path and os.path.exists(file_path):
+            if file_path:
                 try:
                     delete_file(file_path)
                 except OSError:
@@ -266,7 +266,7 @@ async def upload_document(
             )
         except Exception as e:
             # Missão 2: Prevenção de Arquivos Zumbis (Rollback Físico)
-            if file_path and os.path.exists(file_path):
+            if file_path:
                 try:
                     delete_file(file_path)
                 except OSError:
@@ -311,7 +311,7 @@ async def download_document(
 
     signed_url = await get_file_url(file_path)
     if not signed_url:
-        raise HTTPException(status_code=500, detail="Erro ao gerar link de download")
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado no armazenamento.")
     return RedirectResponse(url=signed_url)
 
 @router.get(

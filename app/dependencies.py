@@ -4,7 +4,7 @@ Centraliza a lógica de validação de Tokens JWT e controle de acesso baseado e
 Implementa a lógica de Multi-tenancy para isolamento de dados entre empresas.
 """
 
-from typing import Optional, List
+from typing import Optional, List, Any
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
@@ -38,14 +38,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         jwt_key = settings.SUPABASE_JWT_SECRET or settings.SECRET_KEY
 
         payload = jwt.decode(token, jwt_key, algorithms=[settings.ALGORITHM], audience="authenticated")
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        user_id_val = payload.get("sub")
+        if user_id_val is None:
             raise credentials_exception
+        
+        user_id: str = str(user_id_val)
+            
+        # Se user_id for um e-mail, forçamos o erro para cair no fallback de legacy tokens.
+        # Isso acontece em ambientes de teste onde SUPABASE_JWT_SECRET não está definido.
+        if "@" in user_id:
+            raise JWTError("Legacy token detected in primary decode")
+            
     except JWTError:
         # Se falhar, tentamos validar sem audience (fallback para tokens antigos ou customizados)
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-            email: str = payload.get("sub") # No antigo usávamos email como sub
+            email_val = payload.get("sub") # No antigo usávamos email como sub
+            if not email_val:
+                raise credentials_exception
+            email: str = str(email_val)
             user = UserRepository.get_by_email(db, email=email)
             if user:
                 user_id = str(user.id)
@@ -76,7 +87,7 @@ def get_current_active_user(current_user: User = Depends(get_current_user)) -> U
 
 # --- Sistema de Controle de Acesso (RBAC) ---
 
-def require_role(allowed_roles: List[any]):
+def require_role(allowed_roles: List[Any]):
     """
     Fábrica de dependência para restrição de acesso por cargo (ADMIN/CLIENT).
     Uso: current_user = Depends(require_role([UserRole.ADMIN.value]))

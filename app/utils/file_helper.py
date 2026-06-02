@@ -85,6 +85,10 @@ async def get_file_url(path_string: str, expires_in: int = 3600) -> str:
     Gera uma URL assinada (temporária) para visualização do arquivo.
     """
     try:
+        if not path_string or not isinstance(path_string, str) or "/" not in path_string:
+            logger.warning(f"⚠️ [FILE_HELPER] Invalid path_string format (missing '/' or invalid): {path_string}")
+            return ""
+            
         bucket, filename = path_string.split("/", 1)
         res = supabase.storage.from_(bucket).create_signed_url(filename, expires_in)
         return res['signedURL']

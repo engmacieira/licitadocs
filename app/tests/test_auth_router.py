@@ -284,7 +284,7 @@ async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
         call_count["count"] += 1
         if call_count["count"] == 3:
             raise Exception("Simulated DB or File Error")
-        path = f"/tmp/fake_{upload_file.filename}"
+        path = f"companies/fake_{upload_file.filename}"
         saved_paths.append(path)
         return (path, 1024)
         
@@ -293,7 +293,7 @@ async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
         removed_paths.append(path)
         
     monkeypatch.setattr("app.routers.auth_router.save_upload_file", fake_save_upload_fail_on_3)
-    monkeypatch.setattr("os.remove", fake_remove)
+    monkeypatch.setattr("app.routers.auth_router.delete_file", fake_remove)
     
     payload = {
         "email": f"leak_{os.urandom(4).hex()}@example.com",
@@ -305,10 +305,10 @@ async def test_register_phantom_disk_leak(client, db_session, monkeypatch):
     }
     
     files = {
-        "social_contract": ("contract.pdf", io.BytesIO(b"fake pdf 1"), "application/pdf"),
-        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"fake pdf 2"), "application/pdf"),
-        "responsible_doc": ("rg.pdf", io.BytesIO(b"fake pdf 3"), "application/pdf"),
-        "proxy_doc": ("proxy.pdf", io.BytesIO(b"fake pdf 4"), "application/pdf")
+        "social_contract": ("contract.pdf", io.BytesIO(b"%PDF-1.4\nfake pdf 1"), "application/pdf"),
+        "cnpj_card": ("cnpj.pdf", io.BytesIO(b"%PDF-1.4\nfake pdf 2"), "application/pdf"),
+        "responsible_doc": ("rg.pdf", io.BytesIO(b"%PDF-1.4\nfake pdf 3"), "application/pdf"),
+        "proxy_doc": ("proxy.pdf", io.BytesIO(b"%PDF-1.4\nfake pdf 4"), "application/pdf")
     }
     
     response = client.post("/auth/register", data=payload, files=files)

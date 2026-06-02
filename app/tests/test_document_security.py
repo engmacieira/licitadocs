@@ -31,16 +31,14 @@ async def test_upload_zombie_file_prevention(client, auth_headers, test_company,
     # Mock do save_upload_file para retornar um caminho conhecido (AsyncMock pois agora é awaitable)
     with patch("app.routers.document_router.save_upload_file", new_callable=MagicMock) as mock_save, \
          patch("app.repositories.document_repository.DocumentRepository.create_certificate") as mock_create, \
-         patch("os.path.exists") as mock_exists, \
-         patch("os.remove") as mock_remove:
+         patch("app.routers.document_router.delete_file") as mock_remove:
         
-        fake_path = "/tmp/fake_zombie.pdf"
+        fake_path = "companies/fake_zombie.pdf"
         # O router agora espera um awaitable, então configuramos o return_value do mock como uma corrotina ou usamos AsyncMock
         async def mock_coro(*args, **kwargs):
             return (fake_path, 1024)
         mock_save.side_effect = mock_coro
         mock_create.side_effect = Exception("Repository Failure")
-        mock_exists.return_value = True
         
         response = client.post(
             "/documents/upload",
@@ -72,12 +70,17 @@ async def test_certificate_versioning_archiving(client, auth_headers, test_compa
     file_content = b"%PDF- new cert"
     file = ("new.pdf", BytesIO(file_content), "application/pdf")
     
-    response = client.post(
-        "/documents/upload",
-        data={"type_id": test_doc_type.id, "target_company_id": test_company.id},
-        files={"file": file},
-        headers=auth_headers
-    )
+    with patch("app.routers.document_router.save_upload_file") as mock_save:
+        async def mock_coro(*args, **kwargs):
+            return ("vault/new.pdf", 1024)
+        mock_save.side_effect = mock_coro
+        
+        response = client.post(
+            "/documents/upload",
+            data={"type_id": test_doc_type.id, "target_company_id": test_company.id},
+            files={"file": file},
+            headers=auth_headers
+        )
     
     assert response.status_code == 201
     

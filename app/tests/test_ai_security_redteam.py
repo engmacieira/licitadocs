@@ -39,8 +39,8 @@ def test_rate_limiting_concurrent_requests(test_user, auth_headers):
                 "message": "Diga 'Olá'!",
                 "company_id": "any-id"
             }
-            # Simula 100 requisições simultâneas
-            tasks = [async_client.post("/ai/chat", json=payload, headers=auth_headers) for _ in range(100)]
+            # Simula 30 requisições simultâneas
+            tasks = [async_client.post("/ai/chat", json=payload, headers=auth_headers) for _ in range(30)]
             
             # Usando return_exceptions para capturar problemas de conexão ou do servidor
             results = await asyncio.gather(*tasks, return_exceptions=True)

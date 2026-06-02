@@ -1,68 +1,91 @@
-import os
 import pytest
-from io import BytesIO
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from fastapi import UploadFile
-from pathlib import Path
-from app.utils.file_helper import save_upload_file, delete_file, UPLOAD_DIR
+from app.utils.file_helper import save_upload_file, delete_file, get_file_url
+import app.utils.file_helper
+
+@pytest.fixture
+def mock_supabase():
+    original_supabase = app.utils.file_helper.supabase
+    mock_client = MagicMock()
+    app.utils.file_helper.supabase = mock_client
+    yield mock_client
+    app.utils.file_helper.supabase = original_supabase
 
 @pytest.mark.asyncio
-async def test_save_upload_file(tmp_path):
-    """Happy Path: Verify saving an upload file."""
+async def test_save_upload_file(mock_supabase):
+    """Verify upload file is correctly uploaded to Supabase Storage."""
     # Mocking UploadFile
     mock_file = MagicMock(spec=UploadFile)
     mock_file.filename = "test_document.pdf"
-    mock_file.read = MagicMock(side_effect=lambda size=-1: b"conteudo do arquivo")
-    
-    # Em Python >= 3.8, podemos usar AsyncMock para métodos awaitables
-    from unittest.mock import AsyncMock
+    mock_file.content_type = "application/pdf"
     mock_file.read = AsyncMock(return_value=b"conteudo do arquivo")
     mock_file.close = AsyncMock()
-    
-    # Override UPLOAD_DIR for testing
-    test_upload_dir = tmp_path / "storage" / "uploads"
-    test_upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr("app.utils.file_helper.UPLOAD_DIR", test_upload_dir)
-        
-        # Test saving
-        relative_path, size = await save_upload_file(mock_file, "vault")
-        
-        assert "vault" in relative_path
-        assert relative_path.endswith(".pdf")
-        assert size == len(b"conteudo do arquivo")
-        
-        # Verify file exists on disk
-        full_path = Path(relative_path)
-        assert full_path.exists()
-        assert full_path.read_bytes() == b"conteudo do arquivo"
 
-def test_delete_file(tmp_path):
-    """Happy Path: Verify deleting a file."""
-    test_file = tmp_path / "test_to_delete.txt"
-    test_file.write_text("content")
-    
-    # Test deletion
-    delete_file(str(test_file))
-    assert not test_file.exists()
+    # Mocking Supabase storage upload
+    mock_upload = MagicMock()
+    mock_supabase.storage.from_.return_value.upload = mock_upload
 
-def test_delete_non_existent_file(caplog):
-    """Edge Case: Verify deleting a non-existent file doesn't crash."""
-    delete_file("non_existent_file.pdf")
-    # Should not raise error
+    # Call save_upload_file
+    storage_path, size = await save_upload_file(mock_file, "vault")
+
+    # Assertions
+    assert storage_path.startswith("vault/")
+    assert storage_path.endswith(".pdf")
+    assert size == len(b"conteudo do arquivo")
+    
+    mock_file.read.assert_called_once()
+    mock_file.close.assert_called_once()
+    mock_supabase.storage.from_.assert_called_once_with("vault")
+    
+    # Verify upload parameters
+    called_kwargs = mock_upload.call_args[1]
+    assert called_kwargs["file"] == b"conteudo do arquivo"
+    assert called_kwargs["file_options"] == {"content-type": "application/pdf"}
+
+def test_delete_file(mock_supabase):
+    """Verify file deletion invokes Supabase Storage delete."""
+    # Mocking Supabase storage remove
+    mock_remove = MagicMock()
+    mock_supabase.storage.from_.return_value.remove = mock_remove
+
+    # Call delete_file
+    delete_file("vault/test_file.pdf")
+
+    # Assertions
+    mock_supabase.storage.from_.assert_called_once_with("vault")
+    mock_remove.assert_called_once_with(["test_file.pdf"])
+
+def test_delete_invalid_file_path(mock_supabase):
+    """Verify deleting file with invalid path does not call Supabase."""
+    delete_file("invalid_path")
+
+    # Should do nothing and not call supabase
+    mock_supabase.storage.from_.assert_not_called()
 
 @pytest.mark.asyncio
-async def test_save_file_path_traversal(tmp_path):
-    """Security: Verify Path Traversal protection."""
-    mock_file = MagicMock(spec=UploadFile)
-    mock_file.filename = "test.pdf"
-    
-    test_upload_dir = tmp_path / "storage" / "uploads"
-    test_upload_dir.mkdir(parents=True, exist_ok=True)
-    
-    with pytest.MonkeyPatch.context() as mp:
-        mp.setattr("app.utils.file_helper.UPLOAD_DIR", test_upload_dir)
-        
-        with pytest.raises(ValueError, match="Path Traversal detectado"):
-            await save_upload_file(mock_file, "../../etc")
+async def test_get_file_url(mock_supabase):
+    """Verify generating signed URL uses Supabase SDK."""
+    # Mocking Supabase signed URL generation
+    mock_create_signed_url = MagicMock(return_value={'signedURL': 'http://signed-url-placeholder'})
+    mock_supabase.storage.from_.return_value.create_signed_url = mock_create_signed_url
+
+    # Call get_file_url
+    url = await get_file_url("vault/test_file.pdf", expires_in=1800)
+
+    # Assertions
+    assert url == "http://signed-url-placeholder"
+    mock_supabase.storage.from_.assert_called_once_with("vault")
+    mock_create_signed_url.assert_called_once_with("test_file.pdf", 1800)
+
+@pytest.mark.asyncio
+async def test_get_file_url_exception(mock_supabase):
+    """Verify generating signed URL returns empty string on exception."""
+    # Simulate an exception in create_signed_url
+    mock_supabase.storage.from_.side_effect = Exception("Supabase error")
+
+    # Call get_file_url
+    url = await get_file_url("vault/test_file.pdf")
+
+    # Assertions
+    assert url == ""

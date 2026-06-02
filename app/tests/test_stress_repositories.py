@@ -13,12 +13,13 @@ def test_repository_mass_insertion_stress(db_session, test_user):
     start_time = time.time()
     
     companies = []
+    import random
     for i in range(num_companies):
         c_id = str(uuid.uuid4())
         c = Company(
             id=c_id,
-            cnpj=f"{str(i).zfill(14)}",
-            razao_social=f"Company Stress {i}",
+            cnpj=f"{random.randint(10000000000000, 99999999999999)}",
+            razao_social=f"Company Stress {i}_{c_id[:4]}",
             owner_id=test_user.id
         )
         companies.append(c)

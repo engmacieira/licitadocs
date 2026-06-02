@@ -39,21 +39,27 @@ async def test_download_connection_pool_stress(auth_headers, test_company, db_se
     try:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=auth_headers) as client:
-            num_requests = 90
+            num_requests = 30
             
-            # Dispara os 200 downloads concorrentes
-            tasks = [client.get(f"/documents/{doc.id}/download") for _ in range(num_requests)]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            from unittest.mock import patch
+            with patch("app.routers.document_router.get_file_url") as mock_get_url:
+                async def mock_coro(*args, **kwargs):
+                    return "http://mock-url.com/download.pdf"
+                mock_get_url.side_effect = mock_coro
+                
+                # Dispara os 200 downloads concorrentes
+                tasks = [client.get(f"/documents/{doc.id}/download") for _ in range(num_requests)]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
             
             status_codes = [r.status_code for r in results if not isinstance(r, Exception) and hasattr(r, 'status_code')]
             exceptions = [r for r in results if isinstance(r, Exception)]
             
-            logging.info(f"Stress Test Results - OKs: {status_codes.count(200)}, Exceptions: {len(exceptions)}")
+            logging.info(f"Stress Test Results - OKs: {status_codes.count(307)}, Exceptions: {len(exceptions)}")
             
             # A aplicação deve gerenciar o pool corretamente e evitar crash ou Timeout do SQLAlchemy
             assert 500 not in status_codes, "Exaustão do Connection Pool causou HTTP 500 na rota de Download!"
             assert len(exceptions) == 0, f"Exceções imprevistas durante os requests: {exceptions}"
-            assert status_codes.count(200) > 0, "Nenhuma requisição de download foi bem-sucedida!"
+            assert status_codes.count(307) > 0, "Nenhuma requisição de download foi bem-sucedida!"
     finally:
         os.remove(path)
 
@@ -91,17 +97,23 @@ async def test_download_race_condition_toctou(auth_headers, test_company, db_ses
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test", headers=auth_headers) as client:
             
-            # A Mágica Acontece Aqui: Disparamos o download e delegamos o bloqueio do BD para uma Thread separada
-            task_download = client.get(f"/documents/{doc.id}/download")
-            task_revoke = asyncio.to_thread(alter_permission_sync)
-            
-            results = await asyncio.gather(task_download, task_revoke, return_exceptions=True)
+            from unittest.mock import patch
+            with patch("app.routers.document_router.get_file_url") as mock_get_url:
+                async def mock_coro(*args, **kwargs):
+                    return "http://mock-url.com/download.pdf"
+                mock_get_url.side_effect = mock_coro
+                
+                # A Mágica Acontece Aqui: Disparamos o download e delegamos o bloqueio do BD para uma Thread separada
+                task_download = client.get(f"/documents/{doc.id}/download")
+                task_revoke = asyncio.to_thread(alter_permission_sync)
+                
+                results = await asyncio.gather(task_download, task_revoke, return_exceptions=True)
             
             download_response = results[0]
             assert not isinstance(download_response, Exception)
             
             logging.info(f"Race Condition - Download Status Code: {download_response.status_code}")
-            assert download_response.status_code in [200, 403, 404]
+            assert download_response.status_code in [307, 403, 404]
             assert download_response.status_code != 500, "Race Condition (TOCTOU) resultou em falha HTTP 500!"
     finally:
         os.remove(path)

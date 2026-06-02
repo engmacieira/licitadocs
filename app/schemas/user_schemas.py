@@ -46,8 +46,11 @@ class UserBase(BaseModel):
             return None
         return validar_matematica_cpf(v)
 
+import uuid
+
 class UserCreate(UserBase):
     """Contrato exclusivo para criação de novos usuários (POST)."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="UUID gerado pelo Supabase Auth")
     password: str = Field(..., min_length=8, description="Senha com no mínimo 8 caracteres")
     invite_token: Optional[str] = Field(None, description="Token opcional para convites de equipe")
 

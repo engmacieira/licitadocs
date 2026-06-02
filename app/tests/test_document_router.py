@@ -10,17 +10,23 @@ def test_upload_document_success(client, auth_headers, test_company):
     file_content = b"%PDF-1.5\ntest file content"
     file = ("test.pdf", BytesIO(file_content), "application/pdf")
     
-    response = client.post(
-        f"/documents/upload?company_id={test_company.id}",
-        data={"title": "test.pdf"},
-        files={"file": file},
-        headers=auth_headers
-    )
-    
-    assert response.status_code == status.HTTP_201_CREATED
-    data = response.json()
-    assert data["title"] == "test.pdf"
-    assert data["company_id"] == str(test_company.id)
+    from unittest.mock import patch, MagicMock
+    with patch("app.routers.document_router.save_upload_file") as mock_save:
+        async def mock_coro(*args, **kwargs):
+            return ("vault/test.pdf", 1024)
+        mock_save.side_effect = mock_coro
+        
+        response = client.post(
+            f"/documents/upload?company_id={test_company.id}",
+            data={"title": "test.pdf"},
+            files={"file": file},
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_201_CREATED
+        data = response.json()
+        assert data["title"] == "test.pdf"
+        assert data["company_id"] == str(test_company.id)
 
 def test_get_document_in_list_success(client, auth_headers, test_company, db_session):
     """Valida o Happy Path de encontrar o documento na listagem."""
@@ -138,19 +144,25 @@ def test_upload_file_validations(client, auth_headers, test_company):
 def test_upload_structured_with_alert(client, auth_headers, test_company, test_doc_type, db_session):
     """Valida upload de certidão com status irregular e criação de alerta."""
     from app.repositories.message_repository import MessageRepository
+    from unittest.mock import patch
     
     file = ("cert.pdf", BytesIO(b"%PDF-1.5\npdf content"), "application/pdf")
-    response = client.post(
-        "/documents/upload",
-        data={
-            "type_id": test_doc_type.id,
-            "target_company_id": test_company.id,
-            "status": "irregular",
-            "notes": "Falta assinatura"
-        },
-        files={"file": file},
-        headers=auth_headers
-    )
+    with patch("app.routers.document_router.save_upload_file") as mock_save:
+        async def mock_coro(*args, **kwargs):
+            return ("vault/cert.pdf", 1024)
+        mock_save.side_effect = mock_coro
+        
+        response = client.post(
+            "/documents/upload",
+            data={
+                "type_id": test_doc_type.id,
+                "target_company_id": test_company.id,
+                "status": "irregular",
+                "notes": "Falta assinatura"
+            },
+            files={"file": file},
+            headers=auth_headers
+        )
     
     assert response.status_code == 201
     assert response.json()["status"] == "irregular"
@@ -195,11 +207,16 @@ def test_download_document_edge_cases(client, auth_headers, test_company, db_ses
     
     # Ficheiro físico não encontrado
     from app.models.document_model import Document
+    from unittest.mock import patch
     doc = Document(title="X", filename="x.pdf", file_path="/non/existent/path", company_id=test_company.id)
     db_session.add(doc)
     db_session.commit()
     
-    assert client.get(f"/documents/{doc.id}/download", headers=auth_headers).status_code == 404
+    with patch("app.routers.document_router.get_file_url") as mock_get_url:
+        async def mock_coro(*args, **kwargs):
+            return ""
+        mock_get_url.side_effect = mock_coro
+        assert client.get(f"/documents/{doc.id}/download", headers=auth_headers).status_code == 404
 
 def test_update_metadata_admin_only(client, auth_headers, test_company, db_session):
     """Valida que apenas admin atualiza metadados."""

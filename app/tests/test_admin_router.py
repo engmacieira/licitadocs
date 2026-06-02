@@ -136,17 +136,27 @@ def test_admin_document_management(client, db_session, test_company):
     file_content = b"Conteudo do PDF administrativo"
     file = ("admin_test.pdf", io.BytesIO(file_content), "application/pdf")
     
-    response = client.post(
-        f"/admin/companies/{test_company.id}/upload",
-        headers=headers,
-        files={"file": file}
-    )
+    from unittest.mock import patch
+    with patch("app.routers.admin_router.save_upload_file") as mock_save:
+        async def mock_coro(*args, **kwargs):
+            return ("vault/admin_doc.pdf", 1024)
+        mock_save.side_effect = mock_coro
+        
+        response = client.post(
+            f"/admin/companies/{test_company.id}/upload",
+            files={"file": file},
+            headers=headers
+        )
     assert response.status_code == status.HTTP_201_CREATED
     doc_id = response.json()["id"]
     
     # 3. Download Administrativo
-    response = client.get(f"/admin/companies/{test_company.id}/documents/{doc_id}/download", headers=headers)
-    assert response.status_code == 200
+    with patch("app.utils.file_helper.get_file_url") as mock_get_url:
+        async def mock_coro(*args, **kwargs):
+            return "http://mock-url.com/doc.pdf"
+        mock_get_url.side_effect = mock_coro
+        response = client.get(f"/admin/companies/{test_company.id}/documents/{doc_id}/download", headers=headers, follow_redirects=False)
+    assert response.status_code == 307
     
     # 4. Erros no download
     response = client.get(f"/admin/companies/{test_company.id}/documents/non_existent/download", headers=headers)
