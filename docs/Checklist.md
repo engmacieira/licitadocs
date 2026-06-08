@@ -66,6 +66,7 @@ A pasta frontend foi criada. Para iniciar o projeto React nela:
     - [skip ci] para o push não acionar o actions
     - [run jules] para o push acionar o agente jules
     - git commit --allow-empty -m "sua mensagem aqui", para commitar sem ter alteração em arquivos
+    - $env:Path += ";E:\msys64\ucrt64"
     
 2. ERROS COMUNS
     - O "Pegadinha" do VS Code (Interpretador). 

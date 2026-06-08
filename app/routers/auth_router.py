@@ -123,12 +123,16 @@ async def register(
         )
         db.add(link)
 
-        # 5. Processamento de Arquivos Físicos (REESCRITO PARA ALTA PERFORMANCE)
+        # 5. Processamento de Arquivos Físicos 
+
+        # 💡 Definimos textualmente o bucket privado criado no Supabase
+        BUCKET_CADASTRO = "documentos-usuarios"
+        
         async def process_file_io(upload_file: UploadFile, title: str):
             if not upload_file: 
                 return None
             
-            if not upload_file.filename.lower().endswith('.pdf'):
+            if not upload_file.filename or not upload_file.filename.lower().endswith('.pdf'):
                 raise HTTPException(status_code=400, detail="Apenas arquivos PDF são permitidos.")
             
             # Validação de tamanho
@@ -139,8 +143,8 @@ async def register(
                 raise HTTPException(status_code=413, detail=f"Arquivo {title} muito grande. Máximo 5MB.")
             
             try:
-                # Faz o I/O pesado de forma assíncrona
-                path, size = await save_upload_file(upload_file, "companies")
+                # Faz o I/O pesado de forma assíncrona apontando para o bucket seguro
+                path, size = await save_upload_file(upload_file, BUCKET_CADASTRO)
                 saved_files.append(path) # 🛡️ Registra para limpeza em caso de falha global
                 return {
                     "title": title,
@@ -163,7 +167,10 @@ async def register(
         # Agora, insere no banco (Síncrono e Seguro)
         for file_data in processed_files:
             if file_data:
-                saved_files.append(file_data["file_path"])
+                # Evita duplicidade na lista de saved_files para o rollback
+                if file_data["file_path"] not in saved_files:
+                    saved_files.append(file_data["file_path"])
+                    
                 doc = Document(
                     title=file_data["title"],
                     filename=file_data["filename"],
@@ -185,7 +192,7 @@ async def register(
         )
 
         # 8. Dispara E-mail de Boas-vindas/Verificação
-        EmailService.send_verification_email(to_email=new_user.email, token=verify_token)
+        EmailService.send_verification_email(to_email=str(new_user.email), token=verify_token)
         
         # 9. Alerta Administrativo
         if settings.ADMIN_EMAIL_NOTIFICATIONS:
@@ -250,7 +257,7 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    if not verify_password(form_data.password, user.password_hash):
+    if not verify_password(form_data.password, str(user.password_hash)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos.",
@@ -323,7 +330,7 @@ def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_d
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
     
-    user.is_active = True
+    user.is_active = True  # type: ignore
     db.commit()
     return {"message": f"Pagamento simulado (Modo: {env}). Conta de {user.email} ativada com sucesso."}
 
@@ -353,7 +360,7 @@ def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     )
 
     # Dispara e-mail via serviço assíncrono (Adapter)
-    EmailService.send_password_reset_email(to_email=user.email, reset_token=reset_token)
+    EmailService.send_password_reset_email(to_email=str(user.email), reset_token=reset_token)
 
     return success_message
 
@@ -372,8 +379,8 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
     try:
         # 1. Valida o Token
         payload = jwt.decode(data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        token_type: str = payload.get("type")
+        email: Optional[str] = payload.get("sub")
+        token_type: Optional[str] = payload.get("type")
         
         # 2. Garante que é um token de reset, e não um token de sessão interceptado
         if email is None or token_type != "password_reset":
@@ -388,7 +395,7 @@ def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
         raise credentials_exception
 
     # 4. Atualiza a senha no banco
-    user.password_hash = get_password_hash(data.new_password)
+    user.password_hash = get_password_hash(data.new_password)  # type: ignore
     db.commit()
 
     return {"message": "Sua senha foi redefinida com sucesso. Faça login para continuar."}
@@ -408,8 +415,8 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        token_type: str = payload.get("type")
+        email: Optional[str] = payload.get("sub")
+        token_type: Optional[str] = payload.get("type")
         
         if email is None or token_type != "email_verification":
             raise exception
@@ -424,7 +431,7 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     if user.is_email_verified:
         return {"message": "E-mail já estava validado."}
 
-    user.is_email_verified = True
+    user.is_email_verified = True  # type: ignore
     db.commit()
 
     return {"message": "E-mail validado com sucesso! A sua conta está pronta."}
@@ -471,7 +478,7 @@ def recover_email(data: RecoverEmailRequest, db: Session = Depends(get_db)):
     if email_encontrado:
         # Como o envio usa smtplib que pode demorar alguns segundos, 
         # idealmente usaríamos BackgroundTasks aqui no futuro.
-        EmailService.send_email_recovery_email(to_email=email_encontrado)
+        EmailService.send_email_recovery_email(to_email=str(email_encontrado))
 
     # 4. Retorno Cego
     return success_message
