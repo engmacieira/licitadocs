@@ -28,7 +28,7 @@ from app.models.document_model import Document, DocumentStatus
 from app.utils.file_helper import save_upload_file, delete_file
 from app.repositories.user_repository import UserRepository
 from app.services.email_service import EmailService
-from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest
+from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest, ResendVerificationRequest, ResendVerificationTokenRequest
 
 DUMMY_HASH = get_password_hash("dummy")
 
@@ -482,3 +482,72 @@ def recover_email(data: RecoverEmailRequest, db: Session = Depends(get_db)):
 
     # 4. Retorno Cego
     return success_message
+# ==========================================
+# REENVIO DE VERIFICAÇÃO
+# ==========================================
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_200_OK,
+    summary="Reenviar E-mail de Verificação (via E-mail)",
+    description="Gera um novo token e reenvia o e-mail de ativação de conta."
+)
+def resend_verification(data: ResendVerificationRequest, db: Session = Depends(get_db)):
+    user = UserRepository.get_by_email(db, email=data.email)
+
+    # 🛡️ Blindagem: Retornar sempre sucesso
+    success_message = {"message": "Se o e-mail estiver pendente de verificação, um novo link foi enviado."}
+
+    if not user or user.is_email_verified:
+        return success_message
+
+    # Gera novo Token de Verificação
+    verify_token = create_access_token(
+        data={"sub": user.email, "type": "email_verification"},
+        expires_delta=timedelta(hours=24)
+    )
+
+    # Dispara e-mail
+    EmailService.send_verification_email(to_email=str(user.email), token=verify_token)
+
+    return success_message
+
+@router.post(
+    "/resend-verification-from-token",
+    status_code=status.HTTP_200_OK,
+    summary="Reenviar E-mail de Verificação (via Token)",
+    description="Decodifica um token expirado para identificar o utilizador e reenviar um novo link válido."
+)
+def resend_verification_from_token(data: ResendVerificationTokenRequest, db: Session = Depends(get_db)):
+    exception = HTTPException(status_code=400, detail="Token inválido.")
+
+    try:
+        # Decodifica sem validar expiração para pegar o sub
+        payload = jwt.decode(
+            data.token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            options={"verify_exp": False}
+        )
+        email: Optional[str] = payload.get("sub")
+        token_type: Optional[str] = payload.get("type")
+
+        if email is None or token_type != "email_verification":
+            raise exception
+
+    except JWTError:
+        raise exception
+
+    user = UserRepository.get_by_email(db, email=email)
+    if not user or user.is_email_verified:
+        return {"message": "Processamento concluído."}
+
+    # Gera novo Token
+    verify_token = create_access_token(
+        data={"sub": user.email, "type": "email_verification"},
+        expires_delta=timedelta(hours=24)
+    )
+
+    EmailService.send_verification_email(to_email=str(user.email), token=verify_token)
+
+    return {"message": "Um novo link de verificação foi enviado para o seu e-mail."}

@@ -4,9 +4,14 @@ Isola a aplicação da dependência direta de um provedor específico (SendGrid/
 """
 
 import smtplib
+import logging
+import socket
 from email.message import EmailMessage
-from typing import List, Optional
+from typing import Optional
 from app.core.config import settings
+
+# Configuração de Logging para melhor visibilidade no FastAPI
+logger = logging.getLogger("app.services.email_service")
 
 class EmailService:
     @staticmethod
@@ -16,7 +21,7 @@ class EmailService:
         """
         # Validação de infraestrutura
         if not settings.SMTP_SERVER or not settings.SMTP_PORT:
-            print("⚠️ [EMAIL] SMTP não configurado. E-mail não enviado.")
+            logger.warning("⚠️ [EMAIL] SMTP não configurado. E-mail não enviado.")
             # Num ambiente de teste, podemos apenas imprimir no console
             print(f"--- MOCK EMAIL PARA {to_email} ---\n{html_content}\n-----------------------")
             return False
@@ -29,18 +34,37 @@ class EmailService:
         # Define o conteúdo como HTML
         msg.add_alternative(html_content, subtype='html')
 
+        # Limite máximo de tempo para conexão (alinhado com test_resend_smtp.py)
+        TIMEOUT_SECONDS = 30
+
         try:
-            # Conexão SMTP com TLS
-            with smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT) as server:
+            logger.info(f"🔌 [EMAIL] Conectando ao servidor SMTP {settings.SMTP_SERVER}:{settings.SMTP_PORT}...")
+
+            # De acordo com o teste bem-sucedido, se a porta for 465 usamos SSL direto
+            if settings.SMTP_PORT == 465:
+                server = smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=TIMEOUT_SECONDS)
+            else:
+                server = smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=TIMEOUT_SECONDS)
                 server.starttls()
+
+            with server:
                 if settings.SMTP_USER and settings.SMTP_PASSWORD:
+                    logger.info("🔐 [EMAIL] Autenticando...")
                     server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+
+                logger.info(f"📧 [EMAIL] Enviando mensagem para {to_email}...")
                 server.send_message(msg)
-            print(f"📧 [EMAIL] E-mail enviado com sucesso para {to_email}")
+
+            logger.info(f"✅ [EMAIL] E-mail enviado com sucesso para {to_email}")
             return True
+        except socket.timeout:
+            logger.error(f"❌ [EMAIL] Timeout ao conectar com {settings.SMTP_SERVER}:{settings.SMTP_PORT}")
+        except smtplib.SMTPAuthenticationError:
+            logger.error("❌ [EMAIL] Erro de Autenticação SMTP. Verifique usuário e senha.")
         except Exception as e:
-            print(f"🚨 [EMAIL] Falha ao enviar e-mail para {to_email}. Erro: {str(e)}")
-            return False
+            logger.error(f"🚨 [EMAIL] Falha ao enviar e-mail para {to_email}. Erro: {str(e)}")
+
+        return False
 
     @staticmethod
     def send_password_reset_email(to_email: str, reset_token: str) -> None:
@@ -80,6 +104,11 @@ class EmailService:
             </body>
         </html>
         """
+        EmailService.send_verification_email_html(to_email, html_content)
+
+    @staticmethod
+    def send_verification_email_html(to_email: str, html_content: str) -> None:
+        """Auxiliar para enviar e-mail de verificação (pode ser usado para reenvio)."""
         EmailService.send_email(to_email, "Confirme o seu e-mail - LicitaDoc", html_content)
 
     @staticmethod

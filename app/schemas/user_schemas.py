@@ -104,3 +104,10 @@ class ResetPasswordRequest(BaseModel):
 class RecoverEmailRequest(BaseModel):
     """Payload para a funcionalidade 'Esqueci meu e-mail'."""
     documento: str = Field(..., description="CPF ou CNPJ (será limpo no backend)")
+class ResendVerificationRequest(BaseModel):
+    """Payload para solicitar reenvio de e-mail de verificação via e-mail."""
+    email: EmailStr = Field(..., description="E-mail da conta a ser verificada")
+
+class ResendVerificationTokenRequest(BaseModel):
+    """Payload para solicitar reenvio de e-mail de verificação via token anterior."""
+    token: str = Field(..., description="Token anterior para identificar o utilizador")
