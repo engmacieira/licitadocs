@@ -1,6 +1,7 @@
 import os
 import smtplib
 import socket  # Importado para capturar a exceção de timeout de rede
+import httpx
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
@@ -86,3 +87,73 @@ def testar_envio_smtp():
 
 if __name__ == "__main__":
     testar_envio_smtp()
+
+def testar_envio_http():
+    """
+    Testa o envio de e-mail utilizando a API HTTP oficial do Resend.
+    Elimina dependências de portas SMTP e firewalls de infraestrutura.
+    """
+    print("🚀 Iniciando teste de integração com o Resend via API HTTP...")
+
+    # Coleta de variáveis conforme o padrão de segurança do projeto (Zero Guessing)
+    # Nota: No Resend, a API Key é o próprio SMTP_PASSWORD que você já usa.
+    api_key = os.getenv("SMTP_PASSWORD") 
+    from_email = os.getenv("EMAILS_FROM_EMAIL")
+    from_name = os.getenv("EMAILS_FROM_NAME", "LicitaDocs")
+    to_email = os.getenv("ADMIN_EMAIL_NOTIFICATIONS")
+
+    if not all([api_key, from_email, to_email]):
+        print("❌ Erro: Variáveis SMTP_PASSWORD, EMAILS_FROM_EMAIL ou ADMIN_EMAIL_NOTIFICATIONS ausentes no .env!")
+        return False
+
+    # Configuração do Endpoint e Headers oficiais do Resend
+    url = "https://api.resend.com/emails"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+
+    # Payload da requisição
+    payload = {
+        "from": f"{from_name} <{from_email}>",
+        "to": [to_email],
+        "subject": "🧪 Teste de Conexão HTTP - LicitaDocs",
+        "html": """
+        <html>
+            <body>
+                <h2>Conexão via API HTTP Realizada! 🎉</h2>
+                <p>Este teste valida o envio usando requisições POST, contornando bloqueios de infraestrutura do Render.</p>
+            </body>
+        </html>
+        """
+    }
+
+    # Execução com Timeout explícito de 30 segundos
+    LIMITE_TEMPO = 30
+    print(f"📡 Disparando POST para {url} (Timeout: {LIMITE_TEMPO}s)...")
+
+    try:
+        with httpx.Client(timeout=LIMITE_TEMPO) as client:
+            response = client.post(url, json=payload, headers=headers)
+            
+        # Verifica se o status code é da família de sucesso (2xx)
+        if response.status_code in [200, 201]:
+            print("✅ Sucesso Absoluto! O e-mail foi enviado via HTTP.")
+            print(f"Resposta do Resend: {response.json()}")
+            return True
+        else:
+            print(f"❌ Falha na API do Resend (Status Code: {response.status_code})")
+            print(f"Detalhes do Erro: {response.text}")
+            return False
+
+    except httpx.TimeoutException:
+        print(f"❌ Erro de Limite de Tempo: A requisição HTTP estourou o limite de {LIMITE_TEMPO}s.")
+    except httpx.RequestError as exc:
+        print(f"❌ Erro de Rede ao tentar conectar na API: {exc}")
+    except Exception as e:
+        print(f"❌ Erro inesperado: {str(e)}")
+
+    return False
+
+if __name__ == "__main__":
+    testar_envio_http()

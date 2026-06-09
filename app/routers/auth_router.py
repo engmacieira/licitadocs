@@ -8,7 +8,7 @@ import contextlib
 import asyncio
 from datetime import timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File, Request, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -54,6 +54,7 @@ router = APIRouter(prefix="/auth", tags=["Autenticação e Onboarding"])
 @limiter.limit("5/minute")
 async def register(
     request: Request,
+    background_tasks: BackgroundTasks,
     email: EmailStr = Form(..., description="E-mail de acesso do usuário"),
     password: str = Form(..., description="Senha forte"),
     legal_name: str = Form(..., description="Razão Social da empresa"),
@@ -190,22 +191,21 @@ async def register(
             data={"sub": new_user.email, "type": "email_verification"},
             expires_delta=timedelta(hours=24)
         )
+        verify_link = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
         # 8. Dispara E-mail de Boas-vindas/Verificação
-        EmailService.send_verification_email(to_email=str(new_user.email), token=verify_token)
+        background_tasks.add_task(
+            EmailService.send_verification_email,
+            to_email=str(new_user.email),
+            verify_link=verify_link
+        )
         
         # 9. Alerta Administrativo
         if settings.ADMIN_EMAIL_NOTIFICATIONS:
-            company_summary = {
-                "razao_social": new_company.razao_social,
-                "cnpj": new_company.cnpj,
-                "responsavel": new_company.responsavel_nome,
-                "email": new_company.email_corporativo
-            }
-            # Notifica a equipa do LicitaDoc
-            EmailService.send_new_company_alert(
+            background_tasks.add_task(
+                EmailService.send_new_company_alert,
                 admin_email=settings.ADMIN_EMAIL_NOTIFICATIONS, 
-                company_data=company_summary
+                company_name=str(new_company.razao_social)
             )
 
         # 10. Auto-Login (Retorna o JWT para o Frontend não precisar logar de novo)
@@ -344,23 +344,27 @@ def simulate_payment(data: PaymentSimulationRequest, db: Session = Depends(get_d
     summary="Solicitar Recuperação de Senha",
     description="Gera um token JWT curto e dispara um e-mail com o link de recuperação. Sempre retorna sucesso por segurança (Anti-Enumeração)."
 )
-def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(data: ForgotPasswordRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = UserRepository.get_by_email(db, email=data.email)
     
-    # 🛡️ Blindagem: Retornar sempre a mesma mensagem para não vazar a existência do cliente
     success_message = {"message": "Se o e-mail estiver cadastrado, as instruções foram enviadas."}
     
     if not user or not user.is_active:
         return success_message
 
-    # Gera token específico para reset (Não pode ser usado para Login)
     reset_token = create_access_token(
         data={"sub": user.email, "type": "password_reset"},
         expires_delta=timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
     )
+    
+    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
 
-    # Dispara e-mail via serviço assíncrono (Adapter)
-    EmailService.send_password_reset_email(to_email=str(user.email), reset_token=reset_token)
+    # Dispara e-mail via background task
+    background_tasks.add_task(
+        EmailService.send_password_reset_email,
+        to_email=str(user.email), 
+        reset_link=reset_link
+    )
 
     return success_message
 
@@ -444,43 +448,37 @@ def verify_email(token: str, db: Session = Depends(get_db)):
     "/recover-email", 
     status_code=status.HTTP_200_OK,
     summary="Recuperar E-mail Esquecido (Anti-Enumeração)",
-    description="Recebe um CPF ou CNPJ e, se existir, dispara um e-mail com o endereço de acesso. Sempre retorna a mesma mensagem para evitar vazamento de dados."
+    description="Recebe um CPF ou CNPJ e dispara o lembrete."
 )
-def recover_email(data: RecoverEmailRequest, db: Session = Depends(get_db)):
-    # 🛡️ Blindagem Máxima: Mensagem genérica idêntica para qualquer cenário
+def recover_email(data: RecoverEmailRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     success_message = {
         "message": "Se o documento estiver cadastrado, enviamos um lembrete para o e-mail oficial (verifique também a caixa de spam). Se o erro persistir, favor nos contatar pelos canais oficiais."
     }
 
-    # 1. Limpa o documento (remove pontos, traços, barras)
     doc_clean = re.sub(r'\D', '', data.documento)
     email_encontrado = None
     
-    # 2. Lógica de Busca Silenciosa
     if len(doc_clean) == 11:
-        # É um CPF: Busca no perfil do Usuário
         user = UserRepository.get_by_cpf(db, cpf=doc_clean)
-        if user:
-            email_encontrado = user.email
+        if user: email_encontrado = user.email
             
     elif len(doc_clean) == 14:
-        # É um CNPJ: Busca a Empresa e pega o e-mail do Dono (Owner)
         from app.repositories.company_repository import CompanyRepository
         company = CompanyRepository.get_by_cnpj(db, cnpj=doc_clean)
-        if company and company.owner:
-            email_encontrado = company.owner.email
+        if company and company.owner: email_encontrado = company.owner.email
             
     else:
-        # Erro de formatação de documento pode retornar 400, pois não vaza dados do banco
         raise HTTPException(status_code=400, detail="Formato inválido. Envie um CPF (11) ou CNPJ (14) válido.")
 
-    # 3. Disparo do E-mail (Se encontrou)
     if email_encontrado:
-        # Como o envio usa smtplib que pode demorar alguns segundos, 
-        # idealmente usaríamos BackgroundTasks aqui no futuro.
-        EmailService.send_email_recovery_email(to_email=str(email_encontrado))
+        recovery_link = f"{settings.FRONTEND_URL}/forgot-password"
+        # Agora sim usando BackgroundTasks com zero gargalos!
+        background_tasks.add_task(
+            EmailService.send_email_recovery_email,
+            to_email=str(email_encontrado),
+            recovery_link=recovery_link
+        )
 
-    # 4. Retorno Cego
     return success_message
 # ==========================================
 # REENVIO DE VERIFICAÇÃO
@@ -489,52 +487,46 @@ def recover_email(data: RecoverEmailRequest, db: Session = Depends(get_db)):
 @router.post(
     "/resend-verification",
     status_code=status.HTTP_200_OK,
-    summary="Reenviar E-mail de Verificação (via E-mail)",
-    description="Gera um novo token e reenvia o e-mail de ativação de conta."
+    summary="Reenviar E-mail de Verificação (via E-mail)"
 )
-def resend_verification(data: ResendVerificationRequest, db: Session = Depends(get_db)):
+def resend_verification(data: ResendVerificationRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     user = UserRepository.get_by_email(db, email=data.email)
-
-    # 🛡️ Blindagem: Retornar sempre sucesso
     success_message = {"message": "Se o e-mail estiver pendente de verificação, um novo link foi enviado."}
 
     if not user or user.is_email_verified:
         return success_message
 
-    # Gera novo Token de Verificação
     verify_token = create_access_token(
         data={"sub": user.email, "type": "email_verification"},
         expires_delta=timedelta(hours=24)
     )
+    verify_link = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
-    # Dispara e-mail
-    EmailService.send_verification_email(to_email=str(user.email), token=verify_token)
+    background_tasks.add_task(
+        EmailService.send_verification_email,
+        to_email=str(user.email),
+        verify_link=verify_link
+    )
 
     return success_message
 
 @router.post(
     "/resend-verification-from-token",
     status_code=status.HTTP_200_OK,
-    summary="Reenviar E-mail de Verificação (via Token)",
-    description="Decodifica um token expirado para identificar o utilizador e reenviar um novo link válido."
+    summary="Reenviar E-mail de Verificação (via Token)"
 )
-def resend_verification_from_token(data: ResendVerificationTokenRequest, db: Session = Depends(get_db)):
+def resend_verification_from_token(data: ResendVerificationTokenRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     exception = HTTPException(status_code=400, detail="Token inválido.")
 
     try:
-        # Decodifica sem validar expiração para pegar o sub
         payload = jwt.decode(
-            data.token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-            options={"verify_exp": False}
+            data.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM], options={"verify_exp": False}
         )
         email: Optional[str] = payload.get("sub")
         token_type: Optional[str] = payload.get("type")
 
         if email is None or token_type != "email_verification":
             raise exception
-
     except JWTError:
         raise exception
 
@@ -542,12 +534,16 @@ def resend_verification_from_token(data: ResendVerificationTokenRequest, db: Ses
     if not user or user.is_email_verified:
         return {"message": "Processamento concluído."}
 
-    # Gera novo Token
     verify_token = create_access_token(
         data={"sub": user.email, "type": "email_verification"},
         expires_delta=timedelta(hours=24)
     )
+    verify_link = f"{settings.FRONTEND_URL}/verify-email?token={verify_token}"
 
-    EmailService.send_verification_email(to_email=str(user.email), token=verify_token)
+    background_tasks.add_task(
+        EmailService.send_verification_email,
+        to_email=str(user.email),
+        verify_link=verify_link
+    )
 
     return {"message": "Um novo link de verificação foi enviado para o seu e-mail."}

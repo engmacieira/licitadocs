@@ -1,156 +1,169 @@
 """
-Serviço de Mensageria e E-mail genérico (Adapter).
-Isola a aplicação da dependência direta de um provedor específico (SendGrid/SES).
+Serviço de Mensageria e E-mail (Adapter).
+Utilizando a API HTTP oficial do Resend para contornar restrições de rede (Render/Firewalls).
+Todas as funções são assíncronas para serem utilizadas com BackgroundTasks.
 """
 
-import smtplib
 import logging
-import socket
-from email.message import EmailMessage
-from typing import Optional
+import httpx
 from app.core.config import settings
 
 # Configuração de Logging para melhor visibilidade no FastAPI
 logger = logging.getLogger("app.services.email_service")
 
 class EmailService:
+    
     @staticmethod
-    def send_email(to_email: str, subject: str, html_content: str) -> bool:
+    async def send_email(to_email: str, subject: str, html_content: str) -> bool:
         """
-        Dispara um e-mail HTML usando as credenciais SMTP globais configuradas no .env.
+        Método Base: Dispara um e-mail HTML de forma assíncrona via API HTTP do Resend.
+        
+        Args:
+            to_email (str): E-mail do destinatário.
+            subject (str): Assunto do e-mail.
+            html_content (str): Conteúdo formatado em HTML.
+            
+        Returns:
+            bool: True se aceito pela API do Resend, False caso contrário.
         """
-        # Validação de infraestrutura
-        if not settings.SMTP_SERVER or not settings.SMTP_PORT:
-            logger.warning("⚠️ [EMAIL] SMTP não configurado. E-mail não enviado.")
-            # Num ambiente de teste, podemos apenas imprimir no console
-            print(f"--- MOCK EMAIL PARA {to_email} ---\n{html_content}\n-----------------------")
+        api_key = settings.SMTP_PASSWORD  # Reaproveitando a variável para o Token da API
+        from_email = settings.EMAILS_FROM_EMAIL
+        from_name = settings.EMAILS_FROM_NAME
+
+        if not all([api_key, from_email]):
+            logger.warning(f"⚠️ [EMAIL] Credenciais não configuradas. Mock gerado para {to_email}.")
+            print(f"--- MOCK EMAIL ---\nPara: {to_email}\nAssunto: {subject}\n{html_content}\n-------------------")
             return False
 
-        msg = EmailMessage()
-        msg["Subject"] = subject
-        msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-        msg["To"] = to_email
-        
-        # Define o conteúdo como HTML
-        msg.add_alternative(html_content, subtype='html')
+        url = "https://api.resend.com/emails"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
 
-        # Limite máximo de tempo para conexão (alinhado com test_resend_smtp.py)
-        TIMEOUT_SECONDS = 30
+        payload = {
+            "from": f"{from_name} <{from_email}>",
+            "to": [to_email],
+            "subject": subject,
+            "html": html_content
+        }
+
+        LIMITE_TEMPO = 30
 
         try:
-            logger.info(f"🔌 [EMAIL] Conectando ao servidor SMTP {settings.SMTP_SERVER}:{settings.SMTP_PORT}...")
-
-            # De acordo com o teste bem-sucedido, se a porta for 465 usamos SSL direto
-            if settings.SMTP_PORT == 465:
-                server = smtplib.SMTP_SSL(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=TIMEOUT_SECONDS)
+            async with httpx.AsyncClient(timeout=LIMITE_TEMPO) as client:
+                response = await client.post(url, json=payload, headers=headers)
+            
+            if response.status_code in [200, 201]:
+                logger.info(f"✅ [EMAIL] Enviado com sucesso para {to_email}. ID: {response.json().get('id')}")
+                return True
             else:
-                server = smtplib.SMTP(settings.SMTP_SERVER, settings.SMTP_PORT, timeout=TIMEOUT_SECONDS)
-                server.starttls()
+                logger.error(f"❌ [EMAIL] Erro na API do Resend ({response.status_code}): {response.text}")
+                return False
 
-            with server:
-                if settings.SMTP_USER and settings.SMTP_PASSWORD:
-                    logger.info("🔐 [EMAIL] Autenticando...")
-                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-
-                logger.info(f"📧 [EMAIL] Enviando mensagem para {to_email}...")
-                server.send_message(msg)
-
-            logger.info(f"✅ [EMAIL] E-mail enviado com sucesso para {to_email}")
-            return True
-        except socket.timeout:
-            logger.error(f"❌ [EMAIL] Timeout ao conectar com {settings.SMTP_SERVER}:{settings.SMTP_PORT}")
-        except smtplib.SMTPAuthenticationError:
-            logger.error("❌ [EMAIL] Erro de Autenticação SMTP. Verifique usuário e senha.")
+        except httpx.TimeoutException:
+            logger.error(f"❌ [EMAIL] Timeout de {LIMITE_TEMPO}s esgotado ao conectar na API do Resend.")
+        except httpx.RequestError as exc:
+            logger.error(f"❌ [EMAIL] Erro de rede ao conectar na API do Resend: {exc}")
         except Exception as e:
-            logger.error(f"🚨 [EMAIL] Falha ao enviar e-mail para {to_email}. Erro: {str(e)}")
-
+            logger.error(f"❌ [EMAIL] Erro inesperado no serviço de e-mail: {str(e)}")
+            
         return False
 
     @staticmethod
-    def send_password_reset_email(to_email: str, reset_token: str) -> None:
-        """
-        Monta e dispara o template de e-mail de recuperação de senha.
-        """
-        reset_link = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
-        
-        html_content = f"""
-        <html>
-            <body>
-                <h2>Recuperação de Acesso - LicitaDoc</h2>
-                <p>Recebemos um pedido para redefinir a sua senha.</p>
-                <p>Clique no botão abaixo para cadastrar uma nova senha. <strong>Este link é válido por {settings.RESET_TOKEN_EXPIRE_MINUTES} minutos.</strong></p>
-                <a href="{reset_link}" style="display:inline-block; padding:10px 20px; background-color:#0056b3; color:white; text-decoration:none; border-radius:5px;">Redefinir Minha Senha</a>
-                <p>Se você não solicitou isso, pode ignorar este e-mail com segurança.</p>
-            </body>
-        </html>
-        """
-        EmailService.send_email(to_email, "Redefinição de Senha - LicitaDoc", html_content)
-
-    @staticmethod
-    def send_verification_email(to_email: str, token: str) -> None:
-        """
-        Envia o link para validação de conta após o registo.
-        """
-        verify_link = f"{settings.FRONTEND_URL}/verify-email?token={token}"
-        
-        html_content = f"""
-        <html>
-            <body>
-                <h2>Bem-vindo ao LicitaDoc!</h2>
-                <p>Falta apenas um passo para ativar a sua conta.</p>
-                <p>Clique no botão abaixo para confirmar o seu e-mail:</p>
-                <a href="{verify_link}" style="display:inline-block; padding:10px 20px; background-color:#28a745; color:white; text-decoration:none; border-radius:5px;">Confirmar E-mail</a>
-                <p>Este link expira em 24 horas.</p>
-            </body>
-        </html>
-        """
-        EmailService.send_verification_email_html(to_email, html_content)
-
-    @staticmethod
-    def send_verification_email_html(to_email: str, html_content: str) -> None:
-        """Auxiliar para enviar e-mail de verificação (pode ser usado para reenvio)."""
-        EmailService.send_email(to_email, "Confirme o seu e-mail - LicitaDoc", html_content)
-
-    @staticmethod
-    def send_email_recovery_email(to_email: str) -> None:
-        """
-        Envia um lembrete informando ao usuário qual é o seu e-mail de acesso.
-        """
-        html_content = f"""
-        <html>
-            <body>
-                <h2>Recuperação de Acesso - LicitaDoc</h2>
-                <p>Recebemos um pedido para lembrar o e-mail de acesso vinculado ao seu documento.</p>
-                <p>Este é o seu e-mail oficial cadastrado em nossa plataforma: <strong>{to_email}</strong></p>
-                <p>Se você também esqueceu a sua senha, <a href="{settings.FRONTEND_URL}/forgot-password" style="color: #0056b3;">clique aqui para redefini-la</a>.</p>
-                <p>Se você não solicitou este lembrete, fique tranquilo, sua conta está segura.</p>
-            </body>
-        </html>
-        """
-        EmailService.send_email(to_email, "Lembrete do seu E-mail de Acesso - LicitaDoc", html_content)
-
-    @staticmethod
-    def send_new_company_alert(admin_email: str, company_data: dict) -> None:
-        """
-        Envia um alerta para a equipa administrativa sobre o registo de uma nova empresa.
-        """
+    async def send_password_reset_email(to_email: str, reset_link: str) -> bool:
+        """Envia e-mail com instruções e link para redefinição de senha."""
+        subject = "🔄 Recuperação de Senha - LicitaDocs"
         html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; color: #333;">
-                <h2 style="color: #0056b3;">🚨 Novo Registo de Empresa</h2>
-                <p>Uma nova empresa concluiu a fase inicial de onboarding na plataforma LicitaDoc:</p>
-                
-                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef;">
-                    <ul style="list-style-type: none; padding: 0;">
-                        <li style="margin-bottom: 8px;"><strong>🏢 Razão Social:</strong> {company_data.get('razao_social')}</li>
-                        <li style="margin-bottom: 8px;"><strong>📄 CNPJ:</strong> {company_data.get('cnpj')}</li>
-                        <li style="margin-bottom: 8px;"><strong>👤 Responsável:</strong> {company_data.get('responsavel')}</li>
-                        <li style="margin-bottom: 8px;"><strong>✉️ E-mail:</strong> {company_data.get('email')}</li>
-                    </ul>
-                </div>
-                
-                <p style="margin-top: 20px;">Aceda ao painel de administração para verificar os documentos e validar o acesso desta empresa.</p>
+                <h2>Recuperação de Senha</h2>
+                <p>Olá,</p>
+                <p>Você solicitou a alteração da sua senha no <strong>LicitaDocs</strong>. Clique no botão abaixo para criar uma nova senha:</p>
+                <p>
+                    <a href="{reset_link}" style="background-color: #0056b3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                        Redefinir Minha Senha
+                    </a>
+                </p>
+                <p><small>Se o botão não funcionar, copie e cole este link no seu navegador: <br>{reset_link}</small></p>
+                <p><small>Este link expira em 15 minutos. Se você não solicitou esta alteração, ignore este e-mail.</small></p>
             </body>
         </html>
         """
-        EmailService.send_email(admin_email, f"Novo Registo: {company_data.get('razao_social')}", html_content)
+        return await EmailService.send_email(to_email, subject, html_content)
+
+    @staticmethod
+    async def send_verification_email(to_email: str, verify_link: str) -> bool:
+        """Envia e-mail simples para verificação de titularidade da conta."""
+        subject = "✅ Verifique sua conta - LicitaDocs"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Confirmação de Conta</h2>
+                <p>Por favor, confirme seu endereço de e-mail clicando no link abaixo:</p>
+                <p><a href="{verify_link}">{verify_link}</a></p>
+            </body>
+        </html>
+        """
+        return await EmailService.send_email(to_email, subject, html_content)
+
+    @staticmethod
+    async def send_verification_email_html(to_email: str, verify_link: str) -> bool:
+        """Envia e-mail em formato HTML rico para verificação de conta (Onboarding)."""
+        subject = "🚀 Bem-vindo ao LicitaDocs! Verifique seu E-mail"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
+                <h2 style="color: #0056b3;">Bem-vindo ao LicitaDocs!</h2>
+                <p>Olá!</p>
+                <p>Estamos muito felizes em ter você conosco. Para começar a automatizar sua gestão de licitações, precisamos apenas que você verifique seu e-mail.</p>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="{verify_link}" style="background-color: #28a745; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                        Verificar Meu E-mail Agora
+                    </a>
+                </p>
+                <p><small>Caso tenha problemas, acesse: {verify_link}</small></p>
+                <p>Um abraço,<br><strong>Equipe LicitaDocs</strong></p>
+            </body>
+        </html>
+        """
+        return await EmailService.send_email(to_email, subject, html_content)
+
+    @staticmethod
+    async def send_email_recovery_email(to_email: str, recovery_link: str) -> bool:
+        """Envia alerta de segurança caso o e-mail da conta tenha sido alterado."""
+        subject = "⚠️ Alerta de Segurança: Alteração de E-mail - LicitaDocs"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2 style="color: #dc3545;">Aviso de Segurança</h2>
+                <p>Notamos que o endereço de e-mail associado à sua conta do LicitaDocs foi alterado recentemente.</p>
+                <p>Se foi você quem fez essa alteração, nenhuma ação é necessária.</p>
+                <p><strong>Não foi você?</strong> Clique imediatamente no link abaixo para recuperar o acesso à sua conta:</p>
+                <p>
+                    <a href="{recovery_link}" style="background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                        Proteger Minha Conta
+                    </a>
+                </p>
+            </body>
+        </html>
+        """
+        return await EmailService.send_email(to_email, subject, html_content)
+
+    @staticmethod
+    async def send_new_company_alert(admin_email: str, company_name: str) -> bool:
+        """Envia um alerta para os administradores do sistema sobre o cadastro de uma nova empresa."""
+        subject = f"🏢 Nova Empresa Cadastrada: {company_name}"
+        html_content = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Novo Cadastro na Plataforma</h2>
+                <p>Uma nova empresa acaba de realizar o cadastro (onboarding) no LicitaDocs.</p>
+                <ul>
+                    <li><strong>Nome da Empresa:</strong> {company_name}</li>
+                </ul>
+                <p>Acesse o painel administrativo para mais detalhes.</p>
+            </body>
+        </html>
+        """
+        return await EmailService.send_email(admin_email, subject, html_content)
