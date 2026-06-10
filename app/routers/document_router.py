@@ -147,6 +147,12 @@ async def upload_document(
     elif not final_company_id:
         raise HTTPException(status_code=400, detail="Admins devem enviar o ID da empresa destino.")
 
+    # ✅ CORREÇÃO - PASSO A: Definir se é upload de cliente antes de salvar o arquivo
+    is_client = is_client_upload if is_client_upload is not None else (current_user.role != UserRole.ADMIN.value)
+    
+    # ✅ CORREÇÃO - PASSO B: Mapear dinamicamente o nome exato dos seus buckets do Supabase
+    bucket_name = "documentos-usuarios" if is_client else "cofre-digital"
+
     # TRATAMENTO DO ARQUIVO (Usando o nosso File Helper)
     if file:
         if not file.filename.lower().endswith(".pdf"):
@@ -167,7 +173,8 @@ async def upload_document(
             if header != b"%PDF-":
                 raise HTTPException(status_code=400, detail="O conteúdo do ficheiro não é um PDF válido (Assinatura inválida).")
 
-            file_path, _ = await save_upload_file(file, "vault")
+            # ✅ CORREÇÃO - PASSO C: Substituir "vault" pela nossa variável dinâmica segura
+            file_path, _ = await save_upload_file(file, bucket_name)
             filename = file.filename
         except HTTPException:
             raise
@@ -176,9 +183,6 @@ async def upload_document(
     else:
         filename = "Registo de Pendência"
         file_path = "SEM_ANEXO"
-
-    # Prioriza a flag enviada pelo Form, senão usa o cargo do usuário
-    is_client = is_client_upload if is_client_upload is not None else (current_user.role != UserRole.ADMIN.value)
 
     # 1. FLUXO: Certidão Estruturada (Com Type_ID)
     if type_id:
