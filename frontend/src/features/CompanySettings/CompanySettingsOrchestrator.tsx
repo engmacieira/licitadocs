@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Building2, Users, FileText, UserCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 // Contexto e Hooks
@@ -26,9 +26,9 @@ export function CompanySettingsOrchestrator() {
     const { currentCompany, user } = useAuth();
     const [activeTab, setActiveTab] = useState<SettingsTab>('details');
 
-    const safeCompanyData = currentCompany
+    const safeCompanyData = useMemo(() => currentCompany
         ? { ...currentCompany, is_active: true } as any
-        : null;
+        : null, [currentCompany]);
 
     // --- HOOKS DE LÓGICA ---
     const {

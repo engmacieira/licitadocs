@@ -49,43 +49,48 @@ export function useCompanySettingsData(currentCompany: Company | null, user: any
                 data_email_verified: freshCompany.is_email_verified || (user as any)?.is_email_verified || false
             });
 
-            companyForm.reset({
-                razao_social: freshCompany.razao_social || freshCompany.name || currentCompany.razao_social,
-                cnpj: freshCompany.cnpj || currentCompany.cnpj,
-                nome_fantasia: freshCompany.nome_fantasia || '',
-                email_corporativo: freshCompany.email_corporativo || (user as any)?.email || user?.sub || '',
-                telefone: freshCompany.telefone || '',
-                responsavel_nome: freshCompany.responsavel_nome || '',
-                cep: freshCompany.cep || '',
-                logradouro: freshCompany.logradouro || '',
-                numero: freshCompany.numero || '',
-                bairro: freshCompany.bairro || '',
-                cidade: freshCompany.cidade || '',
-                estado: freshCompany.estado || ''
-            });
+            // Evita resetar se o formulário estiver sujo para não apagar o que o usuário está digitando
+            if (!companyForm.formState.isDirty) {
+                companyForm.reset({
+                    razao_social: freshCompany.razao_social || freshCompany.name || currentCompany.razao_social,
+                    cnpj: freshCompany.cnpj || currentCompany.cnpj,
+                    nome_fantasia: freshCompany.nome_fantasia || '',
+                    email_corporativo: freshCompany.email_corporativo || (user as any)?.email || user?.sub || '',
+                    telefone: freshCompany.telefone || '',
+                    responsavel_nome: freshCompany.responsavel_nome || '',
+                    cep: freshCompany.cep || '',
+                    logradouro: freshCompany.logradouro || '',
+                    numero: freshCompany.numero || '',
+                    bairro: freshCompany.bairro || '',
+                    cidade: freshCompany.cidade || '',
+                    estado: freshCompany.estado || ''
+                });
+            }
 
             // B. Perfil
             const { data: userData } = await api.get('/users/me');
-            profileForm.reset({
-                nome: userData.nome || userData.name || userData.full_name || '',
-                cpf: userData.cpf || userData.documento || '',
-                rg: userData.rg || '',
-                celular: userData.celular || '',
-                genero: userData.genero || '',
-                nacionalidade: userData.nacionalidade || '',
-                estado_civil: userData.estado_civil || '',
-                profissao: userData.profissao || ''
-            });
+            if (!profileForm.formState.isDirty) {
+                profileForm.reset({
+                    nome: userData.nome || userData.name || userData.full_name || '',
+                    cpf: userData.cpf || userData.documento || '',
+                    rg: userData.rg || '',
+                    celular: userData.celular || '',
+                    genero: userData.genero || '',
+                    nacionalidade: userData.nacionalidade || '',
+                    estado_civil: userData.estado_civil || '',
+                    profissao: userData.profissao || ''
+                });
+            }
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
         }
     }, [currentCompany?.id, user, companyForm, profileForm]);
 
     useEffect(() => {
-        if (currentCompany) {
+        if (currentCompany?.id) {
             loadAllData();
         }
-    }, [currentCompany, loadAllData]);
+    }, [currentCompany?.id, loadAllData]);
 
     const onSaveDetails = async (data: CompanyFormSchema) => {
         if (!currentCompany?.id) return;
@@ -95,6 +100,8 @@ export function useCompanySettingsData(currentCompany: Company | null, user: any
             await api.patch(`/companies/${currentCompany.id}/onboarding-step?step=data`);
             setStatusFlags(prev => ({ ...prev, data: true }));
             toast.success("Dados da empresa atualizados com sucesso!");
+            // Após salvar, resetamos o estado de "dirty" com os novos dados
+            companyForm.reset(data);
         } catch (error) {
             toast.error("Erro ao salvar alterações.");
         }
@@ -104,6 +111,7 @@ export function useCompanySettingsData(currentCompany: Company | null, user: any
         try {
             await api.patch('/users/me', data);
             toast.success("Perfil atualizado com sucesso!");
+            profileForm.reset(data);
         } catch (error) {
             toast.error("Erro ao atualizar o perfil.");
         }
