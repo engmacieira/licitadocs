@@ -9,13 +9,11 @@ vi.mock('../../../services/api');
 
 describe('ResetPasswordPage', () => {
     it('deve redirecionar para login se nao houver token na URL', () => {
-        // Redireciona e retorna Navigate vazio visualmente
         render(
             <MemoryRouter initialEntries={['/reset-password']}>
                 <ResetPasswordPage />
             </MemoryRouter>
         );
-        // O componente renderiza Navigate to="/login" que retorna null no DOM atual
         expect(screen.queryByText(/Nova Senha/i)).not.toBeInTheDocument();
     });
 
@@ -45,7 +43,8 @@ describe('ResetPasswordPage', () => {
         const submitButton = screen.getByRole('button', { name: /Redefinir Senha/i });
         await user.click(submitButton);
 
-        expect(await screen.findByText(/As senhas não coincidem./i)).toBeInTheDocument();
+        // Matching the exact error message from the component
+        expect(await screen.findByText(/As senhas não coincidem/i)).toBeInTheDocument();
     });
 
     it('deve redefinir senha com sucesso', async () => {

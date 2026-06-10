@@ -20,7 +20,6 @@ describe('ForgotPasswordPage', () => {
 
     it('deve enviar o formulario e exibir sucesso', async () => {
         const user = userEvent.setup();
-        // Mock da resposta de sucesso da API
         vi.mocked(api.post).mockResolvedValueOnce({ data: { message: 'Instruções enviadas para o seu e-mail.' } });
 
         render(
@@ -39,16 +38,15 @@ describe('ForgotPasswordPage', () => {
             expect(api.post).toHaveBeenCalledWith('/auth/forgot-password', { email: 'teste@empresa.com' });
         });
 
-        // Verificar tela de sucesso
-        expect(await screen.findByText(/Verifique o seu e-mail/i)).toBeInTheDocument();
+        // Updated success screen title in component is "Solicitação Recebida"
+        expect(await screen.findByText(/Solicitação Recebida/i)).toBeInTheDocument();
         expect(screen.getByText(/Instruções enviadas para o seu e-mail./i)).toBeInTheDocument();
     });
 
-    it('deve exibir erro se a API retornar falha', async () => {
+    it('deve exibir sucesso mesmo se a API retornar falha (anti-enumeração)', async () => {
         const user = userEvent.setup();
-        // Mock de falha
         vi.mocked(api.post).mockRejectedValueOnce({
-            response: { data: { detail: 'Erro interno ao recuperar senha' } }
+            response: { data: { detail: 'Erro interno' } }
         });
 
         render(
@@ -64,7 +62,7 @@ describe('ForgotPasswordPage', () => {
         await user.click(submitButton);
 
         await waitFor(() => {
-            expect(screen.getByText(/Erro interno ao recuperar senha/i)).toBeInTheDocument();
+            expect(screen.getByText(/Solicitação Recebida/i)).toBeInTheDocument();
         });
     });
 });
