@@ -66,7 +66,8 @@ describe('CompanySettingsOrchestrator', () => {
             loading: false,
             signOut: vi.fn(),
             signIn: vi.fn(),
-            switchCompany: vi.fn()
+            switchCompany: vi.fn(),
+            reloadContext: vi.fn().mockResolvedValue(undefined)
         });
         vi.mocked(companyService.getById).mockResolvedValue(mockCompany as any);
         vi.mocked(api.get).mockImplementation((url) => {
@@ -147,7 +148,7 @@ describe('CompanySettingsOrchestrator', () => {
     it('deve chamar companyService.update ao salvar alterações da empresa', async () => {
         vi.mocked(companyService.update).mockResolvedValue({} as any);
         render(<CompanySettingsOrchestrator />);
-        
+
         await waitFor(() => expect(screen.getByText('Informações Gerais')).toBeInTheDocument());
 
         const saveButton = screen.getByText('Salvar Alterações');
