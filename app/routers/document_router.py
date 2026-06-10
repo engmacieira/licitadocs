@@ -300,12 +300,27 @@ async def download_document(
     if not doc:
         raise HTTPException(status_code=404, detail="Documento não encontrado.")
 
+    # 🔒 BLINDAGEM ANTI-IDOR / BOLA: Proteção Multi-tenant ativa
+    if current_user.role != UserRole.ADMIN.value:
+        allowed_company_ids = [link.company_id for link in current_user.company_links if link.is_active]
+        if str(doc.company_id) not in allowed_company_ids:
+            raise HTTPException(status_code=403, detail="Acesso negado a este documento.")
+
     # ✅ CORREÇÃO DEFENSIVA: Verifica dinamicamente em qual bucket o arquivo realmente está
     is_client = getattr(doc, "is_client_upload", False)
     bucket_name = "documentos-usuarios" if is_client else "cofre-digital"
 
     try:
+        # ✅ PREENCHIMENTO DO BLOCO: Gera a URL pública/assinada do Supabase utilizando o bucket dinâmico correto
+        url = get_file_url(doc.file_path, bucket_name)
+        if not url:
+            raise HTTPException(status_code=404, detail="Ficheiro físico não encontrado no servidor de armazenamento.")
         
+        # Como o get_file_url retorna o link seguro do Supabase, redirecionamos o navegador para efetuar o download
+        return RedirectResponse(url)
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Erro ao obter arquivo do storage remoto.")
 
