@@ -185,7 +185,7 @@ describe('SignatureOrchestrator', () => {
 
         // Verify success and navigation
         expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("sucesso"), expect.anything());
-        expect(mockNavigate).toHaveBeenCalledWith('/');
+        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
     });
 
     it('should handle API errors during submission', async () => {
