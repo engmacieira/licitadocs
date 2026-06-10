@@ -86,11 +86,15 @@ export function CompanyDetailsOrchestrator() {
      * Efetua a transferência de um documento (Mock/Simulação de lógica)
      */
     async function handleDownload(doc: DocumentDTO) {
+        const toastId = toast.loading(`Iniciando download de: ${doc.filename}`);
         try {
-            // Aqui entra a lógica real de fetch do blob do seu backend
-            toast.info(`Iniciando download de: ${doc.filename}`);
+            // ✅ CHAMADA REAL: Aciona o service que se conecta ao backend e ao Supabase
+            await documentService.downloadDocument(doc.id, doc.filename);
+
+            toast.success("Download iniciado!", { id: toastId });
         } catch (error) {
-            toast.error("Erro no download.");
+            console.error("Erro ao efetuar download:", error);
+            toast.error("Erro ao baixar o arquivo.", { id: toastId });
         }
     }
 
