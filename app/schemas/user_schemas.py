@@ -24,6 +24,7 @@ class UserBase(BaseModel):
     email: EmailStr = Field(..., description="E-mail único de acesso ao sistema")
     nome: Optional[str] = Field(None, description="Nome completo do usuário")
     is_active: Optional[bool] = Field(True, description="Indica se a conta está habilitada")
+    is_email_verified: bool = Field(False, description="Indica se o utilizador confirmou a posse do e-mail")
     
     # --- Dados Pessoais e Qualificação (Sprint 15) ---
     cpf: Optional[str] = Field(None, description="CPF (apenas números)")
