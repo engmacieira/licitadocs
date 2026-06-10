@@ -298,25 +298,16 @@ async def download_document(
         doc = db.query(Certificate).filter(Certificate.id == item_id, Certificate.deleted_at.is_(None)).first()
     
     if not doc:
-        raise HTTPException(status_code=404, detail="Documento não encontrado")
-    
-    # 2. Validação de Segurança Multi-Tenant
-    if current_user.role != UserRole.ADMIN.value:
-        allowed_company_ids = [link.company_id for link in current_user.company_links if link.is_active]
-        if doc.company_id not in allowed_company_ids:
-             raise HTTPException(status_code=403, detail="Acesso negado: Este documento pertence a outra empresa.")
+        raise HTTPException(status_code=404, detail="Documento não encontrado.")
 
-    file_path = doc.file_path
-    
-    if not file_path or file_path == "SEM_ANEXO":
-        raise HTTPException(status_code=400, detail="Este registo não possui um anexo físico para download.")
+    # ✅ CORREÇÃO DEFENSIVA: Verifica dinamicamente em qual bucket o arquivo realmente está
+    is_client = getattr(doc, "is_client_upload", False)
+    bucket_name = "documentos-usuarios" if is_client else "cofre-digital"
 
-
-
-    signed_url = await get_file_url(file_path)
-    if not signed_url:
-        raise HTTPException(status_code=404, detail="Arquivo não encontrado no armazenamento.")
-    return RedirectResponse(url=signed_url)
+    try:
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Erro ao obter arquivo do storage remoto.")
 
 @router.get(
     "/export/zip",
