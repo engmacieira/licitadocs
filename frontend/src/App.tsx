@@ -77,6 +77,7 @@ function App() {
             <Route path="/payment" element={<PaymentPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* =========================================================
               ROTAS PROTEGIDAS (Requer Login + Token)
@@ -95,7 +96,6 @@ function App() {
               <Route path="/signature" element={<SignaturePage />} />
               <Route path="/help-center" element={<HelpCenterPage />} />
               <Route path="/document-templates" element={<DocumentTemplatesPage />} />
-              <Route path="/verify-email" element={<VerifyEmailPage />} />
             </Route>
 
             {/* --- ADMINISTRADOR (Backoffice) --- */}
