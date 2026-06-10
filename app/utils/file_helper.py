@@ -90,7 +90,9 @@ async def get_file_url(path_string: str, expires_in: int = 3600) -> str:
             return ""
             
         bucket, filename = path_string.split("/", 1)
-        res = supabase.storage.from_(bucket).create_signed_url(filename, expires_in)
+        
+        # ✅ BLINDAGEM: Força o expires_in a viajar como um Integer puro para o Supabase
+        res = supabase.storage.from_(bucket).create_signed_url(filename, int(expires_in))
         return res['signedURL']
     except Exception as e:
         logger.error(f"❌ [FILE_HELPER] Erro ao gerar URL assinada: {e}")
