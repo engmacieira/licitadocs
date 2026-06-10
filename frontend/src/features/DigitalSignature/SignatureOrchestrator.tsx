@@ -20,7 +20,7 @@ import { SignatureUpload } from './components/SignatureUpload';
  */
 export function SignatureOrchestrator() {
     const navigate = useNavigate();
-    const { currentCompany, userProfile } = useAuth();
+    const { currentCompany, userProfile, reloadContext } = useAuth();
 
     // --- REFS DE IMPRESSÃO ---
     const contractRef = useRef<HTMLDivElement>(null);
@@ -129,6 +129,8 @@ export function SignatureOrchestrator() {
 
             // 2. Dispara a flag do Passo 4 (Contrato)
             await api.patch(`/companies/${company.id}/onboarding-step?step=contract`);
+
+            await reloadContext();
 
             toast.success("Documentos enviados com sucesso!", { id: toastId });
             navigate('/dashboard');

@@ -50,6 +50,8 @@ interface AuthContextData {
     currentCompany: UserCompany | null;
     /** Função para alternar o contexto ativo entre diferentes empresas. */
     switchCompany: (companyId: string) => void;
+
+    reloadContext: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -92,6 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error("AuthContext: Falha ao carregar contexto do utilizador", error);
         }
     }, []);
+
+    const reloadContext = useCallback(async () => {
+        await loadUserContext();
+    }, [loadUserContext]);
 
     /**
      * Efeito Inicial: Restaura a sessão ao recarregar a página (F5).
@@ -179,7 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             loading,
             companies,
             currentCompany,
-            switchCompany
+            switchCompany,
+            reloadContext
         }}>
             {children}
         </AuthContext.Provider>

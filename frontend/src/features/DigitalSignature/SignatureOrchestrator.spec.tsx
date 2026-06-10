@@ -79,6 +79,7 @@ describe('SignatureOrchestrator', () => {
 
     const mockPrintContract = vi.fn();
     const mockPrintProxy = vi.fn();
+    const mockReloadContext = vi.fn().mockResolvedValue(undefined);
 
     const mockUser = {
         nome: 'João Silva',
@@ -97,7 +98,8 @@ describe('SignatureOrchestrator', () => {
         (useNavigate as any).mockReturnValue(mockNavigate);
         (useAuth as any).mockReturnValue({
             currentCompany: mockCompany,
-            userProfile: mockUser
+            userProfile: mockUser,
+            reloadContext: mockReloadContext
         });
         (useReactToPrint as any).mockImplementation((config: any) => {
             if (config.documentTitle?.includes('Contrato_SaaS')) return mockPrintContract;
