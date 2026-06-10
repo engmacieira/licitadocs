@@ -312,7 +312,7 @@ async def download_document(
 
     try:
         # ✅ PREENCHIMENTO DO BLOCO: Gera a URL pública/assinada do Supabase utilizando o bucket dinâmico correto
-        url = get_file_url(doc.file_path, bucket_name)
+        url = await get_file_url(doc.file_path, bucket_name)
         if not url:
             raise HTTPException(status_code=404, detail="Ficheiro físico não encontrado no servidor de armazenamento.")
         
