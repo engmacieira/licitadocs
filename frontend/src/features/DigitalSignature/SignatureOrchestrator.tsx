@@ -131,7 +131,7 @@ export function SignatureOrchestrator() {
             await api.patch(`/companies/${company.id}/onboarding-step?step=contract`);
 
             toast.success("Documentos enviados com sucesso!", { id: toastId });
-            navigate('/');
+            navigate('/dashboard');
         } catch (error) {
             console.error("Erro no upload", error);
             toast.error("Erro ao processar documentos.", { id: toastId });
