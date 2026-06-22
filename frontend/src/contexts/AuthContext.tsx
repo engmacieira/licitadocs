@@ -8,20 +8,19 @@ import type { SignInCredentials } from '../types';
 import { userService } from '../services/userService';
 import type { UserCompany, UserProfile } from '../types';
 
+// --- OAUTH: IMPORT DO CLIENTE SUPABASE ---
+// IMPORTANTE: Ajuste este caminho para apontar para o seu cliente Supabase real
+import { supabase } from '../services/supabase.ts'; // Exemplo de importação
+
 /**
  * Interface que representa o *payload* (conteúdo decodificado) do token JWT.
  * @interface User
  */
 interface User {
-    /** Identificador único do utilizador (geralmente o email ou UUID). */
     sub: string;
-    /** Papel/Nível de acesso do utilizador (ex: 'admin', 'client'). */
     role: string;
-    /** ID principal de referência no banco de dados. */
     id: string;
-    /** ID de relacionamento com a tabela de utilizadores. */
     user_id: string;
-    /** *Timestamp* de expiração do token. */
     exp?: number;
 }
 
@@ -30,37 +29,25 @@ interface User {
  * @interface AuthContextData
  */
 interface AuthContextData {
-    /** Dados básicos do utilizador extraídos do token JWT. */
     user: User | null;
-    /** Perfil completo do utilizador vindo da base de dados (ex: CPF, RG, etc). */
     userProfile: UserProfile | null;
-    /** Flag booleana que indica se existe uma sessão ativa. */
     isAuthenticated: boolean;
-    /** Função assíncrona para iniciar uma nova sessão (Login). */
     signIn: (credentials: SignInCredentials) => Promise<void>;
-    /** Função para encerrar a sessão atual, limpando tokens e estados (Logout). */
+
+    // --- OAUTH: NOVA FUNÇÃO DE LOGIN SOCIAL ---
+    /** Função assíncrona para iniciar uma sessão OAuth via Supabase (Google, Microsoft, etc). */
+    signInWithProvider: (provider: 'google' | 'azure') => Promise<void>;
+
     signOut: () => void;
-    /** Flag que indica se o contexto ainda está a restaurar a sessão inicial durante o carregamento da página. */
     loading: boolean;
-
-    // Multi-Tenancy
-    /** Lista de empresas (tenants) vinculadas ao utilizador logado. */
     companies: UserCompany[];
-    /** Empresa atualmente selecionada no contexto da aplicação. */
     currentCompany: UserCompany | null;
-    /** Função para alternar o contexto ativo entre diferentes empresas. */
     switchCompany: (companyId: string) => void;
-
     reloadContext: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-/**
- * *Provider* de Autenticação Global.
- * Deve envolver toda a árvore de componentes da aplicação para fornecer
- * acesso ao estado do utilizador, sessão e contexto de multi-tenancy (empresas).
- */
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -68,25 +55,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [currentCompany, setCurrentCompany] = useState<UserCompany | null>(null);
     const [loading, setLoading] = useState(true);
 
-    /**
-     * Carrega as empresas do utilizador e o PERFIL COMPLETO da API.
-     * Também gere a seleção automática da última empresa acedida através do *localStorage*.
-     */
     const loadUserContext = useCallback(async () => {
         try {
-            // 1. Busca os dados completos da pessoa (CPF, RG, Nacionalidade, etc)
             const profile = await userService.getMe();
             setUserProfile(profile);
 
-            // 2. Busca as empresas associadas
             const myCompanies = await userService.getMyCompanies();
             setCompanies(myCompanies);
 
-            // Lógica de Seleção Automática de Empresa
             if (myCompanies.length > 0) {
                 const lastCompanyId = localStorage.getItem('@LicitaDoc:companyId');
                 const target = myCompanies.find(c => c.id === lastCompanyId) || myCompanies[0];
-
                 setCurrentCompany(prev => (prev?.id === target.id ? prev : target));
                 localStorage.setItem('@LicitaDoc:companyId', target.id);
             }
@@ -99,9 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await loadUserContext();
     }, [loadUserContext]);
 
+    // --- OAUTH: TRATAMENTO DO RETORNO DO SUPABASE ---
     /**
-     * Efeito Inicial: Restaura a sessão ao recarregar a página (F5).
-     * Verifica a validade do token JWT armazenado e carrega o contexto se válido.
+     * Efeito Inicial: Restaura a sessão ao recarregar a página (F5) E trata o retorno do OAuth.
+     * Quando o Supabase redireciona o usuário de volta, ele pode colocar o token na URL (hash).
+     * O cliente do Supabase já lida com isso se estiver escutando a sessão.
      */
     useEffect(() => {
         const loadedToken = localStorage.getItem('@LicitaDoc:token');
@@ -123,36 +104,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
             setLoading(false);
         }
+
+        // --- OAUTH: ESCUTANDO MUDANÇAS DE SESSÃO DO SUPABASE ---
+        // Se o seu login padrão (email/senha) já salva o token localmente, 
+        // nós usamos esse listener para capturar o momento em que o OAuth retorna com sucesso.
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                // Se o login foi por OAuth e o Supabase emitiu um token
+                if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+                    const accessToken = session.access_token;
+                    // Previne sobrescrever o token se o login manual já o setou
+                    if (localStorage.getItem('@LicitaDoc:token') !== accessToken) {
+                        localStorage.setItem('@LicitaDoc:token', accessToken);
+                        const decoded = jwtDecode<User>(accessToken);
+                        setUser(decoded);
+                        await loadUserContext();
+                    }
+                } else if (event === 'SIGNED_OUT') {
+                    // Cuidado aqui para não conflitar com a sua função signOut manual.
+                    // O ideal é apenas limpar estados locais se necessário.
+                    setUser(null);
+                }
+            }
+        );
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        };
+
     }, [loadUserContext]);
 
-    // Garante que o estado de "loading" termine após a verificação de sessão
     useEffect(() => {
         if (user || !localStorage.getItem('@LicitaDoc:token')) {
             setLoading(false);
         }
     }, [user]);
 
-    /**
-     * Realiza a autenticação delegando para o serviço (authService).
-     * Salva o token, decodifica as informações e aciona o carregamento do perfil.
-     * * @param {SignInCredentials} credentials - Credenciais de acesso (email e senha).
-     */
     async function signIn(credentials: SignInCredentials) {
         const response = await authService.signIn(credentials);
         const { access_token } = response;
-
         localStorage.setItem('@LicitaDoc:token', access_token);
-
         const decoded = jwtDecode<User>(access_token);
         setUser(decoded);
-
         await loadUserContext();
     }
 
+    // --- OAUTH: IMPLEMENTAÇÃO DA FUNÇÃO ---
     /**
-     * Limpa a sessão completamente, removendo tokens do armazenamento local
-     * e resetando os estados em memória.
+     * Inicia o fluxo de login via OAuth com o provedor selecionado.
+     * Redireciona o usuário para a página de consentimento do provedor.
      */
+    async function signInWithProvider(provider: 'google' | 'azure') {
+        const { error } = await supabase.auth.signInWithOAuth({
+            provider: provider,
+            options: {
+                // Se quiser redirecionar para uma rota específica após o login
+                // redirectTo: `${window.location.origin}/dashboard` 
+            }
+        });
+
+        if (error) {
+            console.error(`AuthContext: Erro no login OAuth com ${provider}`, error.message);
+            throw error;
+        }
+    }
+
     function signOut() {
         localStorage.removeItem('@LicitaDoc:token');
         localStorage.removeItem('@LicitaDoc:companyId');
@@ -160,13 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserProfile(null);
         setCompanies([]);
         setCurrentCompany(null);
+
+        // --- OAUTH: DESLOGA NO SUPABASE TAMBÉM ---
+        supabase.auth.signOut().catch(console.error);
     }
 
-    /**
-     * Troca a empresa ativa na sessão atual (Tenant Switch) e salva a
-     * preferência no armazenamento local.
-     * * @param {string} companyId - Identificador único da empresa a ser ativada.
-     */
     function switchCompany(companyId: string) {
         const target = companies.find(c => c.id === companyId);
         if (target) {
@@ -181,6 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userProfile,
             isAuthenticated: !!user,
             signIn,
+            signInWithProvider, // --- OAUTH EXPORTADO ---
             signOut,
             loading,
             companies,
@@ -193,10 +208,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 }
 
-/**
- * *Hook* customizado para aceder ao contexto de autenticação de forma simples.
- * @returns {AuthContextData} Todos os dados e métodos expostos pelo *AuthContext*.
- */
 export function useAuth() {
     return useContext(AuthContext);
 }
