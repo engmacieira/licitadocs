@@ -13,6 +13,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from jose import jwt, JWTError
+import secrets
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -234,6 +235,177 @@ async def register(
             raise HTTPException(status_code=400, detail="E-mail já cadastrado.")
         raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro: {str(e)}")
 
+
+@router.post(
+    "/oauth-register", 
+    status_code=status.HTTP_201_CREATED,
+    summary="Completar Perfil via Login Social (OAuth)",
+    description=(
+        "Endpoint exclusivo para usuários que se autenticaram via Google/Microsoft.\n"
+        "Cria o Usuário (sem senha) garantindo o mesmo ID do Supabase, cria o Tenant (Empresa), "
+        "e faz o upload dos documentos iniciais."
+    )
+)
+@limiter.limit("5/minute")
+async def oauth_register(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    email: EmailStr = Form(..., description="E-mail validado pelo provedor OAuth"),
+    supabase_user_id: str = Form(..., description="ID exato gerado pelo Supabase Auth"),
+    legal_name: str = Form(..., description="Razão Social da empresa"),
+    trade_name: Optional[str] = Form(None, description="Nome Fantasia"),
+    cnpj: str = Form(..., description="CNPJ (apenas números)"),
+    responsible_name: str = Form(..., description="Nome do Responsável Legal"),
+    cpf: str = Form(..., description="CPF do Responsável"),
+    social_contract: UploadFile = File(..., description="PDF do Contrato Social"),
+    cnpj_card: UploadFile = File(..., description="PDF do Cartão CNPJ"),
+    responsible_doc: UploadFile = File(..., description="PDF do Documento de Identidade"),
+    proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
+    db: Session = Depends(get_db)
+):
+    # 1. Validação Matemática
+    try:
+        if cpf: cpf = validar_matematica_cpf(cpf)
+        if cnpj: cnpj = validar_matematica_cnpj(cnpj)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    # 2. Validações de Negócio (Duplicidade)
+    from app.repositories.company_repository import CompanyRepository
+    if CompanyRepository.get_by_cnpj(db, cnpj):
+        raise HTTPException(status_code=400, detail="CNPJ já cadastrado no sistema.")
+
+    existing_cpf_user = UserRepository.get_by_cpf(db, cpf)
+    if existing_cpf_user and existing_cpf_user.email != email:
+        raise HTTPException(status_code=400, detail="CPF já vinculado a outra conta.")
+
+    saved_files = []
+
+    try:
+        # 3. Tratamento do Usuário (Sincronização com Supabase)
+        user = UserRepository.get_by_email(db, email)
+        
+        if not user:
+            # Novo usuário vindo do OAuth: Gera senha inquebrável inútil e amarra o ID
+            random_secure_pass = secrets.token_urlsafe(16)
+            user = User(
+                id=supabase_user_id, # Amarra o nosso BD com o Supabase!
+                email=email, 
+                password_hash=get_password_hash(random_secure_pass),
+                nome=responsible_name,
+                role=UserRole.CLIENT.value,
+                is_active=True, 
+                cpf=cpf,
+                is_email_verified=True # O Google já verificou para nós!
+            )
+            db.add(user)
+            db.flush()
+        else:
+            # Se o usuário já existia (ex: convidado antes do login), apenas completamos dados vitais
+            if not user.cpf: user.cpf = cpf
+            if not user.nome: user.nome = responsible_name
+            if not user.is_email_verified: user.is_email_verified = True
+            db.flush()
+
+        # 4. Cria Empresa
+        new_company = Company(
+            cnpj=cnpj,
+            razao_social=legal_name,
+            nome_fantasia=trade_name,
+            email_corporativo=email,
+            owner_id=user.id,
+            responsavel_nome=responsible_name, 
+            responsavel_cpf=cpf 
+        )
+        db.add(new_company)
+        db.flush() 
+
+        # 5. Cria Vínculo de Equipe
+        link = UserCompanyLink(
+            user_id=user.id,
+            company_id=new_company.id,
+            role=UserCompanyRole.MASTER.value,
+            is_active=True 
+        )
+        db.add(link)
+
+        # 6. Processamento de Arquivos Físicos (Mesma lógica robusta do register normal)
+        BUCKET_CADASTRO = "documentos-usuarios"
+        
+        async def process_file_io(upload_file: UploadFile, title: str):
+            if not upload_file: return None
+            if not upload_file.filename or not upload_file.filename.lower().endswith('.pdf'):
+                raise HTTPException(status_code=400, detail="Apenas arquivos PDF são permitidos.")
+            
+            upload_file.file.seek(0, 2)
+            size = upload_file.file.tell()
+            upload_file.file.seek(0)
+            if size > 5 * 1024 * 1024:
+                raise HTTPException(status_code=413, detail=f"Arquivo {title} muito grande. Máximo 5MB.")
+            
+            try:
+                path, size = await save_upload_file(upload_file, BUCKET_CADASTRO)
+                saved_files.append(path) 
+                return {"title": title, "filename": upload_file.filename, "file_path": path}
+            except Exception as e:
+                raise ValueError(f"Falha ao salvar {title}: {str(e)}")
+
+        io_tasks = []
+        if social_contract: io_tasks.append(process_file_io(social_contract, "Contrato Social"))
+        if cnpj_card: io_tasks.append(process_file_io(cnpj_card, "Cartão CNPJ"))
+        if responsible_doc: io_tasks.append(process_file_io(responsible_doc, "Documento Identidade"))
+        if proxy_doc: io_tasks.append(process_file_io(proxy_doc, "Procuração"))
+
+        processed_files = await asyncio.gather(*io_tasks)
+
+        for file_data in processed_files:
+            if file_data:
+                if file_data["file_path"] not in saved_files:
+                    saved_files.append(file_data["file_path"])
+                    
+                doc = Document(
+                    title=file_data["title"],
+                    filename=file_data["filename"],
+                    file_path=file_data["file_path"],
+                    company_id=new_company.id,
+                    uploaded_by_id=user.id,
+                    status=DocumentStatus.VALID.value,
+                    is_client_upload=True
+                )
+                db.add(doc)
+
+        db.commit()
+
+        # 7. Alerta Administrativo
+        if settings.ADMIN_EMAIL_NOTIFICATIONS:
+            background_tasks.add_task(
+                EmailService.send_new_company_alert,
+                admin_email=settings.ADMIN_EMAIL_NOTIFICATIONS, 
+                company_name=str(new_company.razao_social)
+            )
+
+        # 8. Auto-Login Imediato (Gera nosso JWT interno para a sessão Frontend)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "user_id": user.id},
+            expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+
+        return {
+            "access_token": access_token, 
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "email": user.email
+            }
+        }
+
+    except (HTTPException, Exception) as e:
+        for path in set(saved_files):
+            with contextlib.suppress(OSError):
+                delete_file(path)
+        db.rollback()
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Erro ao processar cadastro enriquecido: {str(e)}")
 
 # ==========================================
 # 🔐 LOGIN (GERAÇÃO DE TOKEN)

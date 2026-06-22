@@ -34,5 +34,21 @@ export const authService = {
                 'Content-Type': 'multipart/form-data',
             },
         });
+    },
+
+    // --- OAUTH: NOVO ENDPOINT DE REGISTRO ENRIQUECIDO ---
+    /**
+     * Completa o perfil de uma empresa para um usuário já autenticado via OAuth.
+     * Retorna a AuthResponse contendo o JWT do nosso backend (FastAPI).
+     * @param {FormData} registerData - Objeto FormData contendo dados cadastrais (sem senha) e ficheiros.
+     * @returns {Promise<AuthResponse>}
+     */
+    oauthRegister: async (registerData: FormData): Promise<AuthResponse> => {
+        const { data } = await api.post<AuthResponse>('/auth/oauth-register', registerData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return data;
     }
 };
