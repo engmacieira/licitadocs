@@ -175,7 +175,7 @@ app.include_router(admin_router.router)
 # ❤️ HEALTH CHECK
 # ==========================================
 
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"])
 def health_check():
     """Endpoint básico para verificar se a API está online."""
     return {
