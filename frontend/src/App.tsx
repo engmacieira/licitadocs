@@ -6,6 +6,7 @@ import { LEGAL_CONFIG } from './config/app.config';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PostHogPageView } from './components/PostHogPageView';
 
 // Layouts
 import { MainLayout } from './components/layout/MainLayout';
@@ -52,6 +53,7 @@ import { AdminAuditLogsPage } from './pages/Admin/AuditLogs';
 function App() {
   return (
     <BrowserRouter>
+      <PostHogPageView />
       {/* Feedback Visual Global (Toasts) */}
       <Toaster richColors position="top-right" closeButton />
 
