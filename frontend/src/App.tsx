@@ -53,16 +53,6 @@ function App() {
   return (
     <BrowserRouter>
       {/* Feedback Visual Global (Toasts) */}
-      {/* --- BOTÃO TEMPORÁRIO DO SENTRY (REMOVER APÓS TESTE) --- */}
-      <button
-        onClick={() => {
-          throw new Error("Sentry Test Error no Licitadocs Front-end!");
-        }}
-        className="fixed bottom-4 right-4 z-[9999] bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg font-bold hover:bg-red-700 transition-colors"
-      >
-        🚨 Forçar Erro Sentry
-      </button>
-      {/* Feedback Visual Global (Toasts) */}
       <Toaster richColors position="top-right" closeButton />
 
       <ErrorBoundary>
