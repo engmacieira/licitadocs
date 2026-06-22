@@ -7,6 +7,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 # from apscheduler.schedulers.background import BackgroundScheduler
 
+# IMPORTAÇÃO DO SENTRY E DAS CONFIGURAÇÕES
+import sentry_sdk
+from app.core.config import settings
+
 # Importações de Base de Dados e Segurança
 from app.core.database import engine, Base
 
@@ -41,6 +45,21 @@ from anyio.lowlevel import RunVar
 from anyio import CapacityLimiter
 
 ENV = os.getenv("ENV", "development").lower()
+
+# ==========================================
+# INICIALIZAÇÃO DO SENTRY
+# ==========================================
+# Só inicia se a DSN estiver preenchida no .env, evitando erros em desenvolvimento local se você não quiser usar.
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=ENV,
+        # Performance Monitoring
+        traces_sample_rate=1.0, # Captura 100% das transações.
+        # Profiling (Opcional, mede gargalos de CPU no código Python)
+        profiles_sample_rate=1.0,
+    )
+    print("✅ Sentry SDK inicializado com sucesso!")
 
 # Missão 4: Ocultar o Swagger em Produção
 docs_config = {

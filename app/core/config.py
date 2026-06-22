@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: Optional[str] = None
 
     # ==========================================
+    # 👁️ OBSERVABILIDADE (Sentry)
+    # ==========================================
+    SENTRY_DSN: Optional[str] = None
+
+    # ==========================================
     # 📦 SPRINT 28: INTEGRAÇÕES E COMUNICAÇÃO
     # ==========================================
     
