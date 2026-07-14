@@ -67,7 +67,8 @@ describe('CompanySettingsOrchestrator', () => {
             signOut: vi.fn(),
             signIn: vi.fn(),
             switchCompany: vi.fn(),
-            reloadContext: vi.fn().mockResolvedValue(undefined)
+            reloadContext: vi.fn().mockResolvedValue(undefined),
+            signInWithProvider: vi.fn().mockResolvedValue(undefined)
         });
         vi.mocked(companyService.getById).mockResolvedValue(mockCompany as any);
         vi.mocked(api.get).mockImplementation((url) => {
