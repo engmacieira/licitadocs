@@ -33,6 +33,7 @@ jobs:
       DATABASE_URL: "postgresql://postgres:postgres@localhost:5435/licitadocs_test"
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
     
     strategy:
       fail-fast: false 
