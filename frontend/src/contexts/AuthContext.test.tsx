@@ -13,6 +13,17 @@ vi.mock('../services/userService');
 vi.mock('jwt-decode', () => ({
     jwtDecode: vi.fn(),
 }));
+vi.mock('../services/supabase.ts', () => ({
+    supabase: {
+        auth: {
+            onAuthStateChange: vi.fn(() => ({
+                data: { subscription: { unsubscribe: vi.fn() } },
+            })),
+            signInWithOAuth: vi.fn(),
+            signOut: vi.fn().mockResolvedValue({ error: null }),
+        },
+    },
+}));
 
 const mockToken = 'mock-access-token';
 const mockUser = {
@@ -158,12 +169,33 @@ describe('AuthContext', () => {
 
         const { result } = renderHook(() => useAuth(), { wrapper });
 
-        await waitFor(() => expect(result.current.loading).toBe(false));
+        // 🟢 A MÁGICA: Esperamos até que o loading termine E a autenticação reflita o setUser(null) do catch
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+            expect(result.current.isAuthenticated).toBe(false);
+        });
 
-        expect(result.current.isAuthenticated).toBe(true); // Token is still valid
         expect(result.current.userProfile).toBeNull();
         expect(consoleSpy).toHaveBeenCalled();
 
         consoleSpy.mockRestore();
+    });
+
+    it('performs signInWithProvider successfully', async () => {
+        const { result } = renderHook(() => useAuth(), { wrapper });
+
+        // Importamos o mock dinamicamente para checar as chamadas do spy
+        const { supabase } = await import('../services/supabase.ts');
+        vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({ data: {} as any, error: null });
+
+        await act(async () => {
+            await result.current.signInWithProvider('google');
+        });
+
+        // Garante que o provedor foi acionado com os payloads estruturados corretos
+        expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+            provider: 'google',
+            options: {}
+        });
     });
 });
