@@ -2,6 +2,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 .env
+.env.staging
+.env.production
+.env.development
 *.pem
 .venv
 .zip
