@@ -169,11 +169,12 @@ describe('AuthContext', () => {
 
         const { result } = renderHook(() => useAuth(), { wrapper });
 
-        await waitFor(() => expect(result.current.loading).toBe(false));
+        // 🟢 A MÁGICA: Esperamos até que o loading termine E a autenticação reflita o setUser(null) do catch
+        await waitFor(() => {
+            expect(result.current.loading).toBe(false);
+            expect(result.current.isAuthenticated).toBe(false);
+        });
 
-        // 🚨 MODIFIQUE A LINHA ABAIXO: De true para false
-        // Como o nosso catch agora limpa o estado com setUser(null), isAuthenticated precisa ser false!
-        expect(result.current.isAuthenticated).toBe(false);
         expect(result.current.userProfile).toBeNull();
         expect(consoleSpy).toHaveBeenCalled();
 
