@@ -94,8 +94,9 @@ O nosso fluxo exige a separação de código em branches para proteger o desenvo
 **O Ciclo de Vida da Branch:**
 1. **Atualizar a base:** Retorne para a raiz com `git checkout develop` e baixe as atualizações com `git pull origin develop`.
 2. **Criar a tarefa:** Crie e acesse a nova branch com `git checkout -b feature/nome-da-tarefa`.
-3. **Sincronizar nuvem:** Após os commits, faça o primeiro envio rastreável utilizando `git push -u origin feature/nome-da-tarefa`.
-4. **Limpeza pós-Merge:** Quando a funcionalidade for mesclada, retorne com `git checkout develop`, faça o `pull` e apague a branch local antiga com `git branch -d feature/nome-da-tarefa`.
+3. **Salvar as Alterações** `git add .` e `git commit -m "mensagem"`.
+4. **Sincronizar nuvem:** Após os commits, faça o primeiro envio rastreável utilizando `git push -u origin feature/nome-da-tarefa`.
+5. **Limpeza pós-Merge:** Quando a funcionalidade for mesclada, retorne com `git checkout develop`, faça o `pull` e apague a branch local antiga com `git branch -d feature/nome-da-tarefa`.
 
 **Ciclo de Vida de uma Tarefa (Passo a Passo)**
 1. **Verificar onde você está:** `git branch` ou `git status`.
