@@ -1,11 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path' // 🟢 Adicione este import se não tiver
+import path from 'path' 
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // 🟢 Detetamos se estamos a correr testes do Vitest
   const isTest = mode === 'test' || process.env.VITEST;
 
   return {
@@ -29,6 +28,17 @@ export default defineConfig(({ mode }) => {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api/, ''),
+        },
+      },
+    },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          },
         },
       },
     },
