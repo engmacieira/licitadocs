@@ -13,6 +13,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { PublicLayout } from './components/layout/PublicLayout';
 
 // --- PÁGINAS ---
+import { ComingSoonPage } from './pages/ComingSoon'; // <-- NOVO IMPORT
 
 // Públicas / Institucionais
 import { LandingPage } from './pages/LandingPage';
@@ -51,10 +52,12 @@ import { ManualEmissionPage } from './pages/Admin/ManualEmission';
 import { AdminAuditLogsPage } from './pages/Admin/AuditLogs';
 
 function App() {
+  // FEATURE FLAG: Verifica se o modo "Em Breve" está ativo no ambiente
+  const isComingSoon = import.meta.env.VITE_COMING_SOON_MODE === 'true';
+
   return (
     <BrowserRouter>
       <PostHogPageView />
-      {/* Feedback Visual Global (Toasts) */}
       <Toaster richColors position="top-right" closeButton />
 
       <ErrorBoundary>
@@ -63,35 +66,35 @@ function App() {
             {/* =========================================================
                 ROTAS PÚBLICAS (Acesso Livre)
             ========================================================= */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/demonstracao" element={<DemoPage />} />
+            {/* A Rota principal alterna dependendo da Flag */}
+            <Route path="/" element={isComingSoon ? <ComingSoonPage /> : <LandingPage />} />
 
-            <Route element={<PublicLayout />}>
+            {/* Login continua SEMPRE aberto (nossa porta dos fundos) */}
+            <Route path="/login" element={<LoginPage />} />
+
+            {/* Rotas de Venda/Onboarding são bloqueadas se o modo Coming Soon estiver ativo */}
+            <Route path="/register" element={isComingSoon ? <Navigate to="/" replace /> : <RegisterPage />} />
+            <Route path="/demonstracao" element={isComingSoon ? <Navigate to="/" replace /> : <DemoPage />} />
+
+            <Route element={isComingSoon ? <Navigate to="/" replace /> : <PublicLayout />}>
               <Route path="/sobre" element={<AboutPage />} />
               <Route path={LEGAL_CONFIG.termsOfUseUrl} element={<TermsOfUse />} />
               <Route path={LEGAL_CONFIG.privacyPolicyUrl} element={<PrivacyPolicy />} />
             </Route>
 
-            {/* Fluxo de Onboarding (Geralmente acessível via Token ou logo após registro) */}
-            <Route path="/contract-sign" element={<ContractSignPage />} />
-            <Route path="/payment" element={<PaymentPage />} />
+            {/* Fluxo de Onboarding */}
+            <Route path="/contract-sign" element={isComingSoon ? <Navigate to="/" replace /> : <ContractSignPage />} />
+            <Route path="/payment" element={isComingSoon ? <Navigate to="/" replace /> : <PaymentPage />} />
+
+            {/* Recuperação de Senha continua acessível para Admins */}
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             {/* =========================================================
-              ROTAS PROTEGIDAS (Requer Login + Token)
-          ========================================================= */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              {/* --- CLIENTE (Empresas) --- */}
+              ROTAS PROTEGIDAS (Requer Login + Token) - INTACTAS
+            ========================================================= */}
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/company-settings" element={<CompanySettingsPage />} />
@@ -108,22 +111,13 @@ function App() {
               <Route path="/admin/inbox" element={<AdminInboxPage />} />
               <Route path="/admin/emission-rules" element={<AdminEmissionRulesPage />} />
               <Route path="/admin/manual-emission/:ruleId" element={<ManualEmissionPage />} />
-
-              {/* Gestão de Empresas */}
               <Route path="/admin/companies" element={<AdminCompaniesPage />} />
               <Route path="/admin/companies/:id" element={<AdminCompanyDetailsPage />} />
               <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
               <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
             </Route>
 
-            <Route
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              {/* Fallback: Rota 404 ou Redirecionamento */}
+            <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>

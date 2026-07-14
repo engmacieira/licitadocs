@@ -71,6 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error("AuthContext: Falha ao carregar contexto do utilizador", error);
+            // NOVA ADIÇÃO: Se o backend recusar (ex: 401), limpamos o utilizador da memória para a UI atualizar corretamente
+            setUser(null);
         }
     }, []);
 

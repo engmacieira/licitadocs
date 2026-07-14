@@ -35,30 +35,38 @@ api.interceptors.response.use(
     (error) => {
         if (!error.response) {
             toast.error("Sem conexão com o servidor", {
-                description: "Verifique sua internet ou tente novamente mais tarde."
+                description: "Verifique a sua internet ou tente novamente mais tarde."
             });
         }
         else if (error.response.status === 401) {
-            // Tratamento de Sessão Expirada: Limpa o estado local e redireciona
+            // Tratamento de Sessão Expirada: Limpa o estado local
             localStorage.removeItem('@LicitaDoc:token');
             localStorage.removeItem('@LicitaDoc:companyId');
 
-            toast.warning("Sessão expirada", {
-                description: "Por segurança, faça login novamente."
-            });
+            // ARRAY DE ROTAS PÚBLICAS (Onde não queremos forçar o redirecionamento)
+            const publicPaths = ['/', '/login', '/register', '/demonstracao', '/sobre', '/contract-sign', '/payment', '/forgot-password', '/reset-password', '/verify-email'];
+            const currentPath = window.location.pathname;
 
-            setTimeout(() => {
-                window.location.href = '/login';
-            }, 1500);
+            // Só redireciona e mostra o popup se o utilizador tentar aceder a uma ROTA PROTEGIDA
+            if (!publicPaths.includes(currentPath)) {
+                toast.warning("Sessão expirada", {
+                    description: "Por segurança, faça login novamente."
+                });
+
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+            }
+            // NOTA: Se for rota pública (como o Em Breve), morre silenciosamente e deixa o utilizador na página.
         }
         else if (error.response.status === 403) {
             toast.error("Acesso Negado", {
-                description: "Você não tem permissão para realizar esta ação."
+                description: "Não tem permissão para realizar esta ação."
             });
         }
         else if (error.response.status >= 500) {
             toast.error("Erro interno do servidor", {
-                description: "Nossa equipe técnica foi notificada do incidente."
+                description: "A nossa equipa técnica foi notificada do incidente."
             });
         }
 
