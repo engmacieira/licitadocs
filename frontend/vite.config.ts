@@ -36,7 +36,25 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              return 'vendor';
+              // 1. Isola o motor de geração de PDF
+              if (id.includes('@react-pdf')) {
+                return 'vendor-pdf';
+              }
+              // 2. Isola a geração de Word (.docx) e salvamento de arquivos
+              if (id.includes('docx') || id.includes('file-saver')) {
+                return 'vendor-documents';
+              }
+              // 3. Isola ferramentas pesadas de Telemetria/Analytics (Sentry e Posthog)
+              if (id.includes('@sentry') || id.includes('posthog-js')) {
+                return 'vendor-telemetry';
+              }
+              // 4. Isola a biblioteca de ícones para evitar peso no core
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              
+              // Todo o resto (React, React Router, Tailwind, etc.) vai para o core principal
+              return 'vendor-core';
             }
           },
         },
