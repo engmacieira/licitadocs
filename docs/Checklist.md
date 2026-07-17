@@ -57,7 +57,7 @@ Bem-vindo ao manual consolidado do projeto! Este documento une o setup do ambien
 7. **Construir o Backend:** `python setup.py sdist`
 8. **Acessar o Backend:** `http://localhost:8000`
 9. **Exportar bibliotecas Python atuais:** `pip freeze > requirements.txt`
-10. **A "Pegadinha" do Interpretador no VS Code:** Se a IDE apresentar erros em pacotes Python nativos, aperte Ctrl+Shift+P, procure por "Python: Select Interpreter" e selecione o caminho da sua .venv[cite: 16].
+10. **A "Pegadinha" do Interpretador no VS Code:** Se a IDE apresentar erros em pacotes Python nativos, aperte Ctrl+Shift+P, procure por "Python: Select Interpreter" e selecione o caminho da sua .venv.
 
 ### Configuração do Frontend (React + TS + Vite)
 1. **Inicializar o Vite (se a pasta estiver vazia):** `cd frontend` seguido de `npm create vite@latest . -- --template react-ts`.
