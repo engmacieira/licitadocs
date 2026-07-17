@@ -7,11 +7,19 @@ on:
     branches-ignore:
       - main
       - develop
+    paths:
+      - 'app/**'
+      - 'frontend/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     # Roda sempre que um PR for aberto APONTANDO para a main ou develop
     branches:
       - main
       - develop
+    paths:
+      - 'app/**'
+      - 'frontend/**'
+      - '.github/workflows/ci.yml'
 
 jobs:
   # ==========================================
