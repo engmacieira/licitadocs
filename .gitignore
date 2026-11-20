@@ -25,3 +25,5 @@ client_secrets.json
 token.json
 .github/workflows/ci_copy.yml
 test_fluxo_emails.py
+graphify-out/
+.graphify/
