@@ -1,3 +1,4 @@
 backend_coverage.txt
 dummy_100kb_stream.pdf
-*.log
+jules/
+*.log/
