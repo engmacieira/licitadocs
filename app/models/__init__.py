@@ -10,3 +10,4 @@ from .message_model import Message
 from .emission_rule_model import EmissionRule
 from .emission_request_model import EmissionRequest
 from .ai_usage_model import AIUsage
+from .pncp_lead_model import PncpLead

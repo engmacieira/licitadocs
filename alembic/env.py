@@ -36,6 +36,7 @@ from app.models import (
     emission_request_model,
     emission_rule_model,
     message_model,
+    pncp_lead_model,
     user_model, 
 ) 
 

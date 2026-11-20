@@ -58,6 +58,7 @@ const ValidityMonitorPage = lazy(() => import('./pages/Admin/ValidityMonitor').t
 const AdminEmissionRulesPage = lazy(() => import('./pages/Admin/EmissionRules').then(m => ({ default: m.AdminEmissionRulesPage })));
 const ManualEmissionPage = lazy(() => import('./pages/Admin/ManualEmission').then(m => ({ default: m.ManualEmissionPage })));
 const AdminAuditLogsPage = lazy(() => import('./pages/Admin/AuditLogs').then(m => ({ default: m.AdminAuditLogsPage })));
+const AdminLeadsPage = lazy(() => import('./pages/Admin/Leads').then(m => ({ default: m.AdminLeadsPage })));
 
 function App() {
   const isComingSoon = import.meta.env.VITE_COMING_SOON_MODE === 'true';
@@ -120,6 +121,7 @@ function App() {
                 <Route path="/admin/companies/:id" element={<AdminCompanyDetailsPage />} />
                 <Route path="/admin/validity-monitor" element={<ValidityMonitorPage />} />
                 <Route path="/admin/audit-logs" element={<AdminAuditLogsPage />} />
+                <Route path="/admin/leads" element={<AdminLeadsPage />} />
               </Route>
 
               <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>

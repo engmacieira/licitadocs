@@ -13,7 +13,8 @@ import {
     LifeBuoy,
     InboxIcon,
     FilePen,
-    Activity
+    Activity,
+    Radar
 } from 'lucide-react';
 
 /**
@@ -45,6 +46,7 @@ export function Navigation({ isAdmin }: NavigationProps) {
                     <NavItem to="/admin/settings" icon={Settings} label="Configurações" activeColor="bg-purple-600" />
                     <NavItem to="/admin/emission-rules" icon={MapPin} label="Regras de Emissão" activeColor="bg-purple-600" />
                     <NavItem to="/admin/audit-logs" icon={Activity} label="Trilha de Auditoria" activeColor="bg-purple-600" />
+                    <NavItem to="/admin/leads" icon={Radar} label="Leads PNCP" activeColor="bg-purple-600" />
                 </>
             ) : (
                 <>
