@@ -24,6 +24,7 @@ from app.models.emission_rule_model import EmissionRule
 from app.models.emission_request_model import EmissionRequest
 from app.models.message_model import Message
 from app.models.ai_usage_model import AIUsage
+from app.models.pncp_lead_model import PncpLead
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 

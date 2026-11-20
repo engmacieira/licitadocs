@@ -34,7 +34,8 @@ from app.routers import (
     dashboard_router,
     company_router,
     message_router,
-    emission_rule_router
+    emission_rule_router,
+    pncp_lead_router
 )
 
 # Models para garantir a criação das tabelas pelo SQLAlchemy
@@ -170,6 +171,7 @@ app.include_router(message_router.router)
 app.include_router(emission_rule_router.router)
 app.include_router(ai_router.router)
 app.include_router(admin_router.router)
+app.include_router(pncp_lead_router.router)
 
 # ==========================================
 # ❤️ HEALTH CHECK
