@@ -35,6 +35,7 @@ const LoginPage = lazy(() => import('./pages/Login').then(m => ({ default: m.Log
 const RegisterPage = lazy(() => import('./pages/Register').then(m => ({ default: m.RegisterPage })));
 const ContractSignPage = lazy(() => import('./pages/ContractSign').then(m => ({ default: m.ContractSignPage })));
 const PaymentPage = lazy(() => import('./pages/Payment').then(m => ({ default: m.PaymentPage })));
+const PaymentSuccessPage = lazy(() => import('./pages/Payment/Success').then(m => ({ default: m.PaymentSuccessPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPassword').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/Client/VerifyEmail').then(m => ({ default: m.VerifyEmailPage })));
@@ -91,6 +92,7 @@ function App() {
               {/* Fluxo de Onboarding */}
               <Route path="/contract-sign" element={isComingSoon ? <Navigate to="/" replace /> : <ContractSignPage />} />
               <Route path="/payment" element={isComingSoon ? <Navigate to="/" replace /> : <PaymentPage />} />
+              <Route path="/payment/success" element={isComingSoon ? <Navigate to="/" replace /> : <PaymentSuccessPage />} />
 
               {/* Recuperação de Senha */}
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />

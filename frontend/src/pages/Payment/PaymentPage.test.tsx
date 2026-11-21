@@ -2,33 +2,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PaymentPage } from './index';
-
-// Mock do react-router-dom
-
+import { paymentService } from '../../services/paymentService';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
-    const actual = await importOriginal<any>();
+    const actual = await importOriginal<typeof import('react-router-dom')>();
     return {
         ...actual,
-        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
+        useLocation: vi.fn().mockReturnValue({ pathname: '/payment', state: {}, search: '' }),
         useNavigate: () => mockNavigate,
-        Link: ({ children, to }: any) => <a href={to}>{children}</a>
     };
 });
 
-// Mock do AuthContext
 vi.mock('../../contexts/AuthContext', () => ({
     useAuth: () => ({
-        currentCompany: { id: '1', razao_social: 'Empresa Teste' }
-    })
+        currentCompany: { id: '1', razao_social: 'Empresa Teste' },
+        loading: false,
+    }),
 }));
 
-// Mock do serviço de API
-vi.mock('../../services/api', () => ({
-    default: {
-        patch: vi.fn().mockResolvedValue({})
-    }
+vi.mock('../../services/paymentService', () => ({
+    paymentService: {
+        createCheckout: vi.fn(),
+        getStatus: vi.fn(),
+    },
 }));
 
 describe('PaymentPage Integration Test', () => {
@@ -36,32 +33,35 @@ describe('PaymentPage Integration Test', () => {
         vi.clearAllMocks();
     });
 
-    it('deve renderizar a área de checkout e o formulário de pagamento', () => {
+    it('deve renderizar a área de checkout e o formulário Infinite Pay', () => {
         render(<PaymentPage />);
 
-        // Verifica elementos do checkout (OrderSummary e MockPaymentForm)
-        expect(screen.getByText('Dados de Pagamento')).toBeInTheDocument();
-        expect(screen.getByText(/Ambiente de Teste Seguro/i)).toBeInTheDocument();
-
-        // Verifica o botão de ativação
-        expect(screen.getByRole('button', { name: /Confirmar e Ativar Conta/i })).toBeInTheDocument();
+        expect(screen.getByText('Pagamento Seguro')).toBeInTheDocument();
+        expect(screen.getByText(/Redirecionamento Seguro para Infinite Pay/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Pagar com Infinite Pay/i })).toBeInTheDocument();
     });
 
-    it('deve processar o pagamento e mostrar sucesso ao clicar no botão', async () => {
+    it('deve iniciar o checkout e redirecionar para a rota sandbox ao clicar no botão', async () => {
+        vi.mocked(paymentService.createCheckout).mockResolvedValueOnce({
+            checkout_url: '/payment/success?order_nsu=licita-1&mode=sandbox',
+            order_nsu: 'licita-1',
+            status: 'pending',
+            mode: 'sandbox',
+        });
+
         const user = userEvent.setup();
         render(<PaymentPage />);
 
-        const payButton = screen.getByRole('button', { name: /Confirmar e Ativar Conta/i });
+        const payButton = screen.getByRole('button', { name: /Pagar com Infinite Pay/i });
         await user.click(payButton);
 
-        // Verifica se entra em estado de processamento (mockado por 2s no orchestrator, mas o componente mostra o texto)
-        expect(screen.getByText(/Processando.../i)).toBeInTheDocument();
-
-        // Aguarda a mensagem de sucesso (configurada para 2s de delay no orchestrator)
         await waitFor(() => {
-            expect(screen.getByText(/Tudo Pronto!/i)).toBeInTheDocument();
-        }, { timeout: 5000 });
-
-        expect(screen.getByText(/está ativa/i)).toBeInTheDocument();
+            expect(paymentService.createCheckout).toHaveBeenCalledWith({
+                company_id: '1',
+                plan: 'PRO',
+                billing_cycle: 'annual',
+            });
+            expect(mockNavigate).toHaveBeenCalledWith('/payment/success?order_nsu=licita-1&mode=sandbox');
+        });
     });
 });

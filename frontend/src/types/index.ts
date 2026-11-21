@@ -5,3 +5,4 @@ export * from './auth';
 export * from './stats';
 export * from './emission';
 export * from './pncpLead';
+export * from './payment';

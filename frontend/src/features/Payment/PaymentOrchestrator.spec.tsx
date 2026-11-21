@@ -1,156 +1,180 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PaymentOrchestrator } from './PaymentOrchestrator';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { paymentService } from '../../services/paymentService';
 import { toast } from 'sonner';
 
-// Mocks
 vi.mock('../../contexts/AuthContext', () => ({
-    useAuth: vi.fn()
+    useAuth: vi.fn(),
 }));
 
-
 vi.mock('react-router-dom', async (importOriginal) => {
-    const actual = await importOriginal<any>();
+    const actual = await importOriginal<typeof import('react-router-dom')>();
     return {
         ...actual,
-        useLocation: vi.fn().mockReturnValue({ pathname: '/', state: {}, search: '' }),
-        useNavigate: vi.fn(), // ✅ AGORA É UM MOCK DO VITEST!
-        Link: ({ children, to }: any) => <a href={to}>{children}</a>
+        useLocation: vi.fn(),
+        useNavigate: vi.fn(),
     };
 });
 
-vi.mock('../../services/api', () => ({
-    default: {
-        patch: vi.fn()
-    }
+vi.mock('../../services/paymentService', () => ({
+    paymentService: {
+        createCheckout: vi.fn(),
+        getStatus: vi.fn(),
+    },
 }));
 
 vi.mock('sonner', () => ({
     toast: {
         success: vi.fn(),
-        error: vi.fn()
-    }
+        error: vi.fn(),
+    },
 }));
 
 describe('PaymentOrchestrator Integration', () => {
-
     const mockNavigate = vi.fn();
+    const mockLocationAssign = vi.fn();
 
     const mockLocation = {
+        pathname: '/payment',
+        search: '',
+        hash: '',
+        key: 'default',
         state: {
             legalName: 'Empresa do Location',
-            responsibleName: 'Responsavel do Location'
-        }
+            responsibleName: 'Responsavel do Location',
+        },
     };
+
     const mockCompany = {
         id: 'company-123',
         razao_social: 'Empresa do Contexto',
-        responsavel_nome: 'Responsavel do Contexto'
+        responsavel_nome: 'Responsavel do Contexto',
+        cnpj: '00.000.000/0001-00',
+        role: 'MASTER' as const,
+        status: true,
+        created_at: '2026-01-01T00:00:00Z',
     };
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.useFakeTimers();
+        vi.stubGlobal('location', { assign: mockLocationAssign });
 
-        (useNavigate as any).mockReturnValue(mockNavigate);
-        (useLocation as any).mockReturnValue(mockLocation);
-        (useAuth as any).mockReturnValue({
-            currentCompany: mockCompany
-        });
+        vi.mocked(useNavigate).mockReturnValue(mockNavigate);
+        vi.mocked(useLocation).mockReturnValue(mockLocation);
+        vi.mocked(useAuth).mockReturnValue({
+            currentCompany: mockCompany,
+            loading: false,
+        } as unknown as ReturnType<typeof useAuth>);
     });
 
     afterEach(() => {
-        vi.useRealTimers();
+        vi.unstubAllGlobals();
     });
 
-    it('should render initial state with OrderSummary and MockPaymentForm', () => {
+    it('should render OrderSummary and InfinitePayCheckoutForm with company info from context', () => {
         render(<PaymentOrchestrator />);
 
         expect(screen.getByText('Resumo do Pedido')).toBeInTheDocument();
-        expect(screen.getByText('Dados de Pagamento')).toBeInTheDocument();
-        // Should use company name from context as priority
-        const cardHolderInput = screen.getByLabelText(/Nome no Cartão/i);
-        expect(cardHolderInput).toHaveValue('RESPONSAVEL DO CONTEXTO');
+        expect(screen.getByText('Pagamento Seguro')).toBeInTheDocument();
+        expect(screen.getByText('Empresa do Contexto')).toBeInTheDocument();
+        expect(screen.getByText('Responsavel do Contexto')).toBeInTheDocument();
     });
 
-    it('should use location state if context is missing names', () => {
-        (useAuth as any).mockReturnValue({
-            currentCompany: { id: 'company-123' }
+    it('should fallback to location state if context company lacks names', () => {
+        vi.mocked(useAuth).mockReturnValue({
+            currentCompany: {
+                id: 'company-123',
+                razao_social: '',
+                cnpj: '00.000.000/0001-00',
+                role: 'MASTER',
+                status: true,
+                created_at: '2026-01-01T00:00:00Z',
+            },
+            loading: false,
+        } as unknown as ReturnType<typeof useAuth>);
+
+        render(<PaymentOrchestrator />);
+
+        expect(screen.getByText('Empresa do Location')).toBeInTheDocument();
+        expect(screen.getByText('Responsavel do Location')).toBeInTheDocument();
+    });
+
+    it('should redirect externally when checkout_url is an http/https URL', async () => {
+        vi.mocked(paymentService.createCheckout).mockResolvedValueOnce({
+            checkout_url: 'https://checkout.infinitepay.io/invoice/123',
+            order_nsu: 'licita-123',
+            status: 'pending',
+            mode: 'infinitepay',
         });
 
         render(<PaymentOrchestrator />);
 
-        const cardHolderInput = screen.getByLabelText(/Nome no Cartão/i);
-        expect(cardHolderInput).toHaveValue('RESPONSAVEL DO LOCATION');
-    });
-
-    it('should handle successful payment flow', async () => {
-        (api.patch as any).mockResolvedValueOnce({ data: {} });
-
-        render(<PaymentOrchestrator />);
-
-        const paymentButton = screen.getByRole('button', { name: /Confirmar e Ativar Conta/i });
+        const paymentButton = screen.getByRole('button', { name: /Pagar com Infinite Pay/i });
         fireEvent.click(paymentButton);
 
-        // Should be in processing state
-        expect(screen.getByText('Processando...')).toBeInTheDocument();
+        expect(screen.getByText('Gerando checkout...')).toBeInTheDocument();
 
-        // 1. Advance timers for Gateway simulation (2000ms)
-        await act(async () => {
-            vi.advanceTimersByTime(2000);
+        await waitFor(() => {
+            expect(paymentService.createCheckout).toHaveBeenCalledWith({
+                company_id: 'company-123',
+                plan: 'PRO',
+                billing_cycle: 'annual',
+            });
+            expect(mockLocationAssign).toHaveBeenCalledWith('https://checkout.infinitepay.io/invoice/123');
         });
-
-        // 2. API should have been called
-        expect(api.patch).toHaveBeenCalledWith('/companies/company-123/onboarding-step?step=payment');
-
-        // 3. Success screen should be visible
-        expect(screen.getByText('Tudo Pronto!')).toBeInTheDocument();
-        expect(screen.getByText(/Empresa do Contexto/)).toBeInTheDocument();
-        expect(toast.success).toHaveBeenCalledWith('Pagamento confirmado!', expect.any(Object));
-
-        // 4. Advance timers for final redirect (3000ms)
-        await act(async () => {
-            vi.advanceTimersByTime(3000);
-        });
-
-        expect(mockNavigate).toHaveBeenCalledWith('/dashboard');
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it('should handle payment failure', async () => {
-        (api.patch as any).mockRejectedValueOnce(new Error('API Error'));
+    it('should navigate internally when checkout_url is a relative sandbox URL', async () => {
+        vi.mocked(paymentService.createCheckout).mockResolvedValueOnce({
+            checkout_url: '/payment/success?order_nsu=licita-123&mode=sandbox',
+            order_nsu: 'licita-123',
+            status: 'pending',
+            mode: 'sandbox',
+        });
 
         render(<PaymentOrchestrator />);
 
-        const paymentButton = screen.getByRole('button', { name: /Confirmar e Ativar Conta/i });
+        const paymentButton = screen.getByRole('button', { name: /Pagar com Infinite Pay/i });
         fireEvent.click(paymentButton);
 
-        // Advance timers for Gateway simulation
-        await act(async () => {
-            vi.advanceTimersByTime(2000);
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith('/payment/success?order_nsu=licita-123&mode=sandbox');
         });
-
-        // Should show error toast
-        expect(toast.error).toHaveBeenCalledWith('Falha no pagamento', expect.any(Object));
-
-        // Should reset processing state
-        expect(screen.getByRole('button', { name: /Confirmar e Ativar Conta/i })).toBeInTheDocument();
-        expect(screen.queryByText('Processando...')).not.toBeInTheDocument();
+        expect(mockLocationAssign).not.toHaveBeenCalled();
     });
 
-    it('should show error if currentCompany is missing when attempting payment', () => {
-        (useAuth as any).mockReturnValue({
-            currentCompany: null
-        });
+    it('should show error toast and reset loading state when checkout creation fails', async () => {
+        vi.mocked(paymentService.createCheckout).mockRejectedValueOnce(new Error('API Error'));
 
         render(<PaymentOrchestrator />);
 
-        const paymentButton = screen.getByRole('button', { name: /Confirmar e Ativar Conta/i });
+        const paymentButton = screen.getByRole('button', { name: /Pagar com Infinite Pay/i });
+        fireEvent.click(paymentButton);
+
+        await waitFor(() => {
+            expect(toast.error).toHaveBeenCalledWith('Falha ao iniciar pagamento', expect.any(Object));
+        });
+
+        expect(screen.getByRole('button', { name: /Pagar com Infinite Pay/i })).toBeInTheDocument();
+        expect(screen.queryByText('Gerando checkout...')).not.toBeInTheDocument();
+    });
+
+    it('should show session expired error if currentCompany is missing', () => {
+        vi.mocked(useAuth).mockReturnValue({
+            currentCompany: null,
+            loading: false,
+        } as unknown as ReturnType<typeof useAuth>);
+
+        render(<PaymentOrchestrator />);
+
+        const paymentButton = screen.getByRole('button', { name: /Pagar com Infinite Pay/i });
         fireEvent.click(paymentButton);
 
         expect(toast.error).toHaveBeenCalledWith('Sessão expirada', expect.any(Object));
-        expect(api.patch).not.toHaveBeenCalled();
+        expect(paymentService.createCheckout).not.toHaveBeenCalled();
     });
 });

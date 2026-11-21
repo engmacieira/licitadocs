@@ -112,6 +112,12 @@ class CompanyResponse(CompanyBase):
     is_admin_verified: bool = False
     admin_pendencies: Optional[str] = None
 
+    subscription_status: Optional[str] = "pending"
+    subscription_plan: Optional[str] = None
+    subscription_external_id: Optional[str] = None
+    subscription_current_period_end: Optional[datetime] = None
+    last_payment_at: Optional[datetime] = None
+
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator('is_contract_signed', 'is_payment_active', 'is_admin_verified', 
