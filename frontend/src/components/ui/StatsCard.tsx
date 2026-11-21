@@ -22,6 +22,24 @@ export interface StatsCardProps {
     loading?: boolean;
 }
 
+type StatsCardColor = NonNullable<StatsCardProps['color']>;
+type StatsCardTrend = NonNullable<StatsCardProps['trend']>;
+
+const STATS_CARD_VARIANTS: Record<StatsCardColor, { bg: string; text: string }> = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
+    green: { bg: 'bg-green-50', text: 'text-green-600' },
+    red: { bg: 'bg-red-50', text: 'text-red-600' },
+    purple: { bg: 'bg-purple-50', text: 'text-purple-600' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
+    indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600' },
+};
+
+const TREND_VARIANTS: Record<StatsCardTrend, { symbol: string; className: string } | null> = {
+    up: { symbol: '↑', className: 'text-green-600' },
+    down: { symbol: '↓', className: 'text-red-600' },
+    neutral: null,
+};
+
 /**
  * Card de estatísticas utilizado em Dashboards para exibir métricas rápidas.
  * Possui suporte nativo a estado de carregamento e indicação visual de tendências.
@@ -35,17 +53,8 @@ export function StatsCard({
     color = 'blue',
     loading = false
 }: StatsCardProps) {
-
-    const themes = {
-        blue: { bg: 'bg-blue-50', text: 'text-blue-600' },
-        green: { bg: 'bg-green-50', text: 'text-green-600' },
-        red: { bg: 'bg-red-50', text: 'text-red-600' },
-        purple: { bg: 'bg-purple-50', text: 'text-purple-600' },
-        amber: { bg: 'bg-amber-50', text: 'text-amber-600' },
-        indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600' },
-    };
-
-    const theme = themes[color] || themes.blue;
+    const theme = STATS_CARD_VARIANTS[color] ?? STATS_CARD_VARIANTS.blue;
+    const trendConfig = trend ? TREND_VARIANTS[trend] : null;
 
     if (loading) {
         return (
@@ -76,8 +85,11 @@ export function StatsCard({
 
             {description && (
                 <div className="mt-4 flex items-center text-xs font-medium">
-                    {trend === 'up' && <span className="text-green-600 mr-1 flex items-center">↑</span>}
-                    {trend === 'down' && <span className="text-red-600 mr-1 flex items-center">↓</span>}
+                    {trendConfig && (
+                        <span className={`${trendConfig.className} mr-1 flex items-center`}>
+                            {trendConfig.symbol}
+                        </span>
+                    )}
                     <span className="text-slate-400">{description}</span>
                 </div>
             )}

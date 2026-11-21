@@ -18,31 +18,47 @@ def test_update_user_me_profile_only(client, auth_headers, test_user):
     data = response.json()
     assert data["nome"] == new_nome
 
-def test_update_user_me_password_missing_current_fails(client, auth_headers, test_user):
-    """Valida que trocar a senha EXIGE current_password."""
-    payload = {"password": "newpassword123"}
-    response = client.patch("/users/me", json=payload, headers=auth_headers)
-    assert response.status_code == 400
-    assert "senha atual é obrigatória" in response.json()["detail"].lower()
-
-def test_update_user_me_password_wrong_current_fails(client, auth_headers, test_user):
-    """Valida que trocar a senha falha com current_password incorreta."""
+def test_update_user_me_ignores_password(client, auth_headers, test_user, db_session):
+    """Valida que PATCH /users/me ignora e não altera a senha se enviada."""
+    from app.core.security import verify_password
+    old_hash = test_user.password_hash
     payload = {
-        "password": "newpassword123",
-        "current_password": "wrongpassword"
-    }
-    response = client.patch("/users/me", json=payload, headers=auth_headers)
-    assert response.status_code == 401
-    assert "incorreta" in response.json()["detail"].lower()
-
-def test_update_user_me_password_success(client, auth_headers, test_user):
-    """Valida o Happy Path da troca de senha."""
-    payload = {
+        "nome": "Profile Only",
         "password": "newpassword123",
         "current_password": "password123"
     }
     response = client.patch("/users/me", json=payload, headers=auth_headers)
-    assert response.status_code == 200
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["nome"] == "Profile Only"
+    db_session.refresh(test_user)
+    assert test_user.password_hash == old_hash
+    assert verify_password("password123", test_user.password_hash)
+
+def test_update_user_me_password_missing_current_fails(client, auth_headers, test_user):
+    """Valida que trocar a senha em /users/me/password EXIGE current_password."""
+    payload = {"new_password": "newpassword123"}
+    response = client.patch("/users/me/password", json=payload, headers=auth_headers)
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+def test_update_user_me_password_wrong_current_fails(client, auth_headers, test_user):
+    """Valida que trocar a senha falha com current_password incorreta."""
+    payload = {
+        "new_password": "newpassword123",
+        "current_password": "wrongpassword"
+    }
+    response = client.patch("/users/me/password", json=payload, headers=auth_headers)
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert "incorreta" in response.json()["detail"].lower()
+
+def test_update_user_me_password_success(client, auth_headers, test_user):
+    """Valida o Happy Path da troca de senha em /users/me/password."""
+    payload = {
+        "new_password": "newpassword123",
+        "current_password": "password123"
+    }
+    response = client.patch("/users/me/password", json=payload, headers=auth_headers)
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["message"] == "Senha atualizada com sucesso."
 
 def test_read_my_companies_empty(client, auth_headers):
     """Valida listagem de empresas quando o usuário não tem nenhuma."""

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { companyService } from '../../../services/companyService';
+import { userService } from '../../../services/userService';
 import api from '../../../services/api';
 import type { CompanyUpdatePayload, Company } from '../../../types';
 
@@ -123,9 +124,9 @@ export function useCompanySettingsData(currentCompany: Company | null, user: any
             return;
         }
         try {
-            await api.patch('/users/me', {
+            await userService.updatePassword({
                 current_password: data.currentPassword,
-                password: data.password
+                new_password: data.password
             });
             toast.success("Senha alterada com sucesso!");
             passwordForm.reset();

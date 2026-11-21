@@ -15,6 +15,7 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.database import get_db
 from app.dependencies import get_current_active_user, require_role
@@ -155,7 +156,9 @@ async def upload_document(
 
     # TRATAMENTO DO ARQUIVO (Usando o nosso File Helper)
     if file:
-        if not file.filename.lower().endswith(".pdf"):
+        allowed_extensions = [ext.lower() for ext in settings.ALLOWED_EXTENSIONS]
+        file_ext = os.path.splitext(file.filename or "")[1].lower()
+        if not file_ext or file_ext not in allowed_extensions:
             raise HTTPException(status_code=400, detail="Apenas ficheiros PDF são permitidos.")
 
         MAX_FILE_SIZE = 5 * 1024 * 1024 # 5MB

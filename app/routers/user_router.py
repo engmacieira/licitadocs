@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.security import get_password_hash, verify_password
 from app.dependencies import get_current_user
 from app.models.user_model import User
-from app.schemas.user_schemas import UserResponse, UserUpdate
+from app.schemas.user_schemas import PasswordUpdateDTO, UserResponse, UserUpdate
 from app.schemas.company_schemas import CompanyWithRole 
 
 # Tag "Perfil do Utilizador" para separar visualmente no Swagger
@@ -41,7 +41,7 @@ def read_users_me(current_user: User = Depends(get_current_user)):
     "/me", 
     response_model=UserResponse,
     summary="Atualizar Dados do Próprio Perfil",
-    description="Permite ao utilizador atualizar os seus dados pessoais, como nome, telemóvel ou profissão. Se for alterar a senha, exige a senha atual por segurança."
+    description="Permite ao utilizador atualizar os seus dados pessoais, como nome, telemóvel ou profissão."
 )
 def update_user_me(
     user_in: UserUpdate,
@@ -52,25 +52,9 @@ def update_user_me(
     # Exclui campos não enviados (unset)
     user_data = user_in.model_dump(exclude_unset=True)
     
-    # 🛡️ Missão 1: Tratamento de Senha (Com Validação de Segurança)
-    if user_in.password:
-        # No schema UserUpdate, password e current_password são opcionais.
-        # Mas se password vier, current_password é obrigatório.
-        if not user_in.current_password:
-            raise HTTPException(status_code=400, detail="A senha atual é obrigatória para definir uma nova senha.")
-            
-        if not verify_password(user_in.current_password, current_user.password_hash):
-            raise HTTPException(status_code=401, detail="Senha atual incorreta.")
-            
-        current_user.password_hash = get_password_hash(user_in.password)
-        # Remove do dict para não tentar setar no loop mass assignment
-        user_data.pop("password", None)
-        user_data.pop("current_password", None)
-    
     for field, value in user_data.items():
-        # 🛡️ Missão 3: Bloqueio de Mass Assignment (Blindagem)
-        # current_password foi excluído aqui pois já foi processado e retirado com o .pop()
-        if field not in ["id", "role", "password_hash", "is_active", "current_password"]:
+        # 🛡️ Bloqueio de Mass Assignment (Blindagem)
+        if field not in ["id", "role", "password_hash", "is_active", "password", "current_password"]:
             setattr(current_user, field, value)
     
     db.add(current_user)
@@ -78,6 +62,30 @@ def update_user_me(
     db.refresh(current_user)
     
     return current_user
+
+@router.patch(
+    "/me/password",
+    status_code=status.HTTP_200_OK,
+    summary="Atualizar Senha do Próprio Utilizador",
+    description="Endpoint dedicado para alteração de senha mediante validação obrigatória da senha atual."
+)
+def update_user_me_password(
+    payload: PasswordUpdateDTO,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Atualiza a senha do utilizador autenticado."""
+    if not verify_password(payload.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Senha atual incorreta."
+        )
+
+    current_user.password_hash = get_password_hash(payload.new_password)
+    db.add(current_user)
+    db.commit()
+
+    return {"message": "Senha atualizada com sucesso."}
 
 @router.get(
     "/me/companies", 

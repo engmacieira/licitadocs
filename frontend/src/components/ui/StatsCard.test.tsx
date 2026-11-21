@@ -61,6 +61,20 @@ describe('StatsCard Component', () => {
         expect(iconContainer).toHaveClass('bg-red-50');
     });
 
+    it('renders description without arrow when trend is neutral', () => {
+        render(
+            <StatsCard
+                {...defaultProps}
+                description="stable this month"
+                trend="neutral"
+            />
+        );
+
+        expect(screen.getByText(/stable this month/i)).toBeInTheDocument();
+        expect(screen.queryByText('↑')).not.toBeInTheDocument();
+        expect(screen.queryByText('↓')).not.toBeInTheDocument();
+    });
+
     it('renders skeleton when loading is true', () => {
         const { container } = render(<StatsCard {...defaultProps} loading />);
         

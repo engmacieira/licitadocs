@@ -416,3 +416,41 @@ def test_export_valid_documents_zip_no_physical_files(client, auth_headers, test
 
     assert response.status_code == 404
     assert "ficheiros físicos não existem no servidor" in response.text
+
+
+def test_upload_respects_allowed_extensions_config(client, auth_headers, test_company, monkeypatch):
+    """Valida que o upload rejeita extensões fora de settings.ALLOWED_EXTENSIONS e respeita a configuração."""
+    from app.core.config import settings
+
+    # 1. Com configuração padrão ([".pdf"]), .docx é rejeitado com 400
+    file_docx = ("contrato.docx", BytesIO(b"fake docx content"), "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    res_default = client.post(
+        f"/documents/upload?company_id={test_company.id}",
+        data={"title": "Docx"},
+        files={"file": file_docx},
+        headers=auth_headers,
+    )
+    assert res_default.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Apenas ficheiros PDF" in res_default.text
+
+    # 2. Alterando settings.ALLOWED_EXTENSIONS para [".docx"], .pdf passa a ser rejeitado pela validação de extensão
+    monkeypatch.setattr(settings, "ALLOWED_EXTENSIONS", [".docx"])
+    file_pdf = ("teste.pdf", BytesIO(b"%PDF-1.5\ncontent"), "application/pdf")
+    res_pdf = client.post(
+        f"/documents/upload?company_id={test_company.id}",
+        data={"title": "PDF"},
+        files={"file": file_pdf},
+        headers=auth_headers,
+    )
+    assert res_pdf.status_code == status.HTTP_400_BAD_REQUEST
+    assert "Apenas ficheiros PDF" in res_pdf.text
+
+    # 3. E .docx passa da validação de extensão (indo para a validação de assinatura PDF)
+    res_docx_allowed = client.post(
+        f"/documents/upload?company_id={test_company.id}",
+        data={"title": "Docx Permitido"},
+        files={"file": ("contrato.docx", BytesIO(b"not a pdf"), "application/octet-stream")},
+        headers=auth_headers,
+    )
+    assert res_docx_allowed.status_code == status.HTTP_400_BAD_REQUEST
+    assert "assinatura inválida" in res_docx_allowed.text.lower()

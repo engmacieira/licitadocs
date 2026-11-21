@@ -14,26 +14,16 @@
 ## ⚠️ Atenção (Prioridade Média)
 *Funcionalidades incompletas, validações fracas ou lógica de negócio repetitiva.*
 
-* **[Manutenibilidade] Mapeamento Manual de DTOs**
-    * *Problema:* O `auth_router.py` faz conversão manual de campos (`legal_name` -> `razao_social`). Aumenta chance de erro humano.
-    * *Solução:* Utilizar `validation_alias` do Pydantic ou padronizar o idioma (inglês/português) entre Frontend e Banco de Dados.
-* **[Manutenibilidade] Hardcoded PDF no Upload**
-    * *Problema:* A validação `file.filename.endswith('.pdf')` está hardcoded na rota.
-    * *Solução:* Mover para uma constante de configuração `ALLOWED_EXTENSIONS`.
-* **[Qualidade] Testes End-to-End (E2E) no Frontend**
-    * *Problema:* Não temos testes cobrindo a jornada real do usuário no navegador.
-    * *Solução:* Configurar Playwright/Cypress para testar o fluxo de cadastro e envio de documentos.
-* **[Segurança/Arquitetura] Separação de Endpoint para Troca de Senha**
-    * *Problema:* O endpoint genérico de atualização de perfil (`PATCH /users/me`) mistura a edição de dados pessoais (nome, CPF) com dados sensíveis (alteração de senha e senha atual). Isso é uma brecha arquitetural que dificulta a implementação de fluxos de segurança específicos, como auditoria, invalidação de sessões antigas ou bloqueio por tentativas falhas.
-    * *Solução:* Isolar a lógica de senhas criando um endpoint dedicado (ex: `POST /users/me/password` ou `PATCH /users/me/password`) recebendo um DTO exclusivo (`PasswordUpdateDTO`), além de remover esses campos da interface genérica `UserProfile`.
+* **[Qualidade] Execução Completa de Testes E2E em CI/CD**
+    * *Problema:* A estrutura inicial do Playwright (`frontend/playwright.config.ts` e `frontend/e2e/auth-and-upload.spec.ts`) já foi configurada com rotas interceptadas, mas ainda falta integrar a execução em CI contra backend PostgreSQL real e ampliar a cobertura para demais fluxos.
+    * *Solução:* Adicionar job no GitHub Actions com `playwright install` e ambiente de teste completo.
 
 ---
 
 ## 🟢 Baixa Prioridade (Cosmético/UX e DX)
 *Melhorias de interface ou de experiência do desenvolvedor (DX).*
 
-* **[Frontend] Refatorar `StatsCard`:** Componente mistura lógica de apresentação (cores hardcoded) com dados. Criar um padrão de variantes com Tailwind.
-* **[Frontend] Paginação Real no Dashboard:** As listas de "Recentes" trazem apenas 5 itens, mas não há um link "Ver Todos" paginado.
+* **[Frontend/Backend] Paginação Real nos Endpoints do Dashboard:** Os painéis de recentes já possuem links para as listagens completas (`/documents`, `/admin/validity-monitor`, `/admin/companies`), porém os endpoints `/dashboard/admin/stats` e `/dashboard/client/stats` ainda retornam fixos os 5 primeiros itens sem parâmetros `page`/`limit`.
 * **[Backend] Seeds de Teste Robustos:** Criar um script `seed.py` mais robusto utilizando a biblioteca `Faker` para popular o banco para testes de carga.
 
 ---
@@ -41,6 +31,17 @@
 ## ✅ Dívidas Pagas (Histórico Recente)
 
 > Itens resolvidos, testados e eliminados. O código agradece! 🎉
+
+* **~~[Segurança/Arquitetura] Separação de Endpoint para Troca de Senha~~** (Pago)
+    * *Solução:* Criado endpoint dedicado `PATCH /users/me/password` com `PasswordUpdateDTO` e validação obrigatória de `current_password`. Removidos `password` e `current_password` de `UserUpdate` e `PATCH /users/me`. Frontend migrado para `userService.updatePassword`.
+* **~~[Manutenibilidade] Mapeamento Manual de DTOs no Onboarding~~** (Pago)
+    * *Solução:* Criado `OnboardingCompanyDTO` com `validation_alias=AliasChoices(...)` em `app/schemas/user_schemas.py` e adotado nas rotas `register` e `oauth_register` do `auth_router.py`.
+* **~~[Manutenibilidade] Hardcoded PDF no Upload~~** (Pago)
+    * *Solução:* Adicionada constante `ALLOWED_EXTENSIONS` em `app/core/config.py` e aplicada na validação de extensão da rota `/documents/upload` em `app/routers/document_router.py`.
+* **~~[Frontend] Refatorar `StatsCard`~~** (Pago)
+    * *Solução:* Extraídas constantes declarativas `STATS_CARD_VARIANTS` e `TREND_VARIANTS` com Tailwind em `frontend/src/components/ui/StatsCard.tsx`.
+* **~~[Qualidade] Estrutura Inicial de Testes E2E (Playwright)~~** (Pago)
+    * *Solução:* Configurado `@playwright/test`, script `test:e2e`, `frontend/playwright.config.ts` e suíte inicial em `frontend/e2e/auth-and-upload.spec.ts`.
 
 * **~~[Segurança/Infra] SECRET_KEY e Credenciais do Banco Expostas~~** (Pago na Sprint 20)
     * *Solução:* Adicionado padrão Fail Fast (`sys.exit()`) no `database.py` e `security.py`. Uso obrigatório e exclusivo do `.env`.
