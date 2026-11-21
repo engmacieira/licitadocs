@@ -104,7 +104,7 @@ licitadocs/
 ├── docs/                           # Documentação de negócio, guias, histórico e minutas
 │   ├── arquitetura-e-regras/       # Regras de código, user stories, domínio e segurança IA
 │   ├── guia-e-roadmap/             # Guias de entrada, dívidas técnicas e roadmap
-│   ├── historico/                  # Sprints finalizados, kanban e release notes (até v2.0.4)
+│   ├── historico/                  # Sprints finalizados, kanban e release notes (até v2.1.0)
 │   ├── juridico/                   # Documentos jurídicos (Contrato, Procuração, Termo)
 │   └── minutas/                    # Minutas e avisos operacionais
 ├── frontend/                       # Frontend React + TypeScript + Vite
@@ -250,7 +250,7 @@ npm run build
 2. **Rastreabilidade (Linear):** As tarefas são gerenciadas no projeto **LicitaDocs** (equipe `LIC`). Referencie a issue correspondente nos commits seguindo o padrão Conventional Commits (ex: `feat(core): LIC-12 reestrutura módulo de contratos`).
 3. **Branches e Pull Requests:** O pipeline de CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) é disparado automaticamente em pushes de branches de trabalho e em Pull Requests direcionados para `main` ou `develop`.
 4. **Grafo de Arquitetura (Graphify):** Após alterações estruturais no código, atualize o grafo de conhecimento local executando `python -m graphify update .`.
-5. **Documentação de Produto:** Consulte [docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md](docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md), [docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md](docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md), as notas de versão em [docs/historico/releases/](docs/historico/releases/v2.0.4.md) e as sprints em [docs/historico/sprints/SPRINT_31_PNCP_LEADS.md](docs/historico/sprints/SPRINT_31_PNCP_LEADS.md).
+5. **Documentação de Produto:** Consulte [docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md](docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md), [docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md](docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md), as notas de versão em [docs/historico/releases/](docs/historico/releases/v2.1.0.md) e as sprints em [docs/historico/sprints/SPRINT_31_PNCP_LEADS.md](docs/historico/sprints/SPRINT_31_PNCP_LEADS.md).
 
 ---
 **LicitaDocs** — Repositório privado.

@@ -1,6 +1,6 @@
 export const APP_CONFIG = {
   name: 'LicitaDocs',
-  version: 'v2.0.4',
+  version: 'v2.1.0',
   copyrightYear: new Date().getFullYear(),
   address: 'Braúnas, MG - Brasil',
 } as const;
