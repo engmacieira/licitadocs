@@ -59,6 +59,13 @@ class Company(Base, SoftDeleteMixin):
     is_data_completed = Column(Boolean, default=False, doc="3. Perfil da empresa 100% preenchido")
     is_contract_signed = Column(Boolean, default=False, doc="4. Procuração digital assinada")
     is_admin_verified = Column(Boolean, default=False, doc="5. Verificação manual da equipe LicitaDoc")
+
+    # --- Assinatura e Recorrência (Infinite Pay) ---
+    subscription_status = Column(String, default="pending", doc="Status da assinatura (pending, active, past_due, canceled, expired, refunded)")
+    subscription_plan = Column(String, nullable=True, default="PRO", doc="Plano contratado")
+    subscription_external_id = Column(String, nullable=True, index=True, doc="Identificador externo da assinatura/pedido")
+    subscription_current_period_end = Column(DateTime(timezone=True), nullable=True, doc="Fim do período vigente da assinatura")
+    last_payment_at = Column(DateTime(timezone=True), nullable=True, doc="Data/hora do último pagamento confirmado")
     
     # Registro de pendências apontadas pela moderação
     admin_pendencies = Column(Text, nullable=True)

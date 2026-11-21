@@ -2,50 +2,51 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// Integração Real
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { paymentService } from '../../services/paymentService';
+import type { Company } from '../../types';
 
-// Subcomponentes Visuais (Vamos criá-los a seguir)
-import { PaymentSuccess } from './components/PaymentSuccess';
 import { OrderSummary } from './components/OrderSummary';
-import { MockPaymentForm } from './components/MockPaymentForm';
+import { InfinitePayCheckoutForm } from './components/InfinitePayCheckoutForm';
+
+interface PaymentLocationState {
+    legalName?: string;
+    responsibleName?: string;
+    email?: string;
+}
 
 /**
- * Orquestrador do fluxo de Pagamento.
- * Gere a validação de sessão, a simulação do gateway de pagamento,
- * a comunicação com a API para ativar a conta e as transições de UI.
+ * Orquestrador do fluxo de Pagamento via Infinite Pay.
+ * Cria a sessão de checkout no backend e redireciona para o link externo
+ * da Infinite Pay ou para a rota interna de retorno em modo sandbox.
  */
 export function PaymentOrchestrator() {
     const navigate = useNavigate();
     const location = useLocation();
 
     const { currentCompany } = useAuth();
-    const companyData = currentCompany as any;
+    const companyData: Partial<Company> | null = currentCompany;
+    const locationState = (location.state as PaymentLocationState | null) ?? null;
 
-    // Prioridade: Dados do Banco > Dados da Navegação > Fallback
-    const legalName = companyData?.razao_social || location.state?.legalName || "Sua Empresa";
-    const responsibleName = companyData?.responsavel_nome || location.state?.responsibleName || "Seu Nome";
+    // Prioridade: Dados do Contexto > Dados da Navegação > Fallback
+    const legalName = companyData?.razao_social || locationState?.legalName || 'Sua Empresa';
+    const responsibleName = companyData?.responsavel_nome || locationState?.responsibleName || 'Responsável Legal';
 
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
 
-    /**
-     * Efeito de segurança: Valida se existe um contexto de empresa ou dados de navegação.
-     */
     useEffect(() => {
-        if (!currentCompany && !location.state?.email) {
-            // Nota: Se a sessão expirou, podemos redirecionar ou aguardar o AuthContext resolver
+        if (!currentCompany && !locationState?.email) {
+            // Sessão pode ainda estar sendo resolvida pelo AuthContext
         }
-    }, [currentCompany, location.state, navigate]);
+    }, [currentCompany, locationState]);
 
     /**
-     * Simula o processamento num Gateway de Pagamento e atualiza o estado no backend.
+     * Inicia o checkout no backend e redireciona para o gateway ou rota sandbox.
      */
     const handlePayment = async () => {
-        if (!currentCompany?.id) {
-            toast.error("Sessão expirada", {
-                description: "Por favor, faça login novamente para continuar."
+        if (!companyData?.id) {
+            toast.error('Sessão expirada', {
+                description: 'Por favor, faça login novamente para continuar.',
             });
             return;
         }
@@ -53,52 +54,41 @@ export function PaymentOrchestrator() {
         setIsProcessing(true);
 
         try {
-            // 1. Simulação do Gateway (UX: Tempo de processamento bancário)
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // 2. CHAMADA REAL À API
-            await api.patch(`/companies/${currentCompany.id}/onboarding-step?step=payment`);
-
-            // 3. Sucesso!
-            setIsSuccess(true);
-            toast.success("Pagamento confirmado!", {
-                description: "Sua assinatura foi ativada com sucesso."
+            const response = await paymentService.createCheckout({
+                company_id: companyData.id,
+                plan: 'PRO',
+                billing_cycle: 'annual',
             });
 
-            // 4. Redireciona para o Dashboard após tempo de leitura
-            setTimeout(() => {
-                navigate('/dashboard');
-            }, 3000);
+            const checkoutUrl = response.checkout_url;
+            if (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://')) {
+                window.location.assign(checkoutUrl);
+                return;
+            }
 
+            const sandboxUrl =
+                checkoutUrl ||
+                `/payment/success?order_nsu=${encodeURIComponent(response.order_nsu)}&mode=${encodeURIComponent(response.mode || 'sandbox')}`;
+            navigate(sandboxUrl);
         } catch (error) {
             console.error(error);
-            toast.error("Falha no pagamento", {
-                description: "Não foi possível processar a transação. Tente novamente."
+            toast.error('Falha ao iniciar pagamento', {
+                description: 'Não foi possível gerar o link de pagamento. Tente novamente.',
             });
             setIsProcessing(false);
         }
     };
 
-    // RENDERIZAÇÃO CONDICIONAL: Ecrã de Sucesso
-    if (isSuccess) {
-        return <PaymentSuccess legalName={legalName} />;
-    }
-
-    // RENDERIZAÇÃO: Ecrã de Checkout
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-8">
             <div className="max-w-5xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
-
-                {/* LADO ESQUERDO: Resumo do Pedido (Componente Estático) */}
                 <OrderSummary />
-
-                {/* LADO DIREITO: Formulário de Pagamento (Isolado para futura integração) */}
-                <MockPaymentForm
+                <InfinitePayCheckoutForm
+                    legalName={legalName}
                     responsibleName={responsibleName}
                     isProcessing={isProcessing}
                     onPayment={handlePayment}
                 />
-
             </div>
         </div>
     );

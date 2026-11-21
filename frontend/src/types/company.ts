@@ -21,6 +21,10 @@ export interface Company {
     is_payment_active?: boolean;
     is_admin_verified?: boolean;
     pending_docs_notes?: string;
+    subscription_status?: string;
+    subscription_plan?: string | null;
+    subscription_current_period_end?: string | null;
+    last_payment_at?: string | null;
 }
 
 /** Vínculo de um utilizador com uma empresa específica. */

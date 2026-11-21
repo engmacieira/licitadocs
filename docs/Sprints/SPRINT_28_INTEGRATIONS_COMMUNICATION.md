@@ -21,9 +21,9 @@
 * **[x] [US-2806] Notificação de Vencimento:** Automatizar o envio de mensagens (E-mail/WhatsApp) quando documentos estiverem próximos do vencimento ou marcados como "Irregular".
 
 ### 📦 3. Pagamentos (Infinite Pay)
-* **[ ] [US-2807] Checkout de Assinatura:** Integrar a API da Infinite Pay no frontend para processamento de pagamentos.
-* **[ ] [US-2808] Webhook de Ativação:** Criar endpoint de webhook para receber confirmações de pagamento e ativar automaticamente a flag `is_payment_active` da empresa.
-* **[ ] [US-2809] Gestão de Recorrência:** Preparar o sistema para lidar com cancelamentos e renovações automáticas através do status retornado pela API de pagamento.
+* **[x] [US-2807] Checkout de Assinatura:** Integrar a API da Infinite Pay no frontend para processamento de pagamentos.
+* **[x] [US-2808] Webhook de Ativação:** Criar endpoint de webhook para receber confirmações de pagamento e ativar automaticamente a flag `is_payment_active` da empresa.
+* **[x] [US-2809] Gestão de Recorrência:** Preparar o sistema para lidar com cancelamentos e renovações automáticas através do status retornado pela API de pagamento.
 
 ---
 

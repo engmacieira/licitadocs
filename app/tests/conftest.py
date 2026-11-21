@@ -25,6 +25,7 @@ from app.models.emission_request_model import EmissionRequest
 from app.models.message_model import Message
 from app.models.ai_usage_model import AIUsage
 from app.models.pncp_lead_model import PncpLead
+from app.models.payment_model import PaymentEvent
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 

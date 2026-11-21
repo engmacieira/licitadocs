@@ -44,7 +44,7 @@ api.interceptors.response.use(
             localStorage.removeItem('@LicitaDoc:companyId');
 
             // ARRAY DE ROTAS PÚBLICAS (Onde não queremos forçar o redirecionamento)
-            const publicPaths = ['/', '/login', '/register', '/demonstracao', '/sobre', '/contract-sign', '/payment', '/forgot-password', '/reset-password', '/verify-email'];
+            const publicPaths = ['/', '/login', '/register', '/demonstracao', '/sobre', '/contract-sign', '/payment', '/payment/success', '/forgot-password', '/reset-password', '/verify-email'];
             const currentPath = window.location.pathname;
 
             // Só redireciona e mostra o popup se o utilizador tentar aceder a uma ROTA PROTEGIDA

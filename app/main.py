@@ -35,11 +35,12 @@ from app.routers import (
     company_router,
     message_router,
     emission_rule_router,
-    pncp_lead_router
+    pncp_lead_router,
+    payment_router
 )
 
 # Models para garantir a criação das tabelas pelo SQLAlchemy
-from app.models import certificate_model
+from app.models import certificate_model, payment_model
 from app.models.document_automation_model import DocumentAutomationConfig
 from app.services.orchestrator_service import OrchestratorService
 from anyio.lowlevel import RunVar
@@ -172,6 +173,7 @@ app.include_router(emission_rule_router.router)
 app.include_router(ai_router.router)
 app.include_router(admin_router.router)
 app.include_router(pncp_lead_router.router)
+app.include_router(payment_router.router)
 
 # ==========================================
 # ❤️ HEALTH CHECK

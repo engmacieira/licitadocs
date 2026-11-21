@@ -70,6 +70,13 @@ class Settings(BaseSettings):
     # --- 3. Pagamentos Infinite Pay ---
     INFINITEPAY_API_KEY: Optional[str] = None
     INFINITEPAY_WEBHOOK_SECRET: Optional[str] = None
+    INFINITEPAY_HANDLE: Optional[str] = None
+    INFINITEPAY_API_URL: str = "https://api.infinitepay.io"
+    INFINITEPAY_WEBHOOK_URL: Optional[str] = None
+    INFINITEPAY_REDIRECT_URL: Optional[str] = None
+    INFINITEPAY_CANCEL_URL: Optional[str] = None
+    INFINITEPAY_ENABLED: bool = False
+    INFINITEPAY_TIMEOUT_SECONDS: int = 15
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
