@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     # --- 2. WhatsApp ---
     WHATSAPP_API_URL: Optional[str] = None
     WHATSAPP_API_TOKEN: Optional[str] = None
+    WHATSAPP_INSTANCE: Optional[str] = None
+    WHATSAPP_ENABLED: bool = False
+    WHATSAPP_TIMEOUT_SECONDS: int = 15
+    DOCUMENT_EXPIRATION_ALERT_DAYS: int = 15
 
     # --- 3. Pagamentos Infinite Pay ---
     INFINITEPAY_API_KEY: Optional[str] = None

@@ -17,8 +17,8 @@
 * **[x] [US-2804] Alertas Administrativos:** Disparo automático de e-mail para os administradores quando uma nova empresa conclui o onboarding.
 
 ### 📦 2. WhatsApp & Notificações
-* **[ ] [US-2805] Integração WhatsApp:** Conectar à API de WhatsApp para envio de alertas transacionais.
-* **[ ] [US-2806] Notificação de Vencimento:** Automatizar o envio de mensagens (E-mail/WhatsApp) quando documentos estiverem próximos do vencimento ou marcados como "Irregular".
+* **[x] [US-2805] Integração WhatsApp:** Conectar à API de WhatsApp para envio de alertas transacionais.
+* **[x] [US-2806] Notificação de Vencimento:** Automatizar o envio de mensagens (E-mail/WhatsApp) quando documentos estiverem próximos do vencimento ou marcados como "Irregular".
 
 ### 📦 3. Pagamentos (Infinite Pay)
 * **[ ] [US-2807] Checkout de Assinatura:** Integrar a API da Infinite Pay no frontend para processamento de pagamentos.

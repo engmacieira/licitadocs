@@ -6,7 +6,7 @@ import os
 from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.schemas.audit_schemas import PaginatedAuditLogs
 from app.repositories.audit_repository import AuditRepository
@@ -25,6 +25,7 @@ MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 from app.repositories.company_repository import CompanyRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.document_repository import DocumentRepository
+from app.services.document_notification_service import DocumentNotificationService
 from app.utils.file_helper import save_upload_file
 
 # Prefixo /admin + Tag "Administração" organiza tudo no Swagger
@@ -259,4 +260,26 @@ def list_audit_logs(
         total=total,
         skip=skip,
         limit=limit
+    )
+
+
+# ==========================================
+# 🔔 NOTIFICAÇÕES DE DOCUMENTOS
+# ==========================================
+
+@router.post(
+    "/notifications/documents/dispatch",
+    summary="Disparar Notificações de Vencimento e Irregularidade",
+    description="Executa o disparo de alertas (WhatsApp, E-mail e Mensagem Interna) para documentos próximos do vencimento ou irregulares."
+)
+async def dispatch_document_notifications(
+    days: Optional[int] = Query(None, ge=1, le=365, description="Janela em dias para alertas de vencimento"),
+    dry_run: bool = Query(False, description="Se verdadeiro, simula o processamento sem enviar mensagens"),
+    db: Session = Depends(get_db),
+    current_admin: User = Depends(require_role([UserRole.ADMIN.value]))
+):
+    return await DocumentNotificationService.notify_expiring_and_irregular_documents(
+        db,
+        days_threshold=days,
+        dry_run=dry_run
     )
