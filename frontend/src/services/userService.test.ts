@@ -33,11 +33,12 @@ describe('userService', () => {
         expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
     });
 
-    it('updateMe should handle password change correctly', async () => {
-        const payload = { password: 'new-password', current_password: 'old-password' };
-        vi.mocked(api.patch).mockResolvedValueOnce({ data: { id: 'u1' } });
-        await userService.updateMe(payload as any);
-        expect(api.patch).toHaveBeenCalledWith('/users/me', payload);
+    it('updatePassword should call dedicated password endpoint with payload', async () => {
+        const payload = { current_password: 'old-password', new_password: 'new-password' };
+        vi.mocked(api.patch).mockResolvedValueOnce({ data: { message: 'Senha atualizada com sucesso.' } });
+        const result = await userService.updatePassword(payload);
+        expect(api.patch).toHaveBeenCalledWith('/users/me/password', payload);
+        expect(result).toEqual({ message: 'Senha atualizada com sucesso.' });
     });
 
     it('should throw error when API fails (Error Handling)', async () => {

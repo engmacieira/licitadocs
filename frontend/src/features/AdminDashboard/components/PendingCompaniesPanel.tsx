@@ -23,6 +23,11 @@ export function PendingCompaniesPanel({ loading, companies }: PendingCompaniesPa
                     <UserPlus className="h-5 w-5 text-indigo-600" />
                     Novos Cadastros (Aguardando Triagem)
                 </h2>
+                {companies.length > 0 && (
+                    <button onClick={() => navigate('/admin/companies')} className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline">
+                        Ver Todos
+                    </button>
+                )}
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[300px]">

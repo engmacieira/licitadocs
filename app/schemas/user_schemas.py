@@ -8,8 +8,8 @@ import enum
 import re
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
-from app.utils.validators import validar_matematica_cpf
+from pydantic import AliasChoices, BaseModel, EmailStr, Field, ConfigDict, field_validator
+from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
 
 class UserRoleEnum(str, enum.Enum):
     """Reflete os papéis globais definidos no modelo de banco de dados."""
@@ -66,11 +66,6 @@ class UserUpdate(BaseModel):
     nacionalidade: Optional[str] = None 
     estado_civil: Optional[str] = None  
     profissao: Optional[str] = None
-    
-    # 👇 NOVO CAMPO ADICIONADO AQUI 👇
-    current_password: Optional[str] = Field(None, description="Senha atual (obrigatória para validação na troca de senha)")
-    
-    password: Optional[str] = Field(None, min_length=8, description="Nova senha (se informada)")
 
     @field_validator('cpf')
     @classmethod
@@ -79,6 +74,44 @@ class UserUpdate(BaseModel):
         if not v:
             return None
         return validar_matematica_cpf(v)
+
+class PasswordUpdateDTO(BaseModel):
+    """Contrato dedicado para alteração de senha do utilizador autenticado."""
+    current_password: str = Field(..., min_length=1, description="Senha atual do utilizador")
+    new_password: str = Field(
+        ...,
+        min_length=8,
+        validation_alias=AliasChoices("new_password", "password"),
+        description="Nova senha (mínimo 8 caracteres)"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+class OnboardingCompanyDTO(BaseModel):
+    """Contrato DTO para padronização dos dados de empresa e responsável no onboarding."""
+    razao_social: str = Field(..., validation_alias=AliasChoices("legal_name", "razao_social"))
+    nome_fantasia: Optional[str] = Field(None, validation_alias=AliasChoices("trade_name", "nome_fantasia"))
+    cnpj: str = Field(..., description="CNPJ da empresa")
+    responsavel_nome: str = Field(..., validation_alias=AliasChoices("responsible_name", "responsavel_nome"))
+    responsavel_cpf: str = Field(..., validation_alias=AliasChoices("cpf", "responsavel_cpf"))
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("responsavel_cpf")
+    @classmethod
+    def validate_responsavel_cpf(cls, v: str) -> str:
+        """Executa a validação matemática do CPF do responsável."""
+        if not v:
+            return v
+        return validar_matematica_cpf(v)
+
+    @field_validator("cnpj")
+    @classmethod
+    def validate_cnpj(cls, v: str) -> str:
+        """Executa a validação matemática do CNPJ."""
+        if not v:
+            return v
+        return validar_matematica_cnpj(v)
 
 class UserResponse(UserBase):
     """Contrato de saída para APIs públicas. Remove campos sensíveis como senhas."""

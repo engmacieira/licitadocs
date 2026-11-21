@@ -30,3 +30,8 @@ export interface InviteResponse {
     role: string;
     message: string;
 }
+
+export interface PasswordUpdatePayload {
+    current_password: string;
+    new_password: string;
+}

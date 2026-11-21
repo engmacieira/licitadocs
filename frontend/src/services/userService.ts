@@ -1,5 +1,5 @@
 import api from './api';
-import type { UserCompany, UserProfile } from '../types';
+import type { PasswordUpdatePayload, UserCompany, UserProfile } from '../types';
 
 /**
  * Serviço responsável pela gestão de dados do utilizador e relações de conta.
@@ -33,6 +33,16 @@ export const userService = {
      */
     updateMe: async (userData: Partial<UserProfile>): Promise<UserProfile> => {
         const { data } = await api.patch<UserProfile>('/users/me', userData);
+        return data;
+    },
+
+    /**
+     * Atualiza a senha do utilizador autenticado no endpoint dedicado.
+     * @param {PasswordUpdatePayload} payload - Senha atual e nova senha.
+     * @returns {Promise<{ message: string }>} Mensagem de confirmação.
+     */
+    updatePassword: async (payload: PasswordUpdatePayload): Promise<{ message: string }> => {
+        const { data } = await api.patch<{ message: string }>('/users/me/password', payload);
         return data;
     }
 };

@@ -20,7 +20,6 @@ from app.core.database import get_db
 from app.core.security import create_access_token, verify_password, get_password_hash
 from app.core.rate_limit import limiter
 from app.dependencies import require_role
-from app.utils.validators import validar_matematica_cpf, validar_matematica_cnpj
 
 # Models & Repos
 from app.models.user_model import User, UserCompanyLink, UserCompanyRole, UserRole
@@ -29,7 +28,7 @@ from app.models.document_model import Document, DocumentStatus
 from app.utils.file_helper import save_upload_file, delete_file
 from app.repositories.user_repository import UserRepository
 from app.services.email_service import EmailService
-from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest, ResendVerificationRequest, ResendVerificationTokenRequest
+from app.schemas.user_schemas import Token, ForgotPasswordRequest, ResetPasswordRequest, RecoverEmailRequest, ResendVerificationRequest, ResendVerificationTokenRequest, OnboardingCompanyDTO
 
 DUMMY_HASH = get_password_hash("dummy")
 
@@ -69,23 +68,26 @@ async def register(
     proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação Inicial (Matemática e Existência)
+    # 1. Validação Inicial (DTO com aliases e validação matemática de CPF/CNPJ)
     try:
-        if cpf:
-            cpf = validar_matematica_cpf(cpf)
-        if cnpj:
-            cnpj = validar_matematica_cnpj(cnpj)
+        onboarding_data = OnboardingCompanyDTO(
+            legal_name=legal_name,
+            trade_name=trade_name,
+            cnpj=cnpj,
+            responsible_name=responsible_name,
+            cpf=cpf,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     if UserRepository.get_by_email(db, email):
         raise HTTPException(status_code=400, detail="E-mail já cadastrado no sistema.")
 
-    if cpf and UserRepository.get_by_cpf(db, cpf):
+    if onboarding_data.responsavel_cpf and UserRepository.get_by_cpf(db, onboarding_data.responsavel_cpf):
         raise HTTPException(status_code=400, detail="CPF já cadastrado no sistema.")
 
     from app.repositories.company_repository import CompanyRepository
-    if CompanyRepository.get_by_cnpj(db, cnpj):
+    if CompanyRepository.get_by_cnpj(db, onboarding_data.cnpj):
         raise HTTPException(status_code=400, detail="CNPJ já cadastrado no sistema.")
 
     saved_files = []
@@ -95,23 +97,23 @@ async def register(
         new_user = User(
             email=email, 
             password_hash=get_password_hash(password),
-            nome=responsible_name,
+            nome=onboarding_data.responsavel_nome,
             role=UserRole.CLIENT.value,
             is_active=True, 
-            cpf=cpf
+            cpf=onboarding_data.responsavel_cpf
         )
         db.add(new_user)
         db.flush() # Gera o ID, mas não commita
         
         # 3. Cria Empresa
         new_company = Company(
-            cnpj=cnpj,
-            razao_social=legal_name,
-            nome_fantasia=trade_name,
+            cnpj=onboarding_data.cnpj,
+            razao_social=onboarding_data.razao_social,
+            nome_fantasia=onboarding_data.nome_fantasia,
             email_corporativo=email,
             owner_id=new_user.id,
-            responsavel_nome=responsible_name, 
-            responsavel_cpf=cpf 
+            responsavel_nome=onboarding_data.responsavel_nome, 
+            responsavel_cpf=onboarding_data.responsavel_cpf 
         )
         db.add(new_company)
         db.flush() 
@@ -263,19 +265,24 @@ async def oauth_register(
     proxy_doc: Optional[UploadFile] = File(None, description="PDF da Procuração"),
     db: Session = Depends(get_db)
 ):
-    # 1. Validação Matemática
+    # 1. Validação Matemática e Mapeamento via DTO
     try:
-        if cpf: cpf = validar_matematica_cpf(cpf)
-        if cnpj: cnpj = validar_matematica_cnpj(cnpj)
+        onboarding_data = OnboardingCompanyDTO(
+            legal_name=legal_name,
+            trade_name=trade_name,
+            cnpj=cnpj,
+            responsible_name=responsible_name,
+            cpf=cpf,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # 2. Validações de Negócio (Duplicidade)
     from app.repositories.company_repository import CompanyRepository
-    if CompanyRepository.get_by_cnpj(db, cnpj):
+    if CompanyRepository.get_by_cnpj(db, onboarding_data.cnpj):
         raise HTTPException(status_code=400, detail="CNPJ já cadastrado no sistema.")
 
-    existing_cpf_user = UserRepository.get_by_cpf(db, cpf)
+    existing_cpf_user = UserRepository.get_by_cpf(db, onboarding_data.responsavel_cpf)
     if existing_cpf_user and existing_cpf_user.email != email:
         raise HTTPException(status_code=400, detail="CPF já vinculado a outra conta.")
 
@@ -292,30 +299,30 @@ async def oauth_register(
                 id=supabase_user_id, # Amarra o nosso BD com o Supabase!
                 email=email, 
                 password_hash=get_password_hash(random_secure_pass),
-                nome=responsible_name,
+                nome=onboarding_data.responsavel_nome,
                 role=UserRole.CLIENT.value,
                 is_active=True, 
-                cpf=cpf,
+                cpf=onboarding_data.responsavel_cpf,
                 is_email_verified=True # O Google já verificou para nós!
             )
             db.add(user)
             db.flush()
         else:
             # Se o usuário já existia (ex: convidado antes do login), apenas completamos dados vitais
-            if not user.cpf: user.cpf = cpf
-            if not user.nome: user.nome = responsible_name
+            if not user.cpf: user.cpf = onboarding_data.responsavel_cpf
+            if not user.nome: user.nome = onboarding_data.responsavel_nome
             if not user.is_email_verified: user.is_email_verified = True
             db.flush()
 
         # 4. Cria Empresa
         new_company = Company(
-            cnpj=cnpj,
-            razao_social=legal_name,
-            nome_fantasia=trade_name,
+            cnpj=onboarding_data.cnpj,
+            razao_social=onboarding_data.razao_social,
+            nome_fantasia=onboarding_data.nome_fantasia,
             email_corporativo=email,
             owner_id=user.id,
-            responsavel_nome=responsible_name, 
-            responsavel_cpf=cpf 
+            responsavel_nome=onboarding_data.responsavel_nome, 
+            responsavel_cpf=onboarding_data.responsavel_cpf 
         )
         db.add(new_company)
         db.flush() 

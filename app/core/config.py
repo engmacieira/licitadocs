@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str
     CORS_ORIGINS: str
     STORAGE_PATH: Optional[str] = None
+    ALLOWED_EXTENSIONS: list[str] = [".pdf"]
     
     # ==========================================
     # 🗄️ BANCO DE DADOS E SUPABASE
