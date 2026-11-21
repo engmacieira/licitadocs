@@ -36,7 +36,7 @@ Bem-vindo ao manual consolidado do projeto! Este documento une o setup do ambien
 * **Documentação Backend:** Docstrings são obrigatórias em todas as classes, rotas e funções de repositório/serviço, descrevendo o propósito geral, os parâmetros de entrada (`Args`) e o retorno (`Returns`).
 * **Documentação Frontend:** Componentes com lógicas complexas e Hooks personalizados devem conter comentários JSDoc/TSDoc documentando suas propriedades e fluxo.
 * **Comentários de Decisão:** O código não deve conter comentários que narrem o óbvio. Comente apenas para justificar o **porquê** de uma decisão de negócio ou o motivo por trás de um bloco lógico de alta complexidade.
-* **Arquivos de Gestão:** A pasta `docs/` é a alma da gestão. Os arquivos `USER_STORIES.md` (escopo), `DividasTecnicas.md` (débitos) e `Por_Onde_Comecar.md` (setup) devem estar sempre vivos.
+* **Arquivos de Gestão:** A pasta `docs/` é a alma da gestão. Os arquivos `docs/arquitetura-e-regras/01USER_STORIES.md` (escopo), `docs/guia-e-roadmap/03DividasTecnicas.md` (débitos) e `docs/guia-e-roadmap/02Por_Onde_Comecar.md` (setup) devem estar sempre vivos.
 
 ---
 
@@ -76,9 +76,9 @@ Bem-vindo ao manual consolidado do projeto! Este documento une o setup do ambien
 
 ### Metodologia Ágil e Templates
 1. **Sprint 0/Setup:** Utilize o script `setup.py` para construir a arquitetura.
-2. **Planejamento:** Gere o `docs/SPRINT_XX_BACKLOG.md` utilizando os templates de base.
+2. **Planejamento:** Gere o `docs/historico/sprints/SPRINT_XX_BACKLOG.md` utilizando os templates de base.
 3. **Execução:** O desenvolvimento ocorre funcionalidade por funcionalidade, baseado nas User Stories aprovadas.
-4. **Encerramento:** Gere o `docs/SPRINT_XX_CONCLUSAO.md` utilizando os templates de encerramento de ciclo.
+4. **Encerramento:** Gere o `docs/historico/sprints/SPRINT_XX_CONCLUSAO.md` utilizando os templates de encerramento de ciclo.
 5. **Uso de Templates:** Todo novo documento deve sempre derivar dos arquivos matriz (ex: `template_user_stories.md`).
 
 ### O Git Flow (Regras de Branch e Versionamento)

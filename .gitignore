@@ -27,3 +27,13 @@ token.json
 test_fluxo_emails.py
 graphify-out/
 .graphify/
+.coverage
+coverage.json
+backend_coverage.txt
+backend-coverage/
+frontend-coverage/
+test-results/
+node_modules/
+*.db
+*.sqlite*
+dummy_100kb_stream.pdf

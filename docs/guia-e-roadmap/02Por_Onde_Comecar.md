@@ -19,4 +19,4 @@
 
 ---
 **Atualizado em:** 14/04/2026
-**Responsável:** Jules (Software Engineer)
+**Responsável:** Equipe de Engenharia LicitaDocs
