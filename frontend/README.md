@@ -1,64 +1,56 @@
-# 🎨 LicitaDocs Frontend: Interface de Alta Performance
+# 🎨 LicitaDocs Frontend
 
-> Ecossistema de interface desenvolvido em React com TypeScript, focado em fornecer uma experiência fluida para a gestão de documentos licitatórios.
+> Interface SPA em React + TypeScript para o ecossistema **LicitaDocs**. Para visão geral do produto, arquitetura completa, Docker Compose e variáveis de ambiente, consulte o [README.md na raiz do repositório](../README.md).
 
 ---
 
 ## 🛠️ Stack de Interface
-- **Framework:** [React](https://reactjs.org/) + [Vite](https://vitejs.dev/)
-- **Linguagem:** TypeScript (Strict Mode)
-- **Estilização:** Tailwind CSS
-- **Validação de Formulários:** React Hook Form + Zod
-- **Notificações:** Sonner
-- **Testes:** Vitest + React Testing Library
+* **Core:** React 19 + Vite + TypeScript
+* **Estilização & Ícones:** Tailwind CSS v4 + Lucide React
+* **Roteamento & Formulários:** React Router DOM + React Hook Form + Zod
+* **Integrações & Utilitários:** Axios, `@supabase/supabase-js`, `@react-pdf/renderer`, `docx`, `sonner`, `posthog-js`, `@sentry/react`
+* **Testes:** Vitest + React Testing Library + `jsdom`
 
-## 🏗️ Arquitetura (Orchestrator/Feature)
-O frontend segue um padrão de **Decentralização de Lógica**:
-1. **Pages:** Atuam como roteadores e containers de layout.
-2. **Orchestrators:** Localizados em `src/features/`, coordenam o estado e os hooks de cada funcionalidade.
-3. **Services:** Abstrações de chamadas de API (`src/services/`) utilizando Axios.
-4. **Hooks:** Extração de lógica reutilizável e complexa para Custom Hooks.
+## 🏗️ Arquitetura (Orchestrator / Feature)
+O frontend segue o padrão de separação de responsabilidades:
+1. **`src/pages/`:** Roteadores e containers de layout (`Admin/`, `Client/` e páginas públicas).
+2. **`src/features/`:** Módulos por domínio contendo Orquestradores (controle de estado), hooks e componentes de UI.
+3. **`src/services/`:** Camada de comunicação HTTP com a API FastAPI via Axios.
+4. **`src/types/`:** Fonte única da verdade para interfaces e tipos TypeScript (`index.ts`).
 
 ---
 
-## 🚀 Guia de Desenvolvimento
+## 🚀 Comandos de Desenvolvimento
 
-### 1. Pré-requisitos
-- Node.js (v18+)
-- npm ou bun
+A partir da pasta `frontend/`:
 
-### 2. Instalação de Dependências
-Navegue até a pasta do frontend e instale os pacotes:
 ```bash
-cd frontend
+# Instalar dependências
 npm install
-```
 
-### 3. Execução em Desenvolvimento
-Inicie o servidor de desenvolvimento do Vite:
-```bash
+# Iniciar servidor de desenvolvimento (http://localhost:5173)
 npm run dev
-```
-A aplicação estará disponível por padrão em: `http://localhost:5173`
 
-### 4. Testes e Verificação
-Para rodar a suíte de testes unitários:
-```bash
+# Executar suíte de testes (Vitest)
 npm run test
-```
 
-Para realizar a checagem de tipos (TypeScript):
-```bash
-npm run typecheck
+# Executar testes com relatório de cobertura
+npm run coverage
+
+# Checagem de tipos TypeScript
+npm run type-check
+
+# Lint (ESLint)
+npm run lint
+
+# Build de produção
+npm run build
 ```
 
 ---
 
-## 📏 Regras de Design e Refatoração
-- **Single Source of Truth:** Todos os tipos devem residir em `src/types/index.ts`.
-- **Branding:** O nome da aplicação deve ser renderizado como string vinda de `APP_CONFIG.name`.
-- **Icons:** Utilize a biblioteca Lucide React para ícones padrão.
-- **Testes:** Novos componentes devem vir acompanhados de arquivos `.spec.tsx`.
-
----
-**Desenvolvido por Jules (AI Engineer) & Matheus Macieira.**
+## 📏 Convenções de UI e Código
+* **Tipagem:** Evite `any`; utilize e centralize interfaces em `src/types/`.
+* **Branding:** Renderize o nome da aplicação como string pura via `APP_CONFIG.name` (`src/config/app.config.ts`), sem estilização HTML/CSS segmentada.
+* **Notificações (`sonner`):** A biblioteca não suporta `toast.warning()`; utilize `toast.error()` ou `toast()`.
+* **Testes:** Mantenha arquivos `.spec.tsx` ou `.test.tsx` co-localizados com o componente/serviço testado.
