@@ -60,3 +60,18 @@ Antes de propor ou implementar qualquer funcionalidade, consulte o grafo de conh
 
 ## ⚙️ Regras Operacionais
 *   **Sincronização de Documentação:** Ao identificar inconsistências estruturais entre estas diretrizes e o código real durante uma tarefa, atualize este arquivo junto com a entrega.
+
+## Roteamento Contextual de Skills (.skills/)
+* **Protocolo de Ativação:** Antes de planejar ou editar qualquer código, identifique o domínio da tarefa na tabela abaixo e **leia o(s) `SKILL.md` correspondente(s)** (no máximo **1 ou 2 skills** por tarefa para preservar o contexto), seguindo suas fontes de verdade, regras ativas e checklist de validação.
+
+| Gatilho / Contexto da Tarefa | Caminhos / Módulos-Chave | Skill Obrigatória |
+| :--- | :--- | :--- |
+| API FastAPI base, PostgreSQL/Alembic, Auth/JWT, RBAC (`admin`/`client`, `MASTER`/`VIEWER`), auditoria, seeds | `app/main.py`, `app/core/`, `app/models/user_model.py`, `company_model.py`, `alembic/`, `scripts/` | `.skills/backend-core-db/SKILL.md` |
+| Cofre Digital, upload/download, catálogo de documentos, regras/fila de emissão e crawlers | `app/routers/document_router.py`, `emission_rule_router.py`, `app/services/crawlers/`, `ClientVault`, `CatalogSettings`, `ValidityMonitor` | `.skills/document-vault-crawlers/SKILL.md` |
+| Consultor IA (AI Concierge), RAG sobre o cofre, cota diária de tokens e segurança LLM | `app/core/ai_client.py`, `app/services/ai_service.py`, `ai_quota_repository.py`, `features/AIConsultant/` | `.skills/ai-concierge-rag/SKILL.md` |
+| Mensageria/Inbox bilateral, E-mail SMTP, WhatsApp e alertas automáticos de vencimento | `app/routers/message_router.py`, `whatsapp_service.py`, `email_service.py`, `document_notification_service.py`, `AdminInbox`, `HelpCenter`, `WhatsAppSection.tsx` | `.skills/communications-notifications/SKILL.md` |
+| Prospecção PNCP (CRM anti-SPAM), checkout, assinaturas e webhooks Infinite Pay | `app/routers/pncp_lead_router.py`, `payment_router.py`, `pncp_service.py`, `payment_service.py`, `pages/Admin/Leads/`, `features/Payment/` | `.skills/pncp-crm-payments/SKILL.md` |
+| Arquitetura React/TS, rotas, Design System, Zod, declarações `.doc`/`.pdf` e assinatura digital | `frontend/src/App.tsx`, `config/app.config.ts`, `contexts/`, `components/`, `schemas/`, `types/`, `DocumentTemplates`, `DigitalSignature` | `.skills/frontend-architecture-ui/SKILL.md` |
+| Testes Pytest/Vitest/Playwright E2E, CI/CD, Docker/Nginx/Compose e governança de legados | `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose*.yml`, `app/tests/`, `frontend/e2e/`, `playwright.config.ts`, `jules/`, `infra/tinybird/` | `.skills/qa-ci-infra-ops/SKILL.md` |
+
+* **Regra de Desempate / Fronteira:** Quando a tarefa cruzar infraestrutura transversal (backend ou frontend) com uma regra de negócio específica (ex.: novo endpoint ou tela para WhatsApp, PNCP ou Pagamentos), carregue **primeiro a skill de domínio** (`communications-notifications`, `pncp-crm-payments`, etc.) e consulte a skill estrutural (`backend-core-db` ou `frontend-architecture-ui`) apenas se precisar alterar padrões base ou transversais.
