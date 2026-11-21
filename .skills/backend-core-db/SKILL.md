@@ -29,10 +29,10 @@ description: Arquitetura central do backend FastAPI, PostgreSQL, Alembic, autent
   - `app/repositories/base_repository.py`, `app/models/user_model.py`, `app/models/company_model.py`
   - `app/routers/user_router.py`, `app/routers/company_router.py`, `app/routers/admin_router.py`
   - `app/utils/validators.py` (`validar_matematica_cpf`, `validar_matematica_cnpj`)
-  - `docs/00REGRAS_CODIGO.md` (Zero Guessing Policy e restrição absoluta de PostgreSQL)
+  - `docs/arquitetura-e-regras/00REGRAS_CODIGO.md` (Zero Guessing Policy e restrição absoluta de PostgreSQL)
 
 ## Arquitetura, Regras e Padrões Ativos
-1. **Stack 100% PostgreSQL (`docs/00REGRAS_CODIGO.md`, `app/core/database.py`):**
+1. **Stack 100% PostgreSQL (`docs/arquitetura-e-regras/00REGRAS_CODIGO.md`, `app/core/database.py`):**
    - `Settings` exige `DATABASE_URL` via `.env`. Engine configurado com `pool_pre_ping=True`, `pool_size=50`, `max_overflow=150`, `pool_timeout=30`.
    - `get_db()` abre `SessionLocal()` por requisição e fecha no `finally`.
    - É terminantemente proibido usar SQLite em qualquer ambiente (inclusive testes).
@@ -70,7 +70,6 @@ description: Arquitetura central do backend FastAPI, PostgreSQL, Alembic, autent
 - **Lazy Loading em `/users/me/companies`:** `read_my_companies` retorna dicionário montado manualmente para evitar expor `__dict__` do SQLAlchemy; filtre sempre `link.is_active`.
 - **Mass Assignment em `/companies/{id}`:** Clientes não podem enviar `is_admin_verified`, `is_contract_signed`, `is_payment_active` ou `admin_pendencies` no `PUT`.
 - **`scripts/reset_and_seed.py`:** Executa `DROP SCHEMA public CASCADE` — uso estritamente restrito a dev/teste local.
-- **`.env.example`:** Contém linhas residuais (`$env:JULES_API_KEY=`) e variáveis extras; `Settings` usa `extra="ignore"`.
 
 ## Checklist de Validação Antes de Concluir
 - [ ] Confirmar que nenhuma query consulta diretamente `db.query(Model)` ignorando `deleted_at IS NULL` (usar `BaseRepository` ou filtrar explicitamente).

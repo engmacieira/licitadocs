@@ -132,4 +132,4 @@ Transformar o LicitaDocs no principal parceiro de conformidade das empresas lici
 ---
 **Data de Criação:** Março de 2024
 **Status:** Planejamento Aprovado
-**Responsável:** Jules (Software Engineer) & Matheus (Product Owner)
+**Responsável:** Equipe de Engenharia & Matheus (Product Owner)

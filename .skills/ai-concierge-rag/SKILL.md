@@ -68,7 +68,7 @@ description: Diretrizes, arquitetura e regras de segurança para evoluir o Assis
 
 ## Armadilhas, Legados e O Que Evitar
 - **Script legado quebrado:** `app/scripts/manual_test_ai.py` ainda importa `ai_service` e chama `ai_service.ask_consultant(...)`, símbolos que não existem mais em `app/services/ai_service.py` (o método atual é estático: `AIService.generate_concierge_response`). Não use esse script como referência de API.
-- **Documentação histórica:** `docs/ai_security_report.md` documenta vulnerabilidades anteriores ao hardening (e cita OpenAI/Anthropic); as mitigações (`max_length=1000`, `slowapi`, `<user_input>`, fallback de contexto vazio) já estão implementadas no código atual.
+- **Documentação histórica:** `docs/arquitetura-e-regras/ai_security_report.md` documenta vulnerabilidades anteriores ao hardening (e cita OpenAI/Anthropic); as mitigações (`max_length=1000`, `slowapi`, `<user_input>`, fallback de contexto vazio) já estão implementadas no código atual.
 - **Instanciação no Service:** `AIService` faz `ai_instance = AIClient()` por chamada em vez de importar o singleton `ai_client`; ao mockar em testes, observe os patches em `app.core.ai_client.AIClient.generate_chat_response`.
 - **Não flexibilizar:** nunca remover `max_length`, tags `<user_input>`, validação de `company_links` ou o aborto pré-LLM em erro de RAG, nem usar `toast.warning()` (não suportado pelo `sonner`).
 

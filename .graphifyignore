@@ -1,4 +1,3 @@
-backend_coverage.txt
-dummy_100kb_stream.pdf
-jules/
+backend-coverage/
+frontend-coverage/
 *.log/

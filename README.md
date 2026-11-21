@@ -28,7 +28,7 @@ O projeto segue uma arquitetura desacoplada entre API RESTful (Backend) e SPA (F
   * Limite de tamanho de payload em uploads (`PayloadSizeLimitMiddleware` com máximo de 20 MB).
   * Trilha de auditoria sistêmica (`AuditMiddleware`) e rastreamento por `X-Request-ID` (`asgi-correlation-id`).
   * Documentação Swagger/ReDoc ocultada automaticamente quando `ENV=production`.
-* **Automação & Crawlers:** Motor baseado em *Strategy Pattern* (`CrawlerFactory` e `BaseCrawler`) com `httpx` e `playwright` para emissão/consulta (`CartaoCNPJCrawler`, `FGTSCrawlerV1`, `TSTCrawlerV1`) e orquestração em `OrchestratorService` (APScheduler desativado/comentado no `main.py` atual; robôs externos temporariamente pausados conforme [ROADMAP_VISAO_FUTURA.md](docs/ROADMAP_VISAO_FUTURA.md)).
+* **Automação & Crawlers:** Motor baseado em *Strategy Pattern* (`CrawlerFactory` e `BaseCrawler`) com `httpx` e `playwright` para emissão/consulta (`CartaoCNPJCrawler`, `FGTSCrawlerV1`, `TSTCrawlerV1`) e orquestração em `OrchestratorService` (APScheduler desativado/comentado no `main.py` atual; robôs externos temporariamente pausados conforme [ROADMAP_VISAO_FUTURA.md](docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md)).
 * **Inteligência Artificial:** SDK oficial do Google Gemini (`google-genai`, modelo `gemini-2.0-flash`) em `AIClient` + `AIService`, utilizando RAG sobre os documentos unificados do tenant e controle de cota diária (`DAILY_TOKEN_LIMIT = 30000`) via `AIQuotaRepository`.
 * **Observabilidade & Mensageria:** Sentry (`sentry-sdk`), `structlog`, envio de e-mails transacionais (`EmailService` via SMTP) e integração assíncrona com a API pública do PNCP (`PncpService`).
 
@@ -101,12 +101,12 @@ licitadocs/
 │   ├── utils/                      # Helpers (arquivos, validações, etc.)
 │   ├── dependencies.py             # Injeção de dependências, auth JWT e RBAC
 │   └── main.py                     # Entrypoint FastAPI, middlewares e registro de routers
-├── docs/                           # Documentação de negócio, Sprints, Release Notes e regras
-│   ├── Sprints/                    # Planejamentos e conclusões de Sprints
-│   ├── release-notes/              # Histórico de versões (até v2.0.4)
-│   ├── 00REGRAS_CODIGO.md          # Regras supremas de código
-│   ├── DOMINIO_NEGOCIO.md          # Regras de domínio e negócio
-│   └── ROADMAP_VISAO_FUTURA.md     # Visão estratégica e fases do produto
+├── docs/                           # Documentação de negócio, guias, histórico e minutas
+│   ├── arquitetura-e-regras/       # Regras de código, user stories, domínio e segurança IA
+│   ├── guia-e-roadmap/             # Guias de entrada, dívidas técnicas e roadmap
+│   ├── historico/                  # Sprints finalizados, kanban e release notes (até v2.0.4)
+│   ├── juridico/                   # Documentos jurídicos (Contrato, Procuração, Termo)
+│   └── minutas/                    # Minutas e avisos operacionais
 ├── frontend/                       # Frontend React + TypeScript + Vite
 │   ├── src/
 │   │   ├── components/             # Componentes compartilhados e layouts (MainLayout, PublicLayout, ProtectedRoute)
@@ -246,11 +246,11 @@ npm run build
 
 ## 🤝 Fluxo de Contribuição e Governança
 
-1. **Diretrizes Obrigatórias:** Leia [AGENTS.md](AGENTS.md) e [docs/00REGRAS_CODIGO.md](docs/00REGRAS_CODIGO.md) antes de propor alterações. O projeto segue o protocolo *Zero Guessing* e proíbe o uso de SQLite.
+1. **Diretrizes Obrigatórias:** Leia [AGENTS.md](AGENTS.md) e [docs/arquitetura-e-regras/00REGRAS_CODIGO.md](docs/arquitetura-e-regras/00REGRAS_CODIGO.md) antes de propor alterações. O projeto segue o protocolo *Zero Guessing* e proíbe o uso de SQLite.
 2. **Rastreabilidade (Linear):** As tarefas são gerenciadas no projeto **LicitaDocs** (equipe `LIC`). Referencie a issue correspondente nos commits seguindo o padrão Conventional Commits (ex: `feat(core): LIC-12 reestrutura módulo de contratos`).
 3. **Branches e Pull Requests:** O pipeline de CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) é disparado automaticamente em pushes de branches de trabalho e em Pull Requests direcionados para `main` ou `develop`.
 4. **Grafo de Arquitetura (Graphify):** Após alterações estruturais no código, atualize o grafo de conhecimento local executando `python -m graphify update .`.
-5. **Documentação de Produto:** Consulte [docs/DOMINIO_NEGOCIO.md](docs/DOMINIO_NEGOCIO.md), [docs/ROADMAP_VISAO_FUTURA.md](docs/ROADMAP_VISAO_FUTURA.md), as notas de versão em [docs/release-notes/](docs/release-notes/v2.0.4.md) e as sprints em [docs/Sprints/Finalizados/SPRINT_31_PNCP_LEADS.md](docs/Sprints/Finalizados/SPRINT_31_PNCP_LEADS.md).
+5. **Documentação de Produto:** Consulte [docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md](docs/arquitetura-e-regras/DOMINIO_NEGOCIO.md), [docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md](docs/guia-e-roadmap/ROADMAP_VISAO_FUTURA.md), as notas de versão em [docs/historico/releases/](docs/historico/releases/v2.0.4.md) e as sprints em [docs/historico/sprints/SPRINT_31_PNCP_LEADS.md](docs/historico/sprints/SPRINT_31_PNCP_LEADS.md).
 
 ---
 **LicitaDocs** — Repositório privado.

@@ -9,7 +9,7 @@ description: Guia operacional para QA (Pytest, Vitest, Playwright E2E), pipeline
 - Criação ou manutenção de testes backend (`pytest`), unitários frontend (`vitest`) ou E2E (`playwright`).
 - Alterações em `.github/workflows/ci.yml`, `Dockerfile`, `frontend/Dockerfile`, `frontend/nginx.conf` ou `docker-compose*.yml`/`yaml`.
 - Diagnóstico de falhas de banco de testes, mocks globais (`conftest.py`, `setup.ts`), sharding no CI ou conflito entre Vitest e Playwright.
-- Dúvidas sobre governança (`AGENTS.md`, `.agents/rules/graphify.md`) e artefatos legados/residuais na raiz ou em `jules/` e `infra/tinybird/`.
+- Dúvidas sobre governança (`AGENTS.md`, `.agents/rules/graphify.md`) e artefatos inativos em `infra/tinybird/`.
 
 ## Fonte de Verdade no Código
 - **CI/CD:** [.github/workflows/ci.yml](file:///e:/Projetos%20VSCODE/licitadocs/.github/workflows/ci.yml) (único workflow ativo em `.github/workflows/`).
@@ -22,7 +22,7 @@ description: Guia operacional para QA (Pytest, Vitest, Playwright E2E), pipeline
   - [frontend/package.json](file:///e:/Projetos%20VSCODE/licitadocs/frontend/package.json), [frontend/vite.config.ts](file:///e:/Projetos%20VSCODE/licitadocs/frontend/vite.config.ts), [frontend/src/test/setup.ts](file:///e:/Projetos%20VSCODE/licitadocs/frontend/src/test/setup.ts)
   - [frontend/playwright.config.ts](file:///e:/Projetos%20VSCODE/licitadocs/frontend/playwright.config.ts), [frontend/e2e/auth-and-upload.spec.ts](file:///e:/Projetos%20VSCODE/licitadocs/frontend/e2e/auth-and-upload.spec.ts)
 - **Governança:** [AGENTS.md](file:///e:/Projetos%20VSCODE/licitadocs/AGENTS.md), [.agents/rules/graphify.md](file:///e:/Projetos%20VSCODE/licitadocs/.agents/rules/graphify.md).
-- **Legados / Inativos:** [jules/instrucoes_jules.md](file:///e:/Projetos%20VSCODE/licitadocs/jules/instrucoes_jules.md), [infra/tinybird/README.md](file:///e:/Projetos%20VSCODE/licitadocs/infra/tinybird/README.md).
+- **Legados / Inativos:** [infra/tinybird/README.md](file:///e:/Projetos%20VSCODE/licitadocs/infra/tinybird/README.md).
 
 ## Arquitetura, Regras e Padrões Ativos
 
@@ -66,9 +66,7 @@ description: Guia operacional para QA (Pytest, Vitest, Playwright E2E), pipeline
 - Seguir **Zero Guessing Policy**, **PostgreSQL Mandatory**, rastreabilidade no Linear (equipe `LIC`, `In Progress` -> `Done`) e Conventional Commits com chave da issue (ex.: `feat(core): LIC-12 ...`).
 
 ## Armadilhas, Legados e O Que Evitar
-- **`jules/` (`instrucoes_jules.md` e scripts `.py`):** Legado sem workflow ativo em `.github/workflows/`. **Não** aplicar a "Zero-Test Policy" nem o prefixo `🤖 AI (Jules):` em fluxos atuais.
 - **`infra/tinybird/` (`README.md` e `.datasource`):** Schemas (`audit_logs`, `ai_usage`, `messages`, `emission_requests`) planejados, mas **sem integração Python ativa** em `app/`.
-- **Resíduos na raiz do repositório:** `licita_doc.db` (SQLite residual — uso de SQLite é proibido), `debug_models.py`, `fix_download_v2.py`, `fix_download_v3.py`, `test_resend_smtp.py` e `verify_auth_pages.spec.ts` (spec legado fora de `frontend/e2e/`). Não usar como referência nem reativar.
 - **Misturar E2E com Vitest:** Nunca colocar specs Playwright fora de `frontend/e2e/` sem atualizar `test.exclude` em `vite.config.ts`.
 - **Quebrar mocks globais:** Não remover `mock_email_service` no `conftest.py` nem os mocks de `@react-pdf/renderer`, `docx` e `file-saver` em `frontend/src/test/setup.ts`.
 

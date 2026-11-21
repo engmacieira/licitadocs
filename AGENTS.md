@@ -40,9 +40,9 @@ Localizado em `frontend/`, o sistema segue o padrão:
 
 ## 📚 Fontes da Verdade (Documentação Obrigatória)
 Antes de propor ou implementar qualquer funcionalidade, consulte o grafo de conhecimento e a documentação presente na pasta `docs/`. **Nunca adivinhe regras de negócio ou fluxos do sistema.**
-1.  **Sprints e Entregas:** Consulte `docs/Sprints/` para entender o momento atual do projeto.
-2.  **Release Notes:** Verifique `docs/release-notes/` para garantir compatibilidade.
-3.  **Regras de Código:** O arquivo `docs/00REGRAS_CODIGO.md` contém a diretriz suprema do projeto.
+1.  **Sprints e Entregas:** Consulte `docs/historico/sprints/` para entender o momento atual do projeto.
+2.  **Release Notes:** Verifique `docs/historico/releases/` para garantir compatibilidade.
+3.  **Regras de Código:** O arquivo `docs/arquitetura-e-regras/00REGRAS_CODIGO.md` contém a diretriz suprema do projeto.
 
 ## 📐 Regras Técnicas Específicas
 *   **Branding:** O nome da aplicação (LicitaDocs) deve ser renderizado como string pura a partir de `APP_CONFIG.name`. Proibido estilização via HTML/CSS segmentado (ex: spans coloridos).
@@ -72,6 +72,6 @@ Antes de propor ou implementar qualquer funcionalidade, consulte o grafo de conh
 | Mensageria/Inbox bilateral, E-mail SMTP, WhatsApp e alertas automáticos de vencimento | `app/routers/message_router.py`, `whatsapp_service.py`, `email_service.py`, `document_notification_service.py`, `AdminInbox`, `HelpCenter`, `WhatsAppSection.tsx` | `.skills/communications-notifications/SKILL.md` |
 | Prospecção PNCP (CRM anti-SPAM), checkout, assinaturas e webhooks Infinite Pay | `app/routers/pncp_lead_router.py`, `payment_router.py`, `pncp_service.py`, `payment_service.py`, `pages/Admin/Leads/`, `features/Payment/` | `.skills/pncp-crm-payments/SKILL.md` |
 | Arquitetura React/TS, rotas, Design System, Zod, declarações `.doc`/`.pdf` e assinatura digital | `frontend/src/App.tsx`, `config/app.config.ts`, `contexts/`, `components/`, `schemas/`, `types/`, `DocumentTemplates`, `DigitalSignature` | `.skills/frontend-architecture-ui/SKILL.md` |
-| Testes Pytest/Vitest/Playwright E2E, CI/CD, Docker/Nginx/Compose e governança de legados | `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose*.yml`, `app/tests/`, `frontend/e2e/`, `playwright.config.ts`, `jules/`, `infra/tinybird/` | `.skills/qa-ci-infra-ops/SKILL.md` |
+| Testes Pytest/Vitest/Playwright E2E, CI/CD, Docker/Nginx/Compose e governança de legados | `.github/workflows/ci.yml`, `Dockerfile`, `docker-compose*.yml`, `app/tests/`, `frontend/e2e/`, `playwright.config.ts`, `infra/tinybird/` | `.skills/qa-ci-infra-ops/SKILL.md` |
 
 * **Regra de Desempate / Fronteira:** Quando a tarefa cruzar infraestrutura transversal (backend ou frontend) com uma regra de negócio específica (ex.: novo endpoint ou tela para WhatsApp, PNCP ou Pagamentos), carregue **primeiro a skill de domínio** (`communications-notifications`, `pncp-crm-payments`, etc.) e consulte a skill estrutural (`backend-core-db` ou `frontend-architecture-ui`) apenas se precisar alterar padrões base ou transversais.
