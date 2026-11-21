@@ -40,10 +40,11 @@ def test_user_create_optional_fields(cpf_valido):
     assert user_in.cpf is None
 
 def test_user_update_empty_patch():
-    """Valida que um patch vazio no schema de update é permitido."""
+    """Valida que um patch vazio no schema de update é permitido e não expõe campo de senha."""
     update = UserUpdate()
     assert update.nome is None
-    assert update.password is None
+    assert update.cpf is None
+    assert not hasattr(update, "password")
 
 # --- Testes de Tratamento de Erros (Error Handling) ---
 
